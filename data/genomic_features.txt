@@ -1,0 +1,16 @@
+feature	length	percentage
+intron	61269422	44.54
+intergenic	35820671	26.04
+exon	25031305	18.20
+3UTR	7033734	5.11
+ncRNA	4706984	3.42
+5UTR	3219340	2.34
+pseudogene	307889	0.22
+snoRNA	33768	0.02
+stop_codon	27775	0.02
+start_codon	27761	0.02
+pre_miRNA	23461	0.02
+tRNA	21806	0.02
+rRNA	13511	0.01
+miRNA	5472	0.00
+snRNA	5061	0.00

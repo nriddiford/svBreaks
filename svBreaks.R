@@ -341,8 +341,11 @@ notchDels <- function(){
   
   p<-ggplot(data)
   p<-p + geom_bar(aes(sample,length),stat="identity")
+  #p<-p + scale_y_discrete(expand = c(0.01,0.01), breaks=seq(0,500,by=100))
   p<-p + cleanTheme() +
-    theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"))
+    theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 45, hjust=1),
+          axis.text = element_text(size=20))
   p
 
 }

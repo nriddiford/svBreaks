@@ -331,9 +331,6 @@ notchDels <- function(){
   data<-read.delim(infile, header = F)
   colnames(data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
-  3134497
-  3173603
-  
   data<-filter(data, chrom == "X", bp >= 2750000, bp <= 3400000)
   
   data <- filter(data, type == "DEL" & bp_no == "bp1")

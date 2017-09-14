@@ -331,13 +331,18 @@ notchDels <- function(){
   data<-read.delim(infile, header = F)
   colnames(data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
+  3134497
+  3173603
+  
   data<-filter(data, chrom == "X", bp >= 2750000, bp <= 3400000)
   
   data <- filter(data, type == "DEL" & bp_no == "bp1")
   
-  data <- transform(data, sample = reorder(sample, -length))
+  # Make sample names unique to see samples with multiple DELS
+  # data$sample <- make.unique(as.character(data$sample))
   # Hack to remove multiple deletions in same sample
   data <- data[!duplicated(data$sample), ]
+  data <- transform(data, sample = reorder(sample, -length))
   
   p<-ggplot(data)
   p<-p + geom_bar(aes(sample,length),stat="identity")
@@ -347,6 +352,10 @@ notchDels <- function(){
           axis.text.x = element_text(angle = 45, hjust=1),
           axis.text = element_text(size=20))
   p
+  
+  dels_out<-paste("NotchDels.pdf")
+  cat("Writing file", dels_out, "\n")
+  ggsave(paste("plots/", dels_out, sep=""), width = 20, height = 10)
 
 }
 

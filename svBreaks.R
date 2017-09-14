@@ -499,6 +499,41 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
   return(genesFC)
 }
 
+bpGeneEnrichmentPlot <- function() {
+  gene_enrichment<-bpGeneEnrichment(n=1)
+  
+  gene_enrichment$Log2FC <- log2(as.numeric(gene_enrichment$fc))
+  
+  gene_enrichment$gene <- as.character(gene_enrichment$gene)
+  gene_enrichment$fc <- as.numeric(gene_enrichment$fc)
+  
+  gene_enrichment <- transform(gene_enrichment, gene = reorder(gene, -fc))
+  
+  gene_enrichment$test <- ifelse(gene_enrichment$Log2FC>=0, "enriched", "depleted")
+  
+  gene_enrichment <- filter(gene_enrichment, observed >= 5)
+  gene_enrichment<-droplevels(gene_enrichment)
+  
+  highlightedGene <- filter(gene_enrichment, gene == "N")
+  highlightedGene <- droplevels(highlightedGene)
+  
+  p<-ggplot(gene_enrichment)
+  p<-p + geom_bar(aes(gene, Log2FC, fill = as.character(test)), stat="identity")
+  p<-p + geom_bar(data=highlightedGene, aes(gene, Log2FC, fill="red"), colour="black", stat="identity")
+  p<-p + guides(fill=FALSE)
+  p<-p + cleanTheme() +
+    theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 90, hjust=1),
+          axis.text = element_text(size=7)
+    )
+  
+  gene_enrichment_plot <- paste("gene_enrichment.pdf")
+  cat("Writing file", gene_enrichment_plot, "\n")
+  ggsave(paste("plots/", gene_enrichment_plot, sep=""), width = 5, height = 10)
+  p
+  
+}
+
 
 bpTssDist <- function(tss_pos="data/tss_positions.txt",sim=NA, print=0){
   tss_locations<-read.delim(tss_pos, header = T)

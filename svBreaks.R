@@ -348,12 +348,12 @@ notchDels <- function(){
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
           axis.text.x = element_text(angle = 45, hjust=1),
           axis.text = element_text(size=20))
-  p
   
   dels_out<-paste("NotchDels.pdf")
   cat("Writing file", dels_out, "\n")
   ggsave(paste("plots/", dels_out, sep=""), width = 20, height = 10)
 
+  p
 }
 
 genomeHits <- function(notch=0){

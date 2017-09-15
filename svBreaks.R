@@ -447,7 +447,8 @@ bpEnrichmentPlot <- function() {
   
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -fc))
   
-  
+  feature_enrichment <- filter(feature_enrichment, observed >= 5)
+  feature_enrichment <- droplevels(feature_enrichment)
   
   p<-ggplot(feature_enrichment)
   p<-p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat="identity")

@@ -391,6 +391,10 @@ genomeHits <- function(notch=0){
 bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_length=137547960){
   genome_features<-read.delim(features, header = T)
   bp_data<-getData()
+  
+  # To select for old/new data
+  # bp_data <- filter(bp_data, !grepl("^A|H", sample))
+  
   mutCount<-nrow(bp_data)
   
   # To condense exon counts into "exon"
@@ -520,7 +524,7 @@ bpGeneEnrichmentPlot <- function() {
   
   p<-ggplot(gene_enrichment)
   p<-p + geom_bar(aes(gene, Log2FC, fill = as.character(test)), stat="identity")
-  p<-p + geom_bar(data=highlightedGene, aes(gene, Log2FC, fill="red"), colour="black", stat="identity")
+ # p<-p + geom_bar(data=highlightedGene, aes(gene, Log2FC, fill="red"), colour="black", stat="identity")
   p<-p + guides(fill=FALSE)
   p<-p + cleanTheme() +
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),

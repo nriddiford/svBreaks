@@ -1,7 +1,15 @@
-library(scales)
-library(ggplot2)
-library(dplyr)
-library(RColorBrewer)
+list.of.packages <- c('ggplot2', 'dplyr', 'plyr', 'RColorBrewer', 'ggpubr')
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){
+  cat('Installing missing packages...\n')
+  install.packages(new.packages)
+}
+cat('Silently loading packages...')
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+suppressMessages(library(plyr))
+suppressMessages(library(RColorBrewer))
+suppressMessages(library(ggpubr))
 
 
 getData <- function(infile = "data/all_bps.txt"){
@@ -42,14 +50,18 @@ cleanTheme <- function(base_size = 12){
 }
 
 
-setCols <- function(df, col){
-  names<-levels(df[[col]])
-  cat("Setting colour levles:", names, "\n")
+setCols <- function(df, col, fill='Y'){
+  names<-levels(as.factor(df[[col]]))
+  names<-sort(names)
+  cat("Setting colour levels:", names, "\n")
   level_number<-length(names)
   mycols<-brewer.pal(level_number, "Set2")
   names(mycols) <- names
-  colScale <- scale_fill_manual(name = col,values = mycols)
-  return(colScale)
+  fillScale <- scale_fill_manual(name = col,values = mycols)
+  colScale <- scale_colour_manual(name = col,values = mycols)
+  
+  if(fill == 'Y') return(fillScale)
+  if(fill == 'N') return(colScale)
 }
 
 
@@ -182,23 +194,32 @@ svTypes<-function(notch=0,object=NA){
   }
   
   if(notch){
-    bp_data<-exNotch()
-    ext<-'_excl.N.pdf'
+    bp_data<-getData()
+    bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+    
+    ext<-'_Notch.pdf'
   }
   else{
     bp_data<-getData()
     ext<-'.pdf'
   }
+  
+  
+  bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
+  bp_data<-droplevels(bp_data)
+  
+  bp_data$type <- as.character(bp_data$type)
   cols<-setCols(bp_data, "type")
   
   # Reorder by count
-  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
+  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = FALSE)))
   
   # Only take bp1 for each event
   bp_data<-filter(bp_data, bp_no != "bp2")
+  bp_data<-droplevels(bp_data)
   
   p<-ggplot(bp_data)
-  p<-p + geom_bar(aes(get(object), fill = type))
+  p<-p + geom_bar(aes(get(object)))
   p<-p + cols
   p<-p + cleanTheme() +
     theme(axis.title.x=element_blank(),
@@ -208,10 +229,12 @@ svTypes<-function(notch=0,object=NA){
     )
   p<-p + scale_x_discrete(expand = c(0.01, 0.01))
   p<-p + scale_y_continuous(expand = c(0.01, 0.01))
-  
+  p<-p + coord_flip()
+  p<-p + scale_y_reverse()
+
   types_outfile<-paste("sv_types_by_", object, ext, sep = "")
   cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep=""), width = 20, height = 10)
+  ggsave(paste("plots/", types_outfile, sep=""), width = 5, height = 5)
   
   p
 }
@@ -306,24 +329,71 @@ typeLenCount <- function(size_threshold = 1, notch=0){
 }
 
 
-notch_hits <- function(){
+notchHits <- function(){
   bp_data<-getData()
-  bp_data<-filter(bp_data, chrom == "X", bp >= 2750000, bp <= 3400000)
+  bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+
+  bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
+  bp_data<-droplevels(bp_data)
+  
+  bp_data$type <- as.factor(bp_data$type)
+  
+  cols<-setCols(bp_data, "type", fill='N')  
   
   p<-ggplot(bp_data)
-  p<-p + geom_point(aes(bp/1000000, sample, colour = sample, shape = type, size = 2))
+  p<-p + geom_jitter(aes(bp/1000000, sample, colour = type),size = 3, alpha = 0.7)
   p<-p + guides(color = FALSE, size = FALSE, sample = FALSE)
   p<-p + cleanTheme() +
     theme(axis.title.y=element_blank(),
-          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 45, hjust=1),
+          axis.text.y = element_text(size = 10)
     )
-  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(3,3.3,by=0.05), limits=c(3, 3.301))
+  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.7, 3.4))
   
-  p<-p + annotate("rect", xmin=3.000000, xmax=3.134532, ymin=0, ymax=0.5, alpha=.2, fill="green")
-  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=0, ymax=0.5, alpha=.2, fill="skyblue")
-  p<-p + annotate("rect", xmin=3.176440, xmax=3.300000, ymin=0, ymax=0.5, alpha=.2, fill="red")
+  p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-0.5, ymax=0, alpha=.2, fill="green")
+  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-0.5, ymax=0, alpha=.2, fill="skyblue")
+  p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-0.5, ymax=0, alpha=.2, fill="red")
+  p<-p + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
+  p<-p + cols
   
-  p
+  # Nhits <- paste("Notch_hits.pdf")
+  # cat("Writing file", Nhits, "\n")
+  # ggsave(paste("plots/", Nhits, sep=""), width = 10, height = 10)
+  # 
+  
+  # Density plot
+
+  cols2<-setCols(bp_data, "type", fill='Y')  
+  
+  p2<-ggplot(bp_data)
+  p2<-p2 + geom_density(aes(bp/1000000, fill = type), alpha = 0.4)
+  p2<-p2 + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
+  p2<-p2 + scale_y_continuous("Density", expand = c(0,0))
+  p2<-p2 + guides(colour = FALSE)
+  p2<-p2 + geom_rug(aes(colour='black'))
+  p2<-p2 + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-0.5, ymax=0, alpha=.2, fill="green")
+  p2<-p2 + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-0.5, ymax=0, alpha=.2, fill="skyblue")
+  p2<-p2 + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-0.5, ymax=0, alpha=.2, fill="red")
+  p2<-p2 + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
+  
+  p2<-p2 + cleanTheme() +
+    theme(axis.text.x = element_text(angle = 45, hjust=1),
+          legend.position="top",
+          axis.title.y=element_blank()
+          )
+  
+  p2 <- p2 + cols2
+  
+  combined_plots <- ggarrange(p, p2, 
+                              labels = c("A", "B"),
+                              ncol = 1, nrow = 2)
+  
+  NhitsDen <- paste("Notch_hits_density.pdf")
+  cat("Writing file", NhitsDen, "\n")
+  ggsave(paste("plots/", NhitsDen, sep=""), width = 10, height = 10)
+  
+  combined_plots
 }
 
 notchDels <- function(){
@@ -660,7 +730,7 @@ bpinGene <- function(gene_lengths="data/gene_lengths.txt", gene2plot='dnc'){
 bpRainfall <- function(){
   bp_data<-getData()
   
-  bp_data<-filter(bp_data, sample != "A373R11" & sample != 'A373R13')
+  #bp_data<-filter(bp_data, sample != "A373R11" & sample != 'A373R13')
   distances<-do.call(rbind, lapply(split(bp_data[order(bp_data$chrom, bp_data$bp),], bp_data$chrom[order(bp_data$chrom, bp_data$bp)]),
                                    function(a) 
                                      data.frame(a,

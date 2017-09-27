@@ -33,7 +33,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data$fpkm <- ifelse(is.na(bp_data$fpkm), 0, round(bp_data$fpkm, 1))
 
   # Filter for genes expressed in RNA-Seq data
-  #bp_data<-filter(bp_data, fpkm > 0.1)
+  bp_data<-filter(bp_data, fpkm > 0.1)
   
   #filter on chroms
   #bp_data<-filter(bp_data, chrom != "Y" & chrom != "4")
@@ -42,7 +42,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
   
   # Filter for old/new data
- # bp_data <- filter(bp_data, grepl("^A|H", sample))
+ # bp_data <- filter(bp_data, !grepl("^A|H", sample))
   
   bp_data<-droplevels(bp_data)
   dir.create(file.path("plots"), showWarnings = FALSE)
@@ -150,7 +150,7 @@ svTypes<-function(notch=0,object=NA){
   cols<-setCols(bp_data, "type")
   
   # Reorder by count
-  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = FALSE)))
+  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
   
   # Only take bp1 for each event
   bp_data<-filter(bp_data, bp_no != "bp2")
@@ -167,12 +167,12 @@ svTypes<-function(notch=0,object=NA){
     )
   p<-p + scale_x_discrete(expand = c(0.01, 0.01))
   p<-p + scale_y_continuous(expand = c(0.01, 0.01))
-  p<-p + coord_flip()
-  p<-p + scale_y_reverse()
+ # p<-p + coord_flip()
+ # p<-p + scale_y_reverse()
 
   types_outfile<-paste("sv_types_by_", object, ext, sep = "")
   cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep=""), width = 5, height = 5)
+  ggsave(paste("plots/", types_outfile, sep=""), width = 5, height = 7)
   
   p
 }
@@ -192,7 +192,7 @@ notchHits <- function(){
   cols<-setCols(bp_data, "type", fill='N')  
   
   p<-ggplot(bp_data)
-  p<-p + geom_jitter(aes(bp/1000000, sample, colour = type, shape=type),size = 3, alpha = 0.7)
+  p<-p + geom_jitter(aes(bp/1000000, sample, colour = type, shape=type),size = 3, alpha = 0.9)
   p<-p + guides(color = FALSE, size = FALSE, sample = FALSE)
   p<-p + cleanTheme() +
     theme(axis.title.y=element_blank(),
@@ -203,9 +203,9 @@ notchHits <- function(){
     )
   p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.7, 3.4))
   
-  p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-0.5, ymax=0, alpha=.2, fill="green")
-  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-0.5, ymax=0, alpha=.2, fill="skyblue")
-  p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-0.5, ymax=0, alpha=.2, fill="red")
+  p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1.5, ymax=0, alpha=.2, fill="green")
+  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1.5, ymax=0, alpha=.2, fill="skyblue")
+  p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1.5, ymax=0, alpha=.2, fill="red")
   p<-p + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
   p<-p + cols
   
@@ -218,24 +218,29 @@ notchHits <- function(){
 
   cols2<-setCols(bp_data, "type", fill='Y')  
   
+  bp_data <- filter(bp_data, type != 'TRA')
+  bp_data<-droplevels(bp_data)
+  
   p2<-ggplot(bp_data)
   p2<-p2 + geom_density(aes(bp/1000000, fill = type), alpha = 0.4)
   p2<-p2 + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
   p2<-p2 + scale_y_continuous("Density", expand = c(0,0))
   p2<-p2 + guides(colour = FALSE)
-  p2<-p2 + geom_rug(aes(colour='black'))
-  p2<-p2 + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-0.5, ymax=0, alpha=.2, fill="green")
-  p2<-p2 + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-0.5, ymax=0, alpha=.2, fill="skyblue")
-  p2<-p2 + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-0.5, ymax=0, alpha=.2, fill="red")
+  p2<-p2 + geom_rug(data=bp_data,aes(bp/1000000))
+  # p2<-p2 + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1, ymax=0, alpha=.2, fill="green")
+  # p2<-p2 + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1, ymax=0, alpha=.2, fill="skyblue")
+  # p2<-p2 + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1, ymax=0, alpha=.2, fill="red")
   p2<-p2 + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
   
   p2<-p2 + cleanTheme() +
     theme(axis.text.x = element_text(angle = 45, hjust=1),
           legend.position="top",
-          axis.title.y=element_blank()
+          axis.title.y=element_blank(),
+          strip.text = element_text(size=10)
           )
   
   p2 <- p2 + cols2
+  p2 <- p2 + facet_wrap(~type, nrow = 3)
   
   combined_plots <- ggarrange(p, p2, 
                               labels = c("A", "B"),
@@ -269,7 +274,7 @@ notchDels <- function(){
   p<-p + cleanTheme() +
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
           axis.text.x = element_text(angle = 45, hjust=1),
-          axis.text = element_text(size=20))
+          axis.text = element_text(size=15))
   
   dels_out<-paste("NotchDels.pdf")
   cat("Writing file", dels_out, "\n")
@@ -317,7 +322,9 @@ bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_len
       sig_val<-'F'
       if(stat$p.value <= 0.05){ sig_val<-'T'}
       p_val<-format.pval(stat$p.value, digits = 3, eps=0.0001)
-      list(feature = f, observed = classCount[f], expected = featureExpect, fc = fc, test = test, sig = sig_val, p_val = p_val)
+      Log2FC<-log2(fc)
+      # Log2FC<-round(Log2FC, 1)
+      list(feature = f, observed = classCount[f], expected = featureExpect, Log2FC = Log2FC, test = test, sig = sig_val, p_val = p_val)
     }
   }
   
@@ -325,8 +332,8 @@ bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_len
   enriched<-do.call(rbind, enriched)
   featuresFC<-as.data.frame(enriched)
   # Sort by FC value
-  featuresFC<-arrange(featuresFC,desc(as.integer(fc)))
-  
+  featuresFC<-arrange(featuresFC,desc(as.numeric(Log2FC)))
+  featuresFC$Log2FC<-round(as.numeric(featuresFC$Log2FC), 1)
   featuresFC$expected<-round(as.numeric(featuresFC$expected), 1)
   
   if(!is.na(print)){
@@ -337,7 +344,7 @@ bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_len
     ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
     
     feat_enrichment_table <- paste("feature_enrichment_table.pdf")
-    ggsave(paste("plots/", feat_enrichment_table, sep=""), width = 5, height = (nrow(featuresFC)/3))
+    ggsave(paste("plots/", feat_enrichment_table, sep=""), width = 5.2, height = (nrow(featuresFC)/3))
   }
   
   else{ return(featuresFC) }
@@ -347,14 +354,14 @@ bpFeatureEnrichmentPlot <- function() {
   feature_enrichment<-bpFeatureEnrichment()
   
   
-  feature_enrichment$Log2FC <- log2(as.numeric(feature_enrichment$fc))
+  #feature_enrichment$Log2FC <- log2(as.numeric(feature_enrichment$fc))
   
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
-  feature_enrichment$fc <- as.numeric(feature_enrichment$fc)
+  #feature_enrichment$fc <- as.numeric(feature_enrichment$fc)
   
-  feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -fc))
+  feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
   
-  feature_enrichment <- filter(feature_enrichment, observed >= 5)
+  feature_enrichment <- filter(feature_enrichment, observed >= 3)
   feature_enrichment <- droplevels(feature_enrichment)
   
   p<-ggplot(feature_enrichment)

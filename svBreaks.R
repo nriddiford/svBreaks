@@ -605,7 +605,7 @@ bpTssDistOverlay <- function(){
   tssDistout<-paste("bpTSSdist_overlay.pdf")
 
   cat("Writing file", tssDistout, "\n")
-  ggsave(paste("plots/", tssDistout, sep=""), width = 20, height = 10)
+  ggsave(paste("plots/", tssDistout, sep=""), width = 25, height = 10)
   
  
   
@@ -762,7 +762,7 @@ g4DistOverlay <- function(){
   g4Distout<-paste("bpG4dist_overlay.pdf")
   
   cat("Writing file", g4Distout, "\n")
-  ggsave(paste("plots/", g4Distout, sep=""), width = 20, height = 10)
+  ggsave(paste("plots/", g4Distout, sep=""), width = 25, height = 10)
   
   
   
@@ -863,7 +863,7 @@ bpRainfall <- function(){
 #'
 #' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
 #' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
-#' @param N Number of random SNVs to generate [Default nrow(snv_data)]
+#' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
 #' @import GenomicRanges
 #' @keywords sim
 #' @export
@@ -874,11 +874,12 @@ bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
   intFile <- import.bed(intervals)
   space <- sum(width(intFile))
   positions <- sample(c(1:space), N)
+  cat("Simulating", N, "breakpoints", sep = ' ', "\n")
   new_b <- GRanges(seqnames=as.character(rep(seqnames(intFile), width(intFile))),
                    ranges=IRanges(start=unlist(mapply(seq, from=start(intFile), to=end(intFile))), width=1))
   bedOut<-new_b[positions]
   if(write){
-    export.bed(new_b[positions], "data/simulatedSNVs.bed")
+    export.bed(new_b[positions], "data/simulatedBPs.bed")
   }
   remove(new_b)
   return(data.frame(bedOut))

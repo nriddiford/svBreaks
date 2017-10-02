@@ -11,10 +11,10 @@ suppressMessages(library(plyr))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggpubr))
 
-set.seed(41)
+#set.seed(41)
 
 
-getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
+getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_EB_genes_rnaSeq_Maheva.csv'){
   bp_data<-read.delim(infile, header = F)
   colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
@@ -33,7 +33,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data$fpkm <- ifelse(is.na(bp_data$fpkm), 0, round(bp_data$fpkm, 1))
 
   # Filter for genes expressed in RNA-Seq data
-  #bp_data<-filter(bp_data, fpkm > 0.1)
+  # bp_data<-filter(bp_data, fpkm > 0.1)
   
   #filter on chroms
   #bp_data<-filter(bp_data, chrom != "Y" & chrom != "4")
@@ -43,6 +43,9 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   
   # Filter for old/new data
  # bp_data <- filter(bp_data, !grepl("^A|H", sample))
+  
+  # Filter for SV type
+  # bp_data <- filter(bp_data, type == "DEL")
   
   bp_data<-droplevels(bp_data)
   dir.create(file.path("plots"), showWarnings = FALSE)
@@ -467,10 +470,322 @@ bpGeneEnrichmentPlot <- function() {
 }
 
 
+
+dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){
+  if(is.na(sim)){
+    bp_data<-getData()
+    bp_data<-rename(bp_data, pos = bp) 
+  }
+  
+  else{
+    cat("Generating simulated bp_data\n")
+    hit_count<-nrow(getData())
+    bp_data<-bpSim(N=hit_count, write=print)
+    colnames(bp_data)<-c("chrom", "pos", "v3", "v4", "v5")
+    bp_data<-filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" | chrom == "Y" | chrom == "4")
+    bp_data<-droplevels(bp_data)
+  }
+  
+  feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
+  
+  cat("Calculating distances to", feature, sep=' ', "\n")
+  cat("Reading in file:", feature_file, sep =' ', "\n")
+  
+  feature_locations<-read.delim(feature_file, header = F)
+  colnames(feature_locations)<-c("chrom", "pos")
+  
+  feature_locations$pos<-as.integer(feature_locations$pos)
+  
+  # Will throw error if SVs don't exist on a chrom...
+  
+  # Removes chroms with fewer than 10 observations
+  svCount <- table(bp_data$chrom)
+  bp_data <- subset(bp_data, chrom %in% names(svCount[svCount >= 10]))
+  bp_data<-droplevels(bp_data)
+  
+  feature_locations <- subset(feature_locations, chrom %in% levels(bp_data$chrom))
+  feature_locations<-droplevels(feature_locations)  
+  
+  
+  fun2 <- function(p) {
+    index<-which.min(abs(tss_df$pos - p))
+    closestTss<-tss_df$pos[index]
+    chrom<-as.character(tss_df$chrom[index])
+    gene<-as.character(tss_df$gene[index])
+    dist<-(p-closestTss)
+    list(p, closestTss, dist, chrom, gene)
+  }
+  
+  l <- list()
+  
+  for (c in levels(bp_data$chrom)){
+    df<-filter(bp_data, chrom == c)
+    tss_df<-filter(feature_locations, chrom == c)
+    dist2tss<-lapply(df$pos, fun2)
+    dist2tss<-do.call(rbind, dist2tss)
+    dist2tss<-as.data.frame(dist2tss)
+    
+    colnames(dist2tss)=c("bp", "closest_tss", "min_dist", "chrom", "closest_gene")
+    dist2tss$min_dist<-as.numeric(dist2tss$min_dist)
+    l[[c]] <- dist2tss
+  }
+  
+  dist2tss<-do.call(rbind, l)
+  dist2tss<-as.data.frame(dist2tss)
+  dist2tss$chrom<-as.character(dist2tss$chrom)
+  
+  dist2tss<-arrange(dist2tss,(abs(min_dist)))
+  
+  if(send==1){
+    return(dist2tss)
+  }
+  else{
+    p<-ggplot(dist2tss)
+    p<-p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
+    p<-p + scale_x_continuous(paste("Distance to", feature, "(Kb)", sep=' '),
+    limits=c(-10000, 10000),
+    breaks=c(-10000,-1000, 1000, 10000),
+    expand = c(.0005, .0005),
+    labels=c("-10", "-1", "1", "10") )
+    
+    p<-p + scale_y_continuous("Density")
+    p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
+    #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
+    p <- p + geom_rug(aes(min_dist, colour=chrom))
+    p<-p + cleanTheme() +
+      theme(strip.text = element_text(size=20),
+          legend.position="top")
+    
+    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+
+    if(is.na(sim)){
+      distout<-paste("bp", feature, 'dist.pdf', sep='')
+    }
+    else{
+      distout<-paste("bp", feature, 'dist_sim.pdf', sep='')
+    }
+    
+    cat("Writing file", distout, "\n")
+    ggsave(paste("plots/", distout, sep=""), width = 20, height = 10)
+
+  p
+  }
+}
+
+
+distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss'){
+  feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
+
+  real_data<-dist2Feat(feature_file=feature_file, send=1, feature=feature)
+  real_data$Source<-"Real"
+  sim_data<-dist2Feat(feature_file=feature_file, feature=feature, sim=1, send=1)
+  sim_data$Source<-"Sim"
+  
+  sim_data<-filter(sim_data, chrom != "Y", chrom != 4)
+  sim_data<-droplevels(sim_data)
+  real_data<-filter(real_data, chrom != "Y", chrom != 4)
+  real_data<-droplevels(real_data)
+  
+  
+  colours<-c( "#E7B800", "#00AFBB")
+  
+  
+  p<-ggplot()
+  p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
+  p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
+  # p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+  
+  p<-p + scale_x_continuous(paste("Distance to", feature, "(Kb)", sep=' '),
+                            limits=c(-10000, 10000),
+                            breaks=c(-10000,-1000, 1000, 10000),
+                            expand = c(.0005, .0005),
+                            labels=c("-10", "-1", "1", "10") )
+  p<-p + scale_y_continuous("Density")
+  p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
+
+  p <- p + geom_rug(data=real_data,aes(min_dist, colour=Source),sides="b")
+  p <- p + geom_rug(data=sim_data,aes(min_dist, colour=Source),sides="t")
+  
+  
+  p <- p + scale_fill_manual(values=colours)
+  p <- p + scale_colour_manual(values=colours)
+  
+  p<-p + cleanTheme() +
+    theme(strip.text = element_text(size=20),
+          legend.position="top")
+  
+  overlay<-paste("bp", feature, 'dist_overlay.pdf', sep='')
+  cat("Writing file", overlay, "\n")
+  ggsave(paste("plots/", overlay, sep=""), width = 25, height = 10)
+  
+  
+  
+  p
+  
+  
+}
+
+
+featureDensity <- function(){
+  # tss_positions<-read.delim("data/tss_locations.txt", header=F)
+  # tss_positions$type<-"TSS"
+  # colnames(tss_positions)<-c("chrom", "pos", "type")
+  g4_positions<-read.delim("data/g4_positions.txt", header=F)
+  g4_positions$type<-"G4"
+  colnames(g4_positions)<-c("chrom", "pos", "type")
+  invR_positions<-read.delim("data/invRepeats.txt", header=F)
+  invR_positions$type<-"SIR"
+  colnames(invR_positions)<-c("chrom", "pos", "type")
+  cru_positions<-read.delim("data/cruciform.txt", header=F)
+  cru_positions$type<-"Cru"
+  colnames(cru_positions)<-c("chrom", "pos", "type")
+  
+  locations<-rbind.data.frame(g4_positions,invR_positions,cru_positions)
+  
+  locations$type<-as.factor(locations$type)
+  locations$pos<-as.numeric(locations$pos/1000000)
+  locations<-filter(locations, chrom != 'Y', chrom != 4)
+  locations<-droplevels(locations)
+  
+  p<-ggplot(locations)
+  p<-p + geom_density(aes(pos, fill=type),alpha = 0.4)
+  p <- p + geom_rug(aes(pos, colour=type),sides="b", alpha = 0.05)
+  p<-p + facet_wrap(type~chrom, scale = "free_x", ncol = 5)
+  p<-p + scale_x_continuous("Mbs", breaks = seq(0,max(locations$pos),by=10))
+  
+  nonBDNA<-paste("nonBform.pdf")
+  cat("Writing file", nonBDNA, "\n")
+  ggsave(paste("plots/", nonBDNA, sep=""), width = 20, height = 10)
+  
+  p
+  
+}
+
+
+
+
+
+
+
+bpinGene <- function(gene_lengths="data/gene_lengths.txt", gene2plot='dnc'){
+  gene_lengths<-read.delim(gene_lengths, header = T)
+  region<-filter(gene_lengths, gene == gene2plot)
+  
+  wStart<-(region$start - 10000)
+  wEnd<-(region$end + 10000)
+  wChrom<-as.character(region$chrom)
+  wTss<-suppressWarnings(as.numeric(levels(region$tss))[region$tss])
+  bp_data<-getData()
+  bp_data<-filter(bp_data, chrom == wChrom & bp >= wStart & bp <= wEnd)
+  
+  if(nrow(bp_data) == 0){
+    stop(paste("There are no svs in", gene2plot, "- Exiting", "\n"))
+  }
+  
+  p<-ggplot(bp_data)
+  p<-p + geom_point(aes(bp/1000000, sample, colour = type, size = 1.5), position=position_jitter(width=0.005, height=0))
+  p<-p + guides(size = FALSE, sample = FALSE)
+  p<-p + cleanTheme() +
+    theme(axis.title.y=element_blank(),
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
+    )
+  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(round(wStart/1000000, digits = 2),round(wEnd/1000000, digits = 2),by=0.05), limits=c(wStart/1000000, wEnd/1000000))
+  p<-p + annotate("rect", xmin=region$start/1000000, xmax=region$end/1000000, ymin=0, ymax=0.1, alpha=.2, fill="skyblue")
+  p<-p + geom_vline(xintercept = wTss/1000000, colour="red", alpha=.7, linetype="solid")
+  
+  p<-p + geom_segment(aes(x = wTss/1000000, y = 0, xend= wTss/1000000, yend = 0.1), colour="red")
+  middle<-((wEnd/1000000+wStart/1000000)/2)
+  p <- p + annotate("text", x = middle, y = 0.05, label=gene2plot, size=6)
+  p<-p + ggtitle(paste("Chromosome:", wChrom))
+  
+  p
+}
+
+
+#' bpRainfall
+#'
+#' Plot log10 distances between snvs as rainfall plot
+#' @import ggplot2
+#' @keywords rainfall
+#' @export
+
+bpRainfall <- function(){
+  bp_data<-getData()
+  
+  #bp_data<-filter(bp_data, sample != "A373R11" & sample != 'A373R13')
+  distances<-do.call(rbind, lapply(split(bp_data[order(bp_data$chrom, bp_data$bp),], bp_data$chrom[order(bp_data$chrom, bp_data$bp)]),
+                                   function(a) 
+                                     data.frame(a,
+                                                dist=c(diff(a$bp), NA),
+                                                logdist = c(log10(diff(a$bp)), NA))
+  )
+  )
+  
+  
+  distances$logdist[is.infinite(distances$logdist)] <- 0
+  distances<-filter(distances, chrom != 4, chrom != "Y")
+  
+  p<-ggplot(distances)
+  p<-p + geom_point(aes(bp/1000000, logdist, colour = sample))
+  p <- p + cleanTheme() +
+    theme(axis.text.x = element_text(angle=45, hjust = 1),
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          strip.text = element_text(size=20)
+    )
+  
+  p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
+  #p<-p + scale_x_continuous("Mbs", breaks = seq(0,33,by=1), limits = c(0, 33), expand = c(0.01, 0.01))
+  p<-p + scale_x_continuous("Mbs", breaks = seq(0,max(distances$bp),by=10))
+  
+  rainfall_out<-paste("rainfall.pdf")
+  cat("Writing file", rainfall_out, "\n")
+  ggsave(paste("plots/", rainfall_out, sep=""), width = 15, height = 5)
+  
+  p
+}
+
+
+
+
+#' bpSim
+#'
+#' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
+#' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
+#' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
+#' @import GenomicRanges
+#' @keywords sim
+#' @export
+
+bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
+  suppressPackageStartupMessages(require(GenomicRanges))
+  
+  intFile <- import.bed(intervals)
+  space <- sum(width(intFile))
+  positions <- sample(c(1:space), N)
+  cat("Simulating", N, "breakpoints", sep = ' ', "\n")
+  new_b <- GRanges(seqnames=as.character(rep(seqnames(intFile), width(intFile))),
+                   ranges=IRanges(start=unlist(mapply(seq, from=start(intFile), to=end(intFile))), width=1))
+  bedOut<-new_b[positions]
+  if(write){
+    export.bed(new_b[positions], "data/simulatedBPs.bed")
+  }
+  remove(new_b)
+  return(data.frame(bedOut))
+}
+
+
+
+
+
+
+
+
+
+
 bpTssDist <- function(tss_pos="data/tss_positions.txt",sim=NA, print=0,return=0){
   tss_locations<-read.delim(tss_pos, header = T)
   tss_locations$tss<-as.integer(tss_locations$tss)
-
+  
   if(is.na(sim)){
     bp_data<-getData()
     bp_data<-rename(bp_data, pos = bp) 
@@ -550,7 +865,7 @@ bpTssDist <- function(tss_pos="data/tss_positions.txt",sim=NA, print=0,return=0)
       theme(strip.text = element_text(size=20),
             legend.position="top")
     p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
+    
     if(is.na(sim)){
       tssDistout<-paste("bpTSSdist.pdf")
     }
@@ -559,7 +874,7 @@ bpTssDist <- function(tss_pos="data/tss_positions.txt",sim=NA, print=0,return=0)
     }
     cat("Writing file", tssDistout, "\n")
     ggsave(paste("plots/", tssDistout, sep=""), width = 20, height = 10)
-  
+    
     p
   }
 }
@@ -601,13 +916,13 @@ bpTssDistOverlay <- function(){
   
   p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
   
-
+  
   tssDistout<-paste("bpTSSdist_overlay.pdf")
-
+  
   cat("Writing file", tssDistout, "\n")
   ggsave(paste("plots/", tssDistout, sep=""), width = 25, height = 10)
   
- 
+  
   
   p
   
@@ -770,130 +1085,6 @@ g4DistOverlay <- function(){
   
   
 }
-
-
-
-
-
-
-
-
-
-bpinGene <- function(gene_lengths="data/gene_lengths.txt", gene2plot='dnc'){
-  gene_lengths<-read.delim(gene_lengths, header = T)
-  region<-filter(gene_lengths, gene == gene2plot)
-  
-  wStart<-(region$start - 10000)
-  wEnd<-(region$end + 10000)
-  wChrom<-as.character(region$chrom)
-  wTss<-suppressWarnings(as.numeric(levels(region$tss))[region$tss])
-  bp_data<-getData()
-  bp_data<-filter(bp_data, chrom == wChrom & bp >= wStart & bp <= wEnd)
-  
-  if(nrow(bp_data) == 0){
-    stop(paste("There are no svs in", gene2plot, "- Exiting", "\n"))
-  }
-  
-  p<-ggplot(bp_data)
-  p<-p + geom_point(aes(bp/1000000, sample, colour = type, size = 1.5), position=position_jitter(width=0.005, height=0))
-  p<-p + guides(size = FALSE, sample = FALSE)
-  p<-p + cleanTheme() +
-    theme(axis.title.y=element_blank(),
-          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
-    )
-  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(round(wStart/1000000, digits = 2),round(wEnd/1000000, digits = 2),by=0.05), limits=c(wStart/1000000, wEnd/1000000))
-  p<-p + annotate("rect", xmin=region$start/1000000, xmax=region$end/1000000, ymin=0, ymax=0.1, alpha=.2, fill="skyblue")
-  p<-p + geom_vline(xintercept = wTss/1000000, colour="red", alpha=.7, linetype="solid")
-  
-  p<-p + geom_segment(aes(x = wTss/1000000, y = 0, xend= wTss/1000000, yend = 0.1), colour="red")
-  middle<-((wEnd/1000000+wStart/1000000)/2)
-  p <- p + annotate("text", x = middle, y = 0.05, label=gene2plot, size=6)
-  p<-p + ggtitle(paste("Chromosome:", wChrom))
-  
-  p
-}
-
-
-#' bpRainfall
-#'
-#' Plot log10 distances between snvs as rainfall plot
-#' @import ggplot2
-#' @keywords rainfall
-#' @export
-
-bpRainfall <- function(){
-  bp_data<-getData()
-  
-  #bp_data<-filter(bp_data, sample != "A373R11" & sample != 'A373R13')
-  distances<-do.call(rbind, lapply(split(bp_data[order(bp_data$chrom, bp_data$bp),], bp_data$chrom[order(bp_data$chrom, bp_data$bp)]),
-                                   function(a) 
-                                     data.frame(a,
-                                                dist=c(diff(a$bp), NA),
-                                                logdist = c(log10(diff(a$bp)), NA))
-  )
-  )
-  
-  
-  distances$logdist[is.infinite(distances$logdist)] <- 0
-  distances<-filter(distances, chrom != 4, chrom != "Y")
-  
-  p<-ggplot(distances)
-  p<-p + geom_point(aes(bp/1000000, logdist, colour = sample))
-  p <- p + cleanTheme() +
-    theme(axis.text.x = element_text(angle=45, hjust = 1),
-          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
-          strip.text = element_text(size=20)
-    )
-  
-  p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-  #p<-p + scale_x_continuous("Mbs", breaks = seq(0,33,by=1), limits = c(0, 33), expand = c(0.01, 0.01))
-  p<-p + scale_x_continuous("Mbs", breaks = seq(0,max(distances$bp),by=10))
-  
-  rainfall_out<-paste("rainfall.pdf")
-  cat("Writing file", rainfall_out, "\n")
-  ggsave(paste("plots/", rainfall_out, sep=""), width = 15, height = 5)
-  
-  p
-}
-
-
-
-
-#' bpSim
-#'
-#' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
-#' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
-#' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
-#' @import GenomicRanges
-#' @keywords sim
-#' @export
-
-bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
-  suppressPackageStartupMessages(require(GenomicRanges))
-  
-  intFile <- import.bed(intervals)
-  space <- sum(width(intFile))
-  positions <- sample(c(1:space), N)
-  cat("Simulating", N, "breakpoints", sep = ' ', "\n")
-  new_b <- GRanges(seqnames=as.character(rep(seqnames(intFile), width(intFile))),
-                   ranges=IRanges(start=unlist(mapply(seq, from=start(intFile), to=end(intFile))), width=1))
-  bedOut<-new_b[positions]
-  if(write){
-    export.bed(new_b[positions], "data/simulatedBPs.bed")
-  }
-  remove(new_b)
-  return(data.frame(bedOut))
-}
-
-
-
-
-
-
-
-
-
-
 
 
 

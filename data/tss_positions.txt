@@ -1,4 +1,3 @@
-gene	chrom	tss
 Nep3	X	19963956
 CG9570	X	20051457
 Or19b	X	20094399

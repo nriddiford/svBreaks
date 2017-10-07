@@ -11,10 +11,10 @@ suppressMessages(library(plyr))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggpubr))
 
-#set.seed(41)
+set.seed(42)
 
 
-getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_EB_genes_rnaSeq_Maheva.csv'){
+getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
   bp_data<-read.delim(infile, header = F)
   colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
@@ -34,6 +34,8 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
 
   # Filter for genes expressed in RNA-Seq data
   # bp_data<-filter(bp_data, fpkm > 0.1)
+  # Filter for non expressed genes in RNA-Seq data
+  bp_data<-filter(bp_data, fpkm == 0)
   
   #filter on chroms
   #bp_data<-filter(bp_data, chrom != "Y" & chrom != "4")
@@ -42,7 +44,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
   
   # Filter for old/new data
- # bp_data <- filter(bp_data, !grepl("^A|H", sample))
+  # bp_data <- filter(bp_data, !grepl("^A|H", sample))
   
   # Filter for SV type
   # bp_data <- filter(bp_data, type == "DEL")
@@ -470,6 +472,18 @@ bpGeneEnrichmentPlot <- function() {
 }
 
 
+getPromoter <- function(gene_lengths_in="data/gene_lengths.txt"){
+  gene_lengths<-read.delim(gene_lengths_in, header = T)
+  
+  gene_lengths$promoter<-ifelse(gene_lengths$start<gene_lengths$end,
+                                gene_lengths$start- 1500,
+                                gene_lengths$end + 1500)
+  
+  
+  gene_lengths<-gene_lengths[,c("chrom", "promoter")]
+  colnames(gene_lengths)<-NULL
+  return(gene_lengths)
+}
 
 dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){
   if(is.na(sim)){
@@ -488,9 +502,17 @@ dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send
   
   feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
   
-  cat("Calculating distances to", feature, sep=' ', "\n")
-  cat("Reading in file:", feature_file, sep =' ', "\n")
+  if(feature=='Promoter'){
+    feature_locations<-getPromoter()
+    cat("Getting gene promoter locations...\n")
+  }
+  else{ 
+    feature_locations<-read.delim(feature_file, header = F)
+    cat("Reading in file:", feature_file, sep =' ', "\n")
+  }
   
+  cat("Calculating distances to", feature, sep=' ', "\n")
+
   feature_locations<-read.delim(feature_file, header = F)
   colnames(feature_locations)<-c("chrom", "pos")
   
@@ -576,9 +598,16 @@ dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send
 distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss'){
   feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
 
-  real_data<-dist2Feat(feature_file=feature_file, send=1, feature=feature)
+  if(feature=='promoter'){
+    real_data<-dist2Feat(send=1, feature=feature)
+    sim_data<-dist2Feat(feature=feature, sim=1, send=1)
+  }
+  else{ 
+    real_data<-dist2Feat(feature_file=feature_file, send=1, feature=feature)
+    sim_data<-dist2Feat(feature_file=feature_file, feature=feature, sim=1, send=1)
+  }
+
   real_data$Source<-"Real"
-  sim_data<-dist2Feat(feature_file=feature_file, feature=feature, sim=1, send=1)
   sim_data$Source<-"Sim"
   
   sim_data<-filter(sim_data, chrom != "Y", chrom != 4)
@@ -771,6 +800,52 @@ bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
   }
   remove(new_b)
   return(data.frame(bedOut))
+}
+
+
+
+
+
+
+rnaseqCompare <- function(maheva="data/isc_EB_genes_rnaSeq_Maheva.csv", dutta="data/isc_genes_rnaSeq.csv", upper = 1000, lower=1){
+  maheva_data<-read.csv(header = F, maheva)
+  dutta_data<-read.csv(header = F, dutta)
+  
+  colnames(maheva_data)<-c('id', 'mfpkm')
+  colnames(dutta_data)<-c('id', 'dfpkm')
+
+  expression_data<-join(maheva_data, dutta_data, 'id', type='left')
+
+  expression_data$mfpkm <- ifelse(is.na(expression_data$mfpkm), 0.001, round(expression_data$mfpkm, 1))
+  expression_data$dfpkm <- ifelse(is.na(expression_data$dfpkm), 0.001, round(expression_data$dfpkm, 1))
+  expression_data$diff<- ifelse(expression_data$mfpkm > expression_data$dfpkm, "mH", "mL")
+
+  
+  # colnames(maheva_data)<-c('id', 'fpkm')
+  # colnames(dutta_data)<-c('id', 'fpkm')
+  # maheva_data$type<-"Maheva"
+  # dutta_data$type<-"Dutta"
+  # 
+  # maheva_data$fpkm <- as.numeric(maheva_data$fpkm)
+  # dutta_data$fpkm <- as.numeric(dutta_data$fpkm)
+  # 
+  # 
+  # 
+  # # expression_data$fpkm<-as.numeric(expression_data$fpkm)
+  # # 
+  # # expression_data<-droplevels(expression_data)
+  # 
+  expression_data<-filter(expression_data, mfpkm <= upper, dfpkm <= upper, dfpkm >= lower, mfpkm >= lower)
+  # expression_data <- transform(expression_data, id = reorder(id, -fpkm))
+
+  
+  p <- ggplot(expression_data)
+  p <- p + geom_point(aes(mfpkm, dfpkm, colour=diff))
+  p <- p + scale_x_continuous("Maheva FPKM")
+  p <- p + scale_y_continuous("Dutta FPKM")
+  p <- p + ggtitle("Gene expression comparison between RNA-Seq experimeents")
+  p
+  
 }
 
 

@@ -11,10 +11,18 @@ suppressMessages(library(plyr))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggpubr))
 
-set.seed(42)
+#set.seed(41)
 
-
-getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
+## @knitr getData
+#'
+#' Function to clean cnv files
+#' @param infile File to process [Required]
+#' @keywords get 
+#' @import dplyr
+#' @export
+#' @return Dataframe
+#' 
+getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_EB_genes_rnaSeq_Maheva.csv'){
   bp_data<-read.delim(infile, header = F)
   colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
@@ -34,8 +42,6 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
 
   # Filter for genes expressed in RNA-Seq data
   # bp_data<-filter(bp_data, fpkm > 0.1)
-  # Filter for non expressed genes in RNA-Seq data
-  bp_data<-filter(bp_data, fpkm == 0)
   
   #filter on chroms
   #bp_data<-filter(bp_data, chrom != "Y" & chrom != "4")
@@ -44,7 +50,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
   
   # Filter for old/new data
-  # bp_data <- filter(bp_data, !grepl("^A|H", sample))
+ # bp_data <- filter(bp_data, !grepl("^A|H", sample))
   
   # Filter for SV type
   # bp_data <- filter(bp_data, type == "DEL")
@@ -54,6 +60,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   return(bp_data)
 }
 
+## exNotch
 
 exNotch <- function(x){
   cat("Excluding bps in Notch\n")
@@ -63,6 +70,7 @@ exNotch <- function(x){
   return(bp_data)
 }
 
+## cleanTheme
 
 cleanTheme <- function(base_size = 12){
   theme(
@@ -78,6 +86,7 @@ cleanTheme <- function(base_size = 12){
   )
 }
 
+## setCols
 
 setCols <- function(df, col, fill='Y'){
   names<-levels(as.factor(df[[col]]))
@@ -93,6 +102,56 @@ setCols <- function(df, col, fill='Y'){
   if(fill == 'N') return(colScale)
 }
 
+## bpStats
+
+
+bpStats <- function(){
+  bp_data<-getData()
+  bp_data<-filter(bp_data, bp_no =='bp1')
+  
+  cat("sample", "SVs", sep='\t', "\n")
+  rank<-sort(table(bp_data$sample), decreasing = TRUE)
+  rank<-as.array(rank)
+  
+  total=0
+  
+  scores=list()
+  for (i in 1:nrow(rank)){
+    cat(names(rank[i]), rank[i], sep='\t', "\n")
+    total<-total + rank[i]
+    scores[i]<-rank[i]
+  }
+  cat('--------------', '\n')
+  scores<-unlist(scores)
+  
+  mean<-as.integer(mean(scores))
+  med<-as.integer(median(scores))
+  
+  cat('total', total, sep='\t', '\n')
+  cat('samples', nrow(rank), sep='\t', '\n')
+  
+  cat('--------------', '\n')
+  cat('mean', mean, sep='\t', '\n')
+  cat('median', med, sep='\t', '\n')
+  
+  cat('\n')
+  dels<-nrow(filter(bp_data, type == "DEL" ))
+  invs<-nrow(filter(bp_data, type == "INV" ))
+  dups<-nrow(filter(bp_data, type == "DUP" ))
+  tandups<-nrow(filter(bp_data, type == "TANDUP" ))
+  tra<-nrow(filter(bp_data, type == "TRA" ))
+  
+  cat("Dels ", dels,  sep='', '\n')
+  cat("Invs ", invs,  sep='', '\n')
+  cat("Dups ", dups,  sep='', '\n')
+  cat("Tandups ", tandups,  sep='', '\n')
+  cat("Tra ", tra,  sep='', '\n')
+  
+  
+}
+
+
+## bpFeatures
 
 bpFeatures <- function(notch=0){
   if(notch){
@@ -128,6 +187,7 @@ bpFeatures <- function(notch=0){
   p
 }
 
+## svTypes
 
 svTypes<-function(notch=0,object=NA){
   if(is.na(object)){
@@ -145,17 +205,18 @@ svTypes<-function(notch=0,object=NA){
     ext<-'.pdf'
   }
   
-  bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
-  
-  
   bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
   bp_data<-droplevels(bp_data)
   
-  bp_data$type <- as.character(bp_data$type)
   cols<-setCols(bp_data, "type")
   
   # Reorder by count
   bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
+  
+  if(object == 'sample'){
+    # Reorder by count
+    bp_data$sample<-factor(bp_data$sample, levels = names(sort(table(bp_data$sample), decreasing = TRUE)))
+  }
   
   # Only take bp1 for each event
   bp_data<-filter(bp_data, bp_no != "bp2")
@@ -168,21 +229,22 @@ svTypes<-function(notch=0,object=NA){
     theme(axis.title.x=element_blank(),
           panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
           axis.text.x = element_text(angle = 45, hjust=1),
-          axis.title = element_text(size=20)
+          axis.text = element_text(size=40), axis.title = element_text(size=90)
     )
   p<-p + scale_x_discrete(expand = c(0.01, 0.01))
-  p<-p + scale_y_continuous(expand = c(0.01, 0.01))
+  p<-p + scale_y_continuous("Number of calls", expand = c(0.01, 0.01))
  # p<-p + coord_flip()
  # p<-p + scale_y_reverse()
 
   types_outfile<-paste("sv_types_by_", object, ext, sep = "")
   cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep=""), width = 5, height = 7)
+  ggsave(paste("plots/", types_outfile, sep=""), width = 22, height = 22)
   
   p
 }
 
 
+## notchHits
 
 
 notchHits <- function(){
@@ -258,6 +320,8 @@ notchHits <- function(){
   combined_plots
 }
 
+## notchDels
+
 notchDels <- function(){
   infile = "data/all_bps_filtered.txt"
   bp_data<-read.delim(infile, header = F)
@@ -289,6 +353,7 @@ notchDels <- function(){
 }
 
 
+## bpFeatureEnrichment
 
 bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_length=137547960, print=NA){
   genome_features<-read.delim(features, header = T)
@@ -384,6 +449,7 @@ bpFeatureEnrichmentPlot <- function() {
   p
   
 }
+## bpGeneEnrichment
 
 bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=137547960, print=NA){
   gene_lengths<-read.delim(gene_lengths, header = T)
@@ -436,6 +502,8 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
   else{ return(genesFC) }
 }
 
+## bpGeneEnrichmentPlot
+
 bpGeneEnrichmentPlot <- function() {
   gene_enrichment<-bpGeneEnrichment(n=1)
   
@@ -485,7 +553,7 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt"){
   return(gene_lengths)
 }
 
-dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){
+dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){
   if(is.na(sim)){
     bp_data<-getData()
     bp_data<-rename(bp_data, pos = bp) 
@@ -595,16 +663,16 @@ dist2Feat <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send
 }
 
 
-distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss'){
+distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', lim=10){
   feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
 
   if(feature=='promoter'){
-    real_data<-dist2Feat(send=1, feature=feature)
-    sim_data<-dist2Feat(feature=feature, sim=1, send=1)
+    real_data<-dist2Motif(send=1, feature=feature)
+    sim_data<-dist2Motif(feature=feature, sim=1, send=1)
   }
   else{ 
-    real_data<-dist2Feat(feature_file=feature_file, send=1, feature=feature)
-    sim_data<-dist2Feat(feature_file=feature_file, feature=feature, sim=1, send=1)
+    real_data<-dist2Motif(feature_file=feature_file, send=1, feature=feature)
+    sim_data<-dist2Motif(feature_file=feature_file, feature=feature, sim=1, send=1)
   }
 
   real_data$Source<-"Real"
@@ -617,18 +685,52 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss'){
   
   
   colours<-c( "#E7B800", "#00AFBB")
+
+  scale<-"(Kb)"
+  if(lim==0.1){
+    cat("Setting limits to -+100bp\n")
+    lims=c(-100, 100)
+    brks=c(-100, -10, 10, 100)
+    expnd = c(.0005, .0005)
+    labs=c("-100", "-10", "10", "100")
+    scale<-"(bp)"
+  } 
+  
+  else if(lim==0.5){
+    cat("Setting limits to -+0.5kb\n")
+    lims=c(-500, 500)
+    brks=c(-500, -100,100, 500)
+    expnd = c(.0005, .0005)
+    labs=c("-500", "-100", "100", "500")
+    scale<-"(bp)"
+  }  
+  
+  else if(lim==1){
+    cat("Setting limits to -+1kb\n")
+    lims=c(-1000, 1000)
+    brks=c(-1000, 1000)
+    expnd = c(.0005, .0005)
+    labs=c("-1", "1")
+  }  
+  else{
+    cat("Setting limits to -+10kb\n")
+    lims=c(-10000, 10000)
+    brks=c(-10000,-1000, 1000, 10000)
+    expnd = c(.0005, .0005)
+    labs=c("-10", "-1", "1", "10")
+  }
   
   
   p<-ggplot()
   p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
   p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
-  # p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
   
-  p<-p + scale_x_continuous(paste("Distance to", feature, "(Kb)", sep=' '),
-                            limits=c(-10000, 10000),
-                            breaks=c(-10000,-1000, 1000, 10000),
-                            expand = c(.0005, .0005),
-                            labels=c("-10", "-1", "1", "10") )
+  p<-p + scale_x_continuous(paste("Distance to", feature, scale, sep=' '),
+                            limits=lims,
+                            breaks=brks,
+                            expand=expnd,
+                            labels=labs )
   p<-p + scale_y_continuous("Density")
   p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
 
@@ -800,52 +902,6 @@ bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
   }
   remove(new_b)
   return(data.frame(bedOut))
-}
-
-
-
-
-
-
-rnaseqCompare <- function(maheva="data/isc_EB_genes_rnaSeq_Maheva.csv", dutta="data/isc_genes_rnaSeq.csv", upper = 1000, lower=1){
-  maheva_data<-read.csv(header = F, maheva)
-  dutta_data<-read.csv(header = F, dutta)
-  
-  colnames(maheva_data)<-c('id', 'mfpkm')
-  colnames(dutta_data)<-c('id', 'dfpkm')
-
-  expression_data<-join(maheva_data, dutta_data, 'id', type='left')
-
-  expression_data$mfpkm <- ifelse(is.na(expression_data$mfpkm), 0.001, round(expression_data$mfpkm, 1))
-  expression_data$dfpkm <- ifelse(is.na(expression_data$dfpkm), 0.001, round(expression_data$dfpkm, 1))
-  expression_data$diff<- ifelse(expression_data$mfpkm > expression_data$dfpkm, "mH", "mL")
-
-  
-  # colnames(maheva_data)<-c('id', 'fpkm')
-  # colnames(dutta_data)<-c('id', 'fpkm')
-  # maheva_data$type<-"Maheva"
-  # dutta_data$type<-"Dutta"
-  # 
-  # maheva_data$fpkm <- as.numeric(maheva_data$fpkm)
-  # dutta_data$fpkm <- as.numeric(dutta_data$fpkm)
-  # 
-  # 
-  # 
-  # # expression_data$fpkm<-as.numeric(expression_data$fpkm)
-  # # 
-  # # expression_data<-droplevels(expression_data)
-  # 
-  expression_data<-filter(expression_data, mfpkm <= upper, dfpkm <= upper, dfpkm >= lower, mfpkm >= lower)
-  # expression_data <- transform(expression_data, id = reorder(id, -fpkm))
-
-  
-  p <- ggplot(expression_data)
-  p <- p + geom_point(aes(mfpkm, dfpkm, colour=diff))
-  p <- p + scale_x_continuous("Maheva FPKM")
-  p <- p + scale_y_continuous("Dutta FPKM")
-  p <- p + ggtitle("Gene expression comparison between RNA-Seq experimeents")
-  p
-  
 }
 
 

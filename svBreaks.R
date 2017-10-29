@@ -1,4 +1,4 @@
-list.of.packages <- c('ggplot2', 'dplyr', 'plyr', 'RColorBrewer', 'ggpubr')
+list.of.packages <- c('ggplot2', 'plyr', 'dplyr', 'RColorBrewer', 'ggpubr', 'rtracklayer')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){
   cat('Installing missing packages...\n')
@@ -6,10 +6,12 @@ if(length(new.packages)){
 }
 cat('Silently loading packages...')
 suppressMessages(library(ggplot2))
-suppressMessages(library(dplyr))
 suppressMessages(library(plyr))
+suppressMessages(library(dplyr))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggpubr))
+suppressMessages(library(rtracklayer))
+
 
 #set.seed(41)
 
@@ -22,7 +24,7 @@ suppressMessages(library(ggpubr))
 #' @export
 #' @return Dataframe
 #' 
-getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_EB_genes_rnaSeq_Maheva.csv'){
+getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
   bp_data<-read.delim(infile, header = F)
   colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
@@ -44,7 +46,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   # bp_data<-filter(bp_data, fpkm > 0.1)
   
   #filter on chroms
-  #bp_data<-filter(bp_data, chrom != "Y" & chrom != "4")
+  bp_data<-filter(bp_data, chrom != "211000022280116")
   
   #filter out samples
   bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
@@ -85,6 +87,22 @@ cleanTheme <- function(base_size = 12){
     axis.title = element_text(size=30)
   )
 }
+
+slideTheme <- function(base_size = 25){
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 50),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "transparent",colour = NA),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    axis.line.x = element_line(color="black", size = 0.5),
+    axis.line.y = element_line(color="black", size = 0.5),
+    axis.text = element_text(size=30),
+    axis.title = element_text(size=50),
+    strip.text = element_text(size=25)
+  )
+}
+
 
 ## setCols
 
@@ -247,33 +265,66 @@ svTypes<-function(notch=0,object=NA){
 ## notchHits
 
 
-notchHits <- function(){
-  bp_data<-getData()
-  bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+notchHits <- function(infile = "data/Notch_hits.txt"){
+  bp_data<-read.delim(infile, header =T)
+  bp_data<-dplyr::select(bp_data, "sample", "event", "source", "type", "chromosome1", "bp1", "chromosome2", "bp2","length.Kb.","affected_genes")
+  bp_data<-dplyr::rename(bp_data, length = length.Kb.) 
+  # refGene<-read.delim(refgene_file, header=F)
+  # colnames(refGene)<-c('Tno',	'id',	'chrom',	'strand',	'Tstart',	'Tstop',	'cdsstart',	'cdsStop',	'exonNo',	'Estart',	'Estop',	'score',	'altname',	'CDSstartStat',	'CDSEndStat',	'exonFrames')
+  # # Tid	id	chrom	strand	Tstart	Tstop	cdsstart	cdsStop	exon#	Estart	Estop	score	altname	CDSstartStat	CDSEndStat	exonFrames
+  # gene='N'
+  # refGene<-filter(refGene, altname == gene)
+  # refGene<-droplevels(refGene)
+  # 
+  # wStart<-refGene$Tstart - 1000
+  # wEnd<-refGene$stop + 1000
+  
+  # bp_data<-getData()
+
+  # bp_data<-reshape(bp_data, idvar=c("event", "sample"), timevar="bp_no", direction="wide")
+  # #bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+  # bp_data<-dplyr::select(bp_data, sample, chrom.bp1, bp.bp1, gene.bp1, bp.bp2,gene.bp2, type.bp1)
+  # colnames(bp_data)<-c("sample", "chrom1", "bp1", "gene1", "bp2", "gene2", "type")
+  bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
 
   bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
   bp_data<-droplevels(bp_data)
   
   bp_data$type <- as.factor(bp_data$type)
+  bp_data$sampleax <- as.numeric(bp_data$sample)
   
-  cols<-setCols(bp_data, "type", fill='N')  
+
+  cols<-setCols(bp_data, "type")  
+  
+  if(bp_data$type == "TRA"){
+    bp_data$bp1 = bp_data$bp2-100
+  }
+  
+  bp_data$bp1<-bp_data$bp1/1000000
+  bp_data$bp2<-bp_data$bp2/1000000
   
   p<-ggplot(bp_data)
-  p<-p + geom_jitter(aes(bp/1000000, sample, colour = type, shape=type),size = 3, alpha = 0.9)
-  p<-p + guides(color = FALSE, size = FALSE, sample = FALSE)
-  p<-p + cleanTheme() +
+  p<-p + geom_rect(data=bp_data, aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.3)),ymax=(as.numeric(sampleax+0.3)),fill=type), color="black", alpha=0.6)
+
+  p<-p + guides(color = FALSE, size = FALSE, sampleax = FALSE)
+  
+  p<-p + scale_y_continuous("Sample",expand = c(0,0), breaks = seq(levels(as.factor(bp_data$sampleax))), labels=levels(bp_data$sample))
+  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
+  
+  p<-p + slideTheme() +
     theme(axis.title.y=element_blank(),
           panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
           axis.text.x = element_text(angle = 45, hjust=1),
           legend.position="top",
-          axis.text.y = element_text(size = 10)
+          axis.text.y = element_text(size = 20)
     )
-  p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.7, 3.4))
+
   
-  p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1.5, ymax=0, alpha=.2, fill="green")
-  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1.5, ymax=0, alpha=.2, fill="skyblue")
-  p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1.5, ymax=0, alpha=.2, fill="red")
-  p<-p + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
+  
+  p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1.5, ymax=0, alpha=.4, fill="slategray1")
+  p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1.5, ymax=0, alpha=.4, fill="slategray3")
+  p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1.5, ymax=0, alpha=.4, fill="slategrey")
+  p<-p + geom_vline(xintercept = 3.135669, linetype="dotted", size = 1)
   p<-p + cols
   
   # Nhits <- paste("Notch_hits.pdf")
@@ -283,27 +334,29 @@ notchHits <- function(){
   
   # Density plot
 
+  bp_data<-getData()
+  bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+  
+  bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
+  
   cols2<-setCols(bp_data, "type", fill='Y')  
   
   bp_data <- filter(bp_data, type != 'TRA')
   bp_data<-droplevels(bp_data)
   
   p2<-ggplot(bp_data)
-  p2<-p2 + geom_density(aes(bp/1000000, fill = type), alpha = 0.4)
+  p2<-p2 + geom_density(aes(bp/1000000, fill = type), alpha = 0.6)
   p2<-p2 + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
   p2<-p2 + scale_y_continuous("Density", expand = c(0,0))
   p2<-p2 + guides(colour = FALSE)
   p2<-p2 + geom_rug(data=bp_data,aes(bp/1000000))
-  # p2<-p2 + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1, ymax=0, alpha=.2, fill="green")
-  # p2<-p2 + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1, ymax=0, alpha=.2, fill="skyblue")
-  # p2<-p2 + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1, ymax=0, alpha=.2, fill="red")
-  p2<-p2 + geom_vline(xintercept = 3.135669, colour="red", linetype="dotted")
+  p2<-p2 + geom_vline(xintercept = 3.135669, linetype="dotted",size = 1)
   
-  p2<-p2 + cleanTheme() +
+  p2<-p2 + slideTheme() +
     theme(axis.text.x = element_text(angle = 45, hjust=1),
           legend.position="top",
-          axis.title.y=element_blank(),
-          strip.text = element_text(size=10)
+          axis.title.y=element_blank()
+          # strip.text = element_text(size=10)
           )
   
   p2 <- p2 + cols2
@@ -315,39 +368,43 @@ notchHits <- function(){
   
   NhitsDen <- paste("Notch_hits_density.pdf")
   cat("Writing file", NhitsDen, "\n")
-  ggsave(paste("plots/", NhitsDen, sep=""), width = 10, height = 10)
+  ggsave(paste("plots/", NhitsDen, sep=""), width = 30, height = 20)
   
   combined_plots
 }
 
 ## notchDels
 
-notchDels <- function(){
-  infile = "data/all_bps_filtered.txt"
-  bp_data<-read.delim(infile, header = F)
-  colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+notchDels <- function(infile = "data/Notch_hits.txt"){
+  bp_data<-read.delim(infile, header =T)
+  bp_data<-dplyr::select(bp_data, "sample", "event", "source", "type", "chromosome1", "bp1", "chromosome2", "bp2","length.Kb.","affected_genes")
+  bp_data<-dplyr::rename(bp_data, length = length.Kb.) 
   
-  bp_data<-filter(bp_data, chrom == "X", bp >= 2750000, bp <= 3400000)
+  # bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
   
-  bp_data <- filter(bp_data, type == "DEL" & bp_no == "bp1")
   
-  # Make sample names unique to see samples with multiple DELS
-  # bp_data$sample <- make.unique(as.character(bp_data$sample))
-  # Hack to remove multiple deletions in same sample
-  bp_data <- bp_data[!duplicated(bp_data$sample), ]
+  bp_data<-bp_data %>%
+    group_by(sample) %>%
+    slice(which.max(length))
+  
+  bp_data<-droplevels(bp_data)
+  
+  bp_data$colour<-ifelse( bp_data$sample == "A373R1" | bp_data$sample ==  "A373R7" | bp_data$sample == "A512R17", '#FF3333', 'gray37' )
+  
   bp_data <- transform(bp_data, sample = reorder(sample, -length))
   
   p<-ggplot(bp_data)
-  p<-p + geom_bar(aes(sample,length),stat="identity")
+  p<-p + geom_bar(aes(sample,length, fill=colour),stat="identity")
   #p<-p + scale_y_discrete(expand = c(0.01,0.01), breaks=seq(0,500,by=100))
-  p<-p + cleanTheme() +
+  p<-p + slideTheme() +
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
-          axis.text.x = element_text(angle = 45, hjust=1),
-          axis.text = element_text(size=15))
-  
+          axis.text.x = element_text(angle = 45, hjust=1)
+    )
+
+  p<-p + scale_fill_identity()
   dels_out<-paste("NotchDels.pdf")
   cat("Writing file", dels_out, "\n")
-  ggsave(paste("plots/", dels_out, sep=""), width = 20, height = 10)
+  ggsave(paste("plots/", dels_out, sep=""), width = 30, height = 15)
   
   p
 }
@@ -355,7 +412,7 @@ notchDels <- function(){
 
 ## bpFeatureEnrichment
 
-bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_length=137547960, print=NA){
+bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_length=118274340, print=NA){
   genome_features<-read.delim(features, header = T)
   bp_data<-getData()
   
@@ -402,7 +459,7 @@ bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_len
   enriched<-do.call(rbind, enriched)
   featuresFC<-as.data.frame(enriched)
   # Sort by FC value
-  featuresFC<-arrange(featuresFC,desc(as.numeric(Log2FC)))
+  featuresFC<-dplyr::arrange(featuresFC,desc(abs(as.numeric(Log2FC))))
   featuresFC$Log2FC<-round(as.numeric(featuresFC$Log2FC), 1)
   featuresFC$expected<-round(as.numeric(featuresFC$expected), 1)
   
@@ -413,8 +470,11 @@ bpFeatureEnrichment <- function(features='data/genomic_features.txt', genome_len
 
     ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
     
-    feat_enrichment_table <- paste("feature_enrichment_table.pdf")
-    ggsave(paste("plots/", feat_enrichment_table, sep=""), width = 5.2, height = (nrow(featuresFC)/3))
+    feat_enrichment_table <- paste("feature_enrichment_table.tiff")
+    # ggexport(filename = paste("plots/", "ex_", feat_enrichment_table, sep=""),
+    #          width = 480, height = 480, pointsize = 12, res = 250,
+    #          verbose = TRUE)
+    ggsave(paste("plots/", feat_enrichment_table, sep=""), width = 5.2, height = (nrow(featuresFC)/3), dpi=300)
   }
   
   else{ return(featuresFC) }
@@ -451,14 +511,20 @@ bpFeatureEnrichmentPlot <- function() {
 }
 ## bpGeneEnrichment
 
-bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=137547960, print=NA){
+bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340, print=NA){
+  
+  cat("Showing genes hit at least", n, "times", "\n")
   gene_lengths<-read.delim(gene_lengths, header = T)
+  # bp_data<-read.delim('data/all_samples.txt',header=T)
   bp_data<-getData()
   bp_data<-filter(bp_data, gene != "intergenic")
   
   bp_count<-nrow(bp_data)
   
   hit_genes<-table(bp_data$gene)
+  
+  # hit_genes<-table(bp_data[!duplicated(bp_data),]$gene)
+  
   genes<-setNames(as.list(gene_lengths$length), gene_lengths$gene)
   expressed_genes<-setNames(as.list(bp_data$fpkm), bp_data$gene)
   
@@ -484,7 +550,7 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
   # Filter for genes with few observations
   genesFC<-filter(genesFC, observed >= n)
   # Sort by FC value
-  genesFC<-arrange(genesFC,desc(as.integer(fc)))
+  genesFC<-dplyr::arrange(genesFC,desc(as.integer(fc)))
   genesFC$expected<-round(as.numeric(genesFC$expected),digits=2)
   genesFC$log2FC<-round(as.numeric(genesFC$log2FC),digits=1)
   
@@ -495,8 +561,8 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
     
     ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
     
-    gene_enrichment_table <- paste("gene_enrichment_table.pdf")
-    ggsave(paste("plots/", gene_enrichment_table, sep=""), width = 5, height = (nrow(genesFC)/3))
+    gene_enrichment_table <- paste("gene_enrichment_table.tiff")
+    ggsave(paste("plots/", gene_enrichment_table, sep=""), width = 5, height = (nrow(genesFC)/3),dpi=300)
   }
   
   else{ return(genesFC) }
@@ -504,8 +570,8 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
 
 ## bpGeneEnrichmentPlot
 
-bpGeneEnrichmentPlot <- function() {
-  gene_enrichment<-bpGeneEnrichment(n=1)
+bpGeneEnrichmentPlot <- function(n=2) {
+  gene_enrichment<-bpGeneEnrichment(n=n)
   
   gene_enrichment$Log2FC <- log2(as.numeric(gene_enrichment$fc))
   
@@ -516,25 +582,26 @@ bpGeneEnrichmentPlot <- function() {
   
   gene_enrichment$test <- ifelse(gene_enrichment$Log2FC>=0, "enriched", "depleted")
   
-  gene_enrichment <- filter(gene_enrichment, observed >= 5)
+  gene_enrichment <- filter(gene_enrichment, observed >= 2)
   gene_enrichment<-droplevels(gene_enrichment)
   
-  highlightedGene <- filter(gene_enrichment, gene == "N")
-  highlightedGene <- droplevels(highlightedGene)
+  # highlightedGene <- filter(gene_enrichment, gene == "N")
+  # highlightedGene <- droplevels(highlightedGene)
   
   p<-ggplot(gene_enrichment)
   p<-p + geom_bar(aes(gene, Log2FC, fill = as.character(test)), stat="identity")
  # p<-p + geom_bar(data=highlightedGene, aes(gene, Log2FC, fill="red"), colour="black", stat="identity")
   p<-p + guides(fill=FALSE)
-  p<-p + cleanTheme() +
+  p<-p + slideTheme() +
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
-          axis.text.x = element_text(angle = 90, hjust=1),
-          axis.text = element_text(size=7)
+          axis.text.x = element_text(angle = 45, hjust=1),
+          axis.text = element_text(size=40), axis.title = element_text(size=90)
+          
     )
   
   gene_enrichment_plot <- paste("gene_enrichment.pdf")
   cat("Writing file", gene_enrichment_plot, "\n")
-  ggsave(paste("plots/", gene_enrichment_plot, sep=""), width = 5, height = 10)
+  ggsave(paste("plots/", gene_enrichment_plot, sep=""), width = 30, height = 10)
   p
   
 }
@@ -556,7 +623,7 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt"){
 dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){
   if(is.na(sim)){
     bp_data<-getData()
-    bp_data<-rename(bp_data, pos = bp) 
+    bp_data<-dplyr::rename(bp_data, pos = bp) 
   }
   
   else{
@@ -642,7 +709,7 @@ dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,sen
     p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
     #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
     p <- p + geom_rug(aes(min_dist, colour=chrom))
-    p<-p + cleanTheme() +
+    p<-p + slideTheme() +
       theme(strip.text = element_text(size=20),
           legend.position="top")
     
@@ -663,7 +730,7 @@ dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,sen
 }
 
 
-distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', lim=10){
+distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', lim=10, all=NA){
   feature<-paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep='')
 
   if(feature=='promoter'){
@@ -682,7 +749,6 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', li
   sim_data<-droplevels(sim_data)
   real_data<-filter(real_data, chrom != "Y", chrom != 4)
   real_data<-droplevels(real_data)
-  
   
   colours<-c( "#E7B800", "#00AFBB")
 
@@ -720,12 +786,13 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', li
     labs=c("-10", "-1", "1", "10")
   }
   
-  
   p<-ggplot()
   p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
   p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
-  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
+  if(is.na(all)){
+    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+  }
+
   p<-p + scale_x_continuous(paste("Distance to", feature, scale, sep=' '),
                             limits=lims,
                             breaks=brks,
@@ -737,23 +804,18 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', li
   p <- p + geom_rug(data=real_data,aes(min_dist, colour=Source),sides="b")
   p <- p + geom_rug(data=sim_data,aes(min_dist, colour=Source),sides="t")
   
-  
   p <- p + scale_fill_manual(values=colours)
   p <- p + scale_colour_manual(values=colours)
   
-  p<-p + cleanTheme() +
+  p<-p + slideTheme() +
     theme(strip.text = element_text(size=20),
           legend.position="top")
   
   overlay<-paste("bp", feature, 'dist_overlay.pdf', sep='')
   cat("Writing file", overlay, "\n")
-  ggsave(paste("plots/", overlay, sep=""), width = 25, height = 10)
-  
-  
+  ggsave(paste("plots/", overlay, sep=""), width = 20, height = 10)
   
   p
-  
-  
 }
 
 
@@ -865,8 +927,8 @@ bpRainfall <- function(){
     )
   
   p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-  #p<-p + scale_x_continuous("Mbs", breaks = seq(0,33,by=1), limits = c(0, 33), expand = c(0.01, 0.01))
   p<-p + scale_x_continuous("Mbs", breaks = seq(0,max(distances$bp),by=10))
+  p<-p + scale_y_continuous("Genomic Distance")
   
   rainfall_out<-paste("rainfall.pdf")
   cat("Writing file", rainfall_out, "\n")
@@ -889,6 +951,7 @@ bpRainfall <- function(){
 
 bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
   suppressPackageStartupMessages(require(GenomicRanges))
+  suppressPackageStartupMessages(require(rtracklayer))
   
   intFile <- import.bed(intervals)
   space <- sum(width(intFile))

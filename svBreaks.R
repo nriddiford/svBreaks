@@ -106,12 +106,12 @@ slideTheme <- function(base_size = 25){
 
 ## setCols
 
-setCols <- function(df, col, fill='Y'){
+setCols <- function(df, col, fill='Y',set="Set2"){
   names<-levels(as.factor(df[[col]]))
   names<-sort(names)
   cat("Setting colour levels:", names, "\n")
   level_number<-length(names)
-  mycols<-brewer.pal(level_number, "Set2")
+  mycols<-brewer.pal(level_number, set)
   names(mycols) <- names
   fillScale <- scale_fill_manual(name = col,values = mycols)
   colScale <- scale_colour_manual(name = col,values = mycols)
@@ -294,7 +294,7 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
   bp_data$sampleax <- as.numeric(bp_data$sample)
   
 
-  cols<-setCols(bp_data, "type")  
+  cols<-setCols(bp_data, "type", set="Set1")  
   
   if(bp_data$type == "TRA"){
     bp_data$bp1 = bp_data$bp2-100
@@ -339,7 +339,7 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
   
   bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
   
-  cols2<-setCols(bp_data, "type", fill='Y')  
+  cols2<-setCols(bp_data, "type", fill='Y', set="Set1")  
   
   bp_data <- filter(bp_data, type != 'TRA')
   bp_data<-droplevels(bp_data)

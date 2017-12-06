@@ -45,6 +45,10 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   # Filter for genes expressed in RNA-Seq data
   # bp_data<-filter(bp_data, fpkm > 0.1)
   
+  # Filter for genes NOT expressed in RNA-Seq data
+  # cat("Filtering out expressed genes\n")
+  # bp_data<-filter(bp_data, fpkm == 0)
+  
   #filter on chroms
   bp_data<-filter(bp_data, chrom != "211000022280116")
   
@@ -67,7 +71,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
 exNotch <- function(x){
   cat("Excluding bps in Notch\n")
   bp_data<-getData()
-  bp_data<-filter(bp_data, !(chrom == "X" & bp >= 3000000 & bp <= 3300000))
+  bp_data<-filter(bp_data, !(chrom == "X" & bp >= 2700000 & bp <= 3400000))
   bp_data<-droplevels(bp_data)
   return(bp_data)
 }
@@ -123,9 +127,42 @@ setCols <- function(df, col, fill='Y',set="Set2"){
 ## bpStats
 
 
-bpStats <- function(){
+bpStats <- function(colSample=NA){
   bp_data<-getData()
   bp_data<-filter(bp_data, bp_no =='bp1')
+  bp_data<-droplevels(bp_data)
+
+  sampleSvs <- bp_data %>%
+    group_by(sample) %>%
+    summarise(n=n()) %>%
+    ungroup() %>%
+    transform(sample = reorder(sample, -n))
+  
+  # sampleSvs <- transform(count, sample = reorder(sample, -n))
+  if(!is.na(colSample)){
+    sampleSvs$colour<-ifelse(sampleSvs$sample == colSample, '#FF3333', 'grey37' )
+  }
+  else{
+    sampleSvs$colour<-'grey37'
+  }
+  
+  p <- ggplot(sampleSvs)
+  p <- p + geom_histogram(aes(sample, n, fill=colour), stat='identity')
+  # p <- p + scale_y_continuous("Number of variants", limits = c(0, 20), expand = c(0.01, 0.01), breaks=seq(0,20,by=2))
+  p <- p + scale_y_continuous("Number of variants", expand = c(0.01, 0.01))
+  
+  p <- p + slideTheme() +
+    theme(
+      panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+      axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5, size=20),
+      axis.title.x=element_blank()
+    )
+  p <- p + scale_fill_identity()
+  
+  
+  sampleSVs<-paste("SVs_sample.png")
+  cat("Writing file", sampleSVs, "\n")
+  ggsave(paste("plots/", sampleSVs, sep=""), width = 10, height = 10)
   
   cat("sample", "SVs", sep='\t', "\n")
   rank<-sort(table(bp_data$sample), decreasing = TRUE)
@@ -164,6 +201,8 @@ bpStats <- function(){
   cat("Dups ", dups,  sep='', '\n')
   cat("Tandups ", tandups,  sep='', '\n')
   cat("Tra ", tra,  sep='', '\n')
+  
+  p
   
   
 }
@@ -294,7 +333,7 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
   bp_data$sampleax <- as.numeric(bp_data$sample)
   
 
-  cols<-setCols(bp_data, "type", set="Set1")  
+  # cols<-setCols(bp_data, "type", set="Set1")  
   
   if(bp_data$type == "TRA"){
     bp_data$bp1 = bp_data$bp2-100
@@ -304,9 +343,11 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
   bp_data$bp2<-bp_data$bp2/1000000
   
   p<-ggplot(bp_data)
-  p<-p + geom_rect(data=bp_data, aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.3)),ymax=(as.numeric(sampleax+0.3)),fill=type), color="black", alpha=0.6)
-
-  p<-p + guides(color = FALSE, size = FALSE, sampleax = FALSE)
+  # p<-p + geom_rect(data=bp_data, aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill='royalblue4'), color="black", alpha=0.6)
+  p<-p + geom_rect(data=bp_data, aes(xmin=bp1, xmax=bp1+0.001, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill='royalblue4'), color="black", alpha=0.6)
+  p<-p + geom_rect(data=bp_data, aes(xmin=bp2, xmax=bp2-0.001, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill='royalblue4'), color="black", alpha=0.6)
+  
+  p<-p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type=FALSE)
   
   p<-p + scale_y_continuous("Sample",expand = c(0,0), breaks = seq(levels(as.factor(bp_data$sampleax))), labels=levels(bp_data$sample))
   p<-p + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
@@ -318,14 +359,15 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
           legend.position="top",
           axis.text.y = element_text(size = 20)
     )
-
   
+  p<-p + scale_fill_identity()
+
   
   p<-p + annotate("rect", xmin=2.740000, xmax=3.134532, ymin=-1.5, ymax=0, alpha=.4, fill="slategray1")
   p<-p + annotate("rect", xmin=3.134870, xmax=3.172221, ymin=-1.5, ymax=0, alpha=.4, fill="slategray3")
   p<-p + annotate("rect", xmin=3.176440, xmax=3.334000, ymin=-1.5, ymax=0, alpha=.4, fill="slategrey")
   p<-p + geom_vline(xintercept = 3.135669, linetype="dotted", size = 1)
-  p<-p + cols
+  # p<-p + cols
   
   # Nhits <- paste("Notch_hits.pdf")
   # cat("Writing file", Nhits, "\n")
@@ -339,13 +381,13 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
   
   bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
   
-  cols2<-setCols(bp_data, "type", fill='Y', set="Set1")  
+  # cols2<-setCols(bp_data, "type", fill='Y', set="Set1")  
   
   bp_data <- filter(bp_data, type != 'TRA')
   bp_data<-droplevels(bp_data)
   
   p2<-ggplot(bp_data)
-  p2<-p2 + geom_density(aes(bp/1000000, fill = type), alpha = 0.6)
+  p2<-p2 + geom_density(aes(bp/1000000, fill='royalblue4'), alpha = 0.6)
   p2<-p2 + scale_x_continuous("Mbs", expand = c(0,0), breaks = seq(2.7,3.4,by=0.05), limits=c(2.70, 3.4))
   p2<-p2 + scale_y_continuous("Density", expand = c(0,0))
   p2<-p2 + guides(colour = FALSE)
@@ -359,8 +401,10 @@ notchHits <- function(infile = "data/Notch_hits.txt"){
           # strip.text = element_text(size=10)
           )
   
-  p2 <- p2 + cols2
-  p2 <- p2 + facet_wrap(~type, nrow = 3)
+  # p2 <- p2 + cols2
+  p2<-p2 + scale_fill_identity()
+  
+  # p2 <- p2 + facet_wrap(~type, nrow = 3)
   
   combined_plots <- ggarrange(p, p2, 
                               labels = c("A", "B"),
@@ -618,6 +662,17 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt"){
   gene_lengths<-gene_lengths[,c("chrom", "promoter")]
   colnames(gene_lengths)<-NULL
   return(gene_lengths)
+}
+
+
+### for all genes affected by SVs ...
+bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340, print=NA){
+  cat("Showing genes affected by a SV at least", n, "times", "\n")
+  gene_lengths<-read.delim(gene_lengths, header = T)
+  bp_data<-read.delim('data/all_genes.txt',header=F)
+  colnames(bp_data) <- c("event", "sample", "type", "chrom", "gene")
+
+  
 }
 
 dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,send=0, feature='tss'){

@@ -110,7 +110,7 @@ slideTheme <- function(base_size = 25){
 
 ## setCols
 
-setCols <- function(df, col, fill='Y',set="Set2"){
+setCols <- function(df, col, fill='Y',set="Pastel2"){
   names<-levels(as.factor(df[[col]]))
   names<-sort(names)
   cat("Setting colour levels:", names, "\n")
@@ -884,7 +884,7 @@ featureDensity <- function(){
   invR_positions<-read.delim("data/invRepeats.txt", header=F)
   invR_positions$type<-"SIR"
   colnames(invR_positions)<-c("chrom", "pos", "type")
-  cru_positions<-read.delim("data/cruciform.txt", header=F)
+  cru_positions<-read.delim("data/cruciform_positions.txt", header=F)
   cru_positions$type<-"Cru"
   colnames(cru_positions)<-c("chrom", "pos", "type")
   
@@ -1334,6 +1334,48 @@ g4DistOverlay <- function(){
   
   
 }
+
+
+
+
+
+sizeDist <- function(){
+  bp_data<-getData()
+  
+  bp_data<-filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
+  
+  bp_data$length <- ifelse(bp_data$length == 0, 0.01, bp_data$length)
+  bp_data$length <- (bp_data$length*1000)
+  bp_data<-droplevels(bp_data)
+  fillCols<-setCols(bp_data, "type", fill='Y')
+  cols<-setCols(bp_data, "type", fill='N')
+  
+  
+  bp_data <- transform(bp_data, type = reorder(type, length))
+  
+  p <- ggplot(bp_data, aes(type, length))
+  p <- p + geom_violin(aes(fill=type))
+  p <- p + geom_jitter(width=.1, height=.1)
+ 
+  p <- p + scale_y_log10("Length (Bp)") 
+  p <- p + slideTheme() +
+    theme(
+      axis.title.x=element_blank(),
+      panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
+    )
+  p <- p + fillCols
+  p <- p + cols 
+
+  
+  sizedistOut<-paste("sizeDist.png")
+  cat("Writing file", sizedistOut, "\n")
+  ggsave(paste("plots/", sizedistOut, sep=""), width = 15, height = 10)
+
+  p
+  
+}
+
+
 
 
 

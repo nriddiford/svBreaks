@@ -13,20 +13,34 @@ suppressMessages(library(ggpubr))
 suppressMessages(library(rtracklayer))
 
 
-#set.seed(41)
+#set.seed(42)
 
 ## @knitr getData
 #'
 #' Function to clean cnv files
 #' @param infile File to process [Required]
-#' @keywords get 
+#' @keywords parse 
 #' @import dplyr
 #' @export
 #' @return Dataframe
 #' 
 getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
-  bp_data<-read.delim(infile, header = F)
-  colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  # bp_data<-read.delim(infile, header = F)
+  
+  ###
+  
+  germline<-read.delim('../svParser/germline/summary/merged/all_bps_filtered.txt')
+  colnames(germline) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  germline$genotype <- 'germline'
+  somatic<-read.delim('../svParser/filtered/summary/merged/all_bps_filtered.txt')
+  colnames(somatic) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  somatic$genotype <- 'somatic'
+  
+  bp_data <- rbind(somatic,germline)
+  
+  ###
+  
+  # colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
   
   gene_lengths<-read.delim(gene_lengths_file, header = T)
   
@@ -55,8 +69,11 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   #filter out samples
   bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
   
+  # filter on genotype
+  # bp_data<-filter(bp_data, genotype == 'somatic')
+  
   # Filter for old/new data
- # bp_data <- filter(bp_data, !grepl("^A|H", sample))
+  # bp_data <- filter(bp_data, !grepl("^A|H", sample))
   
   # Filter for SV type
   # bp_data <- filter(bp_data, type == "DEL")
@@ -68,7 +85,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
 
 ## exNotch
 
-exNotch <- function(x){
+exNotch <- function(){
   cat("Excluding bps in Notch\n")
   bp_data<-getData()
   bp_data<-filter(bp_data, !(chrom == "X" & bp >= 2700000 & bp <= 3400000))
@@ -229,13 +246,16 @@ bpFeatures <- function(notch=0){
   cols<-setCols(bp_data, "feature")
   
   p<-ggplot(bp_data)
-  p<-p + geom_bar(aes(feature, fill = feature))
+  p<-p + geom_bar(aes(feature, fill = genotype, group=reverse(genotype)),stat="count", position=position_dodge())
   #p<-p + cols
-  p<-p + cleanTheme() +
+  p<-p + slideTheme() +
     theme(axis.title.x=element_blank(),
-          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"))
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5))
   p<-p + scale_x_discrete(expand = c(0.01, 0.01))
   p<-p + scale_y_continuous(expand = c(0.01, 0.01))
+  p<-p + scale_fill_brewer(palette="Paired")
+  # p <- p + facet_wrap(~genotype)
   
   features_outfile<-paste("Breakpoints_features_count", ext, sep = "")
   cat("Writing file", features_outfile, "\n")
@@ -244,61 +264,45 @@ bpFeatures <- function(notch=0){
   p
 }
 
-## svTypes
 
-svTypes<-function(notch=0,object=NA){
-  if(is.na(object)){
-    object<-'type'
-  }
+
+sizeDist <- function(){
+  bp_data<-getData()
   
-  if(notch){
-    bp_data<-getData()
-    bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
-    
-    ext<-'_Notch.pdf'
-  }
-  else{
-    bp_data<-getData()
-    ext<-'.pdf'
-  }
+  bp_data<-filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
   
-  bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
+  bp_data$length <- ifelse(bp_data$length == 0, 0.01, bp_data$length)
+  bp_data$length <- (bp_data$length*1000)
   bp_data<-droplevels(bp_data)
+  fillCols<-setCols(bp_data, "type", fill='Y')
+  cols<-setCols(bp_data, "type", fill='N')
   
-  cols<-setCols(bp_data, "type")
   
-  # Reorder by count
-  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
+  bp_data <- transform(bp_data, type = reorder(type, length))
   
-  if(object == 'sample'){
-    # Reorder by count
-    bp_data$sample<-factor(bp_data$sample, levels = names(sort(table(bp_data$sample), decreasing = TRUE)))
-  }
+  p <- ggplot(bp_data, aes(type, length))
+  p <- p + geom_violin(aes(fill=type))
+  p <- p + geom_jitter(width=.1, height=.1)
   
-  # Only take bp1 for each event
-  bp_data<-filter(bp_data, bp_no != "bp2")
-  bp_data<-droplevels(bp_data)
-  
-  p<-ggplot(bp_data)
-  p<-p + geom_bar(aes(get(object), fill=type))
-  p<-p + cols
-  p<-p + cleanTheme() +
-    theme(axis.title.x=element_blank(),
-          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
-          axis.text.x = element_text(angle = 45, hjust=1),
-          axis.text = element_text(size=40), axis.title = element_text(size=90)
+  p <- p + scale_y_log10("Length (Bp)") 
+  p <- p + slideTheme() +
+    theme(
+      axis.title.x=element_blank(),
+      panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
     )
-  p<-p + scale_x_discrete(expand = c(0.01, 0.01))
-  p<-p + scale_y_continuous("Number of calls", expand = c(0.01, 0.01))
- # p<-p + coord_flip()
- # p<-p + scale_y_reverse()
-
-  types_outfile<-paste("sv_types_by_", object, ext, sep = "")
-  cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep=""), width = 22, height = 22)
+  p <- p + facet_wrap(~genotype)
+  p <- p + fillCols
+  p <- p + cols 
+  
+  
+  sizedistOut<-paste("sizeDist.png")
+  cat("Writing file", sizedistOut, "\n")
+  ggsave(paste("plots/", sizedistOut, sep=""), width = 15, height = 10)
   
   p
+  
 }
+
 
 
 ## notchHits
@@ -666,12 +670,52 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt"){
 
 
 ### for all genes affected by SVs ...
-bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340, print=NA){
+bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340){
   cat("Showing genes affected by a SV at least", n, "times", "\n")
   gene_lengths<-read.delim(gene_lengths, header = T)
-  bp_data<-read.delim('data/all_genes.txt',header=F)
-  colnames(bp_data) <- c("event", "sample", "type", "chrom", "gene")
+  allGenes<-read.delim('data/all_genes_filtered.txt',header=F)
+  colnames(allGenes) <- c("event", "sample", "type", "chrom", "gene")
 
+  allGenes<-filter(allGenes, sample != "A373R1" & sample != "A373R7" & sample != "A512R17", gene != '-')
+
+
+  geneCount<-nrow(allGenes)
+  hit_genes<-table(allGenes$gene)
+
+  genes  <- setNames(as.list(gene_lengths$length), gene_lengths$gene)
+  chroms <- setNames(as.list(gene_lengths$chrom), gene_lengths$gene)
+  
+  # expressed_genes<-setNames(as.list(bp_data$fpkm), bp_data$gene)
+  
+  
+  fun <- function(g) {
+    # Calculate the fraction of geneome occupied by each gene
+    genefraction<-genes[[g]]/genome_length
+    
+    # How many times should we expect to see this gene hit in our bp_data (given number of obs. and fraction)?
+    gene_expect<-geneCount*(genefraction)
+    
+    # observed/expected 
+    fc<-hit_genes[[g]]/gene_expect
+    fc<-round(fc,digits=1)
+    log2FC = log2(fc)
+    
+    gene_expect<-round(gene_expect,digits=3)
+    list(gene = g, length = genes[[g]], chromosome=as.character(chroms[[g]]), observed = hit_genes[g], expected = gene_expect, fc = fc, log2FC = log2FC)
+  }
+  
+  enriched<-lapply(levels(allGenes$gene), fun)
+  enriched<-do.call(rbind, enriched)
+  genesFC<-as.data.frame(enriched)
+  # Filter for genes with few observations
+  genesFC<-filter(genesFC, observed >= n)
+  # Sort by FC value
+  genesFC<-dplyr::arrange(genesFC,desc(as.integer(observed)))
+  genesFC$expected<-round(as.numeric(genesFC$expected),digits=2)
+  genesFC$log2FC<-round(as.numeric(genesFC$log2FC),digits=1)
+  
+  
+  return(genesFC)
   
 }
 
@@ -1027,353 +1071,82 @@ bpSim <- function(intervals="data/intervals.bed", N=1000, write=F){
 
 
 
+## svTypes
 
-
-
-
-bpTssDist <- function(tss_pos="data/tss_positions.txt",sim=NA, print=0,return=0){
-  tss_locations<-read.delim(tss_pos, header = T)
-  tss_locations$tss<-as.integer(tss_locations$tss)
+svTypes<-function(notch=0,object=NA){
+  if(is.na(object)){
+    object<-'type'
+  }
   
-  if(is.na(sim)){
+  if(notch){
     bp_data<-getData()
-    bp_data<-rename(bp_data, pos = bp) 
-  }
-  
-  else{
-    cat("Generating simulated bp_data\n")
-    hit_count<-nrow(getData())
-    bp_data<-bpSim(N=hit_count, write=print)
-    colnames(bp_data)<-c("chrom", "pos", "v3", "v4", "v5")
-    bp_data<-filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" | chrom == "Y" | chrom == "4")
-    bp_data<-droplevels(bp_data)
-  }
-  
-  
-  
-  # Will throw error if SVs don't exist on a chrom...
-  
-  # Removes chroms with fewer than 20 observations
-  svCount <- table(bp_data$chrom)
-  bp_data <- subset(bp_data, chrom %in% names(svCount[svCount > 10]))
-  bp_data<-droplevels(bp_data)
-  
-  tss_locations <- subset(tss_locations, chrom %in% levels(bp_data$chrom))
-  tss_locations<-droplevels(tss_locations)  
-  
-  
-  fun2 <- function(p) {
-    index<-which.min(abs(tss_df$tss - p))
-    closestTss<-tss_df$tss[index]
-    chrom<-as.character(tss_df$chrom[index])
-    gene<-as.character(tss_df$gene[index])
-    dist<-(p-closestTss)
-    list(p, closestTss, dist, chrom, gene)
-  }
-  
-  l <- list()
-  
-  for (c in levels(bp_data$chrom)){
-    df<-filter(bp_data, chrom == c)
-    tss_df<-filter(tss_locations, chrom == c)
-    dist2tss<-lapply(df$pos, fun2)
-    dist2tss<-do.call(rbind, dist2tss)
-    dist2tss<-as.data.frame(dist2tss)
+    bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
     
-    colnames(dist2tss)=c("bp", "closest_tss", "min_dist", "chrom", "closest_gene")
-    dist2tss$min_dist<-as.numeric(dist2tss$min_dist)
-    l[[c]] <- dist2tss
-  }
-  
-  dist2tss<-do.call(rbind, l)
-  dist2tss<-as.data.frame(dist2tss)
-  dist2tss$chrom<-as.character(dist2tss$chrom)
-  
-  dist2tss<-arrange(dist2tss,(abs(min_dist)))
-  
-  # Removes chroms with fewer than 20 observations
-  # svCount <- table(dist2tss$chrom)
-  # dist2tss <- subset(dist2tss, chrom %in% names(svCount[svCount > 10]))
-  
-  if(return==1){
-    return(dist2tss)
+    ext<-'_Notch.pdf'
   }
   else{
-    p<-ggplot(dist2tss)
-    p<-p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
-    p<-p + scale_x_continuous("Distance to TSS (Kb)",
-                              limits=c(-10000, 10000),
-                              breaks=c(-10000,-1000, 1000, 10000),
-                              expand = c(.0005, .0005),
-                              labels=c("-10", "-1", "1", "10") )
-    p<-p + scale_y_continuous("Density")
-    p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
-    #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-    p <- p + geom_rug(aes(min_dist, colour=chrom))
-    p<-p + cleanTheme() +
-      theme(strip.text = element_text(size=20),
-            legend.position="top")
-    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-    
-    if(is.na(sim)){
-      tssDistout<-paste("bpTSSdist.pdf")
-    }
-    else{
-      tssDistout<-paste("bpTSSdist_sim.pdf")
-    }
-    cat("Writing file", tssDistout, "\n")
-    ggsave(paste("plots/", tssDistout, sep=""), width = 20, height = 10)
-    
-    p
-  }
-}
-
-bpTssDistOverlay <- function(){
-  real_data<-bpTssDist(return=1)
-  real_data$Source<-"Real"
-  sim_data<-bpTssDist(sim=1, return=1)
-  sim_data$Source<-"Sim"
-  
-  
-  colours<-c( "#E7B800", "#00AFBB")
-  
-  
-  p<-ggplot()
-  p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
-  p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
-  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
-  p<-p + scale_x_continuous("Distance to TSS (Kb)",
-                            limits=c(-10000, 10000),
-                            breaks=c(-10000,-1000, 1000, 10000),
-                            expand = c(.0005, .0005),
-                            labels=c("-10", "-1", "1", "10") )
-  p<-p + scale_y_continuous("Density")
-  p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
-  #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-  
-  p <- p + geom_rug(data=real_data,aes(min_dist, colour=Source),sides="b")
-  p <- p + geom_rug(data=sim_data,aes(min_dist, colour=Source),sides="t")
-  
-  
-  p <- p + scale_fill_manual(values=colours)
-  p <- p + scale_colour_manual(values=colours)
-  
-  p<-p + cleanTheme() +
-    theme(strip.text = element_text(size=20),
-          legend.position="top")
-  
-  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
-  
-  tssDistout<-paste("bpTSSdist_overlay.pdf")
-  
-  cat("Writing file", tssDistout, "\n")
-  ggsave(paste("plots/", tssDistout, sep=""), width = 25, height = 10)
-  
-  
-  
-  p
-  
-  
-}
-
-
-
-
-
-bpG4Dist <- function(g4_pos="data/g4_positions.txt",sim=NA, print=0,return=0){
-  g4_locations<-read.delim(g4_pos, header = T)
-  g4_locations$g4<-as.integer(g4_locations$g4)
-  
-  if(is.na(sim)){
     bp_data<-getData()
+    ext<-'.pdf'
   }
   
-  else{
-    cat("Generating simulated bp_data\n")
-    hit_count<-nrow(getData())
-    bp_data<-bpSim(N=hit_count, write=print)
-    colnames(bp_data)<-c("chrom", "pos", "v3", "v4", "v5")
-    bp_data<-filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" | chrom == "Y" | chrom == "4")
-    bp_data<-droplevels(bp_data)
-  }
-  
-  
-  
-  # Will throw error if SVs don't exist on a chrom...
-  
-  # Removes chroms with fewer than 20 observations
-  svCount <- table(bp_data$chrom)
-  bp_data <- subset(bp_data, chrom %in% names(svCount[svCount > 30]))
+  bp_data$type <- ifelse(bp_data$type=="BND", "INV", as.character(bp_data$type))
   bp_data<-droplevels(bp_data)
   
-  g4_locations <- subset(g4_locations, chrom %in% levels(bp_data$chrom))
-  g4_locations<-droplevels(g4_locations)  
+  cols<-setCols(bp_data, "type")
   
+  # Reorder by count
+  bp_data$type<-factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
   
-  fun2 <- function(p) {
-    index<-which.min(abs(g4_df$g4 - p))
-    closestTss<-g4_df$g4[index]
-    chrom<-as.character(g4_df$chrom[index])
-    gene<-as.character(g4_df$gene[index])
-    dist<-(p-closestTss)
-    list(p, closestTss, dist, chrom, gene)
+  if(object == 'sample'){
+    # Reorder by count
+    bp_data$sample<-factor(bp_data$sample, levels = names(sort(table(bp_data$sample), decreasing = TRUE)))
   }
   
-  l <- list()
+  # Only take bp1 for each event
+  bp_data<-filter(bp_data, bp_no != "bp2")
+  bp_data<-droplevels(bp_data)
   
-  for (c in levels(bp_data$chrom)){
-    df<-filter(bp_data, chrom == c)
-    g4_df<-filter(g4_locations, chrom == c)
-    dist2g4<-lapply(df$bp, fun2)
-    dist2g4<-do.call(rbind, dist2g4)
-    dist2g4<-as.data.frame(dist2g4)
-    
-    colnames(dist2g4)=c("bp", "closest_g4", "min_dist", "chrom", "closest_gene")
-    dist2g4$min_dist<-as.numeric(dist2g4$min_dist)
-    l[[c]] <- dist2g4
-  }
-  
-  dist2g4<-do.call(rbind, l)
-  dist2g4<-as.data.frame(dist2g4)
-  dist2g4$chrom<-as.character(dist2g4$chrom)
-  
-  dist2g4<-arrange(dist2g4,(abs(min_dist)))
-  
-  # Removes chroms with fewer than 20 observations
-  # svCount <- table(dist2g4$chrom)
-  # dist2g4 <- subset(dist2g4, chrom %in% names(svCount[svCount > 10]))
-  
-  if(return==1){
-    return(dist2g4)
-  }
-  else{
-    p<-ggplot(dist2g4)
-    p<-p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
-    p<-p + scale_x_continuous("Distance to G4 (Kb)",
-                              limits=c(-10000, 10000),
-                              breaks=c(-10000,-1000, 1000, 10000),
-                              expand = c(.0005, .0005),
-                              labels=c("-10", "-1", "1", "10") )
-    p<-p + scale_y_continuous("Density")
-    p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
-    #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-    p <- p + geom_rug(aes(min_dist, colour=chrom))
-    p<-p + cleanTheme() +
-      theme(strip.text = element_text(size=20),
-            legend.position="top")
-    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-    
-    if(is.na(sim)){
-      g4Distout<-paste("bpG4dist.pdf")
-    }
-    else{
-      g4Distout<-paste("bpG4dist_sim.pdf")
-    }
-    cat("Writing file", g4Distout, "\n")
-    ggsave(paste("plots/", g4Distout, sep=""), width = 20, height = 10)
-    
-    p
-  }
-}
-
-
-
-g4DistOverlay <- function(){
-  real_data<-bpG4Dist(return=1)
-  real_data$Source<-"Real"
-  sim_data<-bpTssDist(sim=1, return=1)
-  sim_data$Source<-"Sim"
-  
-  sim_data<-filter(sim_data, chrom != "Y", chrom != 4)
-  sim_data<-droplevels(sim_data)
-  real_data<-filter(real_data, chrom != "Y", chrom != 4)
-  real_data<-droplevels(real_data)
-  
-  
-  colours<-c( "#E7B800", "#00AFBB")
-  
-  
-  p<-ggplot()
-  p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
-  p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
-  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
-  p<-p + scale_x_continuous("Distance to G4 (Kb)",
-                            limits=c(-10000, 10000),
-                            breaks=c(-10000,-1000, 1000, 10000),
-                            expand = c(.0005, .0005),
-                            labels=c("-10", "-1", "1", "10") )
-  p<-p + scale_y_continuous("Density")
-  p<-p + geom_vline(xintercept = 0, colour="black", linetype="dotted")
-  #p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
-  
-  p <- p + geom_rug(data=real_data,aes(min_dist, colour=Source),sides="b")
-  p <- p + geom_rug(data=sim_data,aes(min_dist, colour=Source),sides="t")
-  
-  
-  p <- p + scale_fill_manual(values=colours)
-  p <- p + scale_colour_manual(values=colours)
-  
+  p<-ggplot(bp_data)
+  p<-p + geom_bar(aes(get(object), fill=type))
+  p<-p + cols
   p<-p + cleanTheme() +
-    theme(strip.text = element_text(size=20),
-          legend.position="top")
-  
-  p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
-  
-  
-  g4Distout<-paste("bpG4dist_overlay.pdf")
-  
-  cat("Writing file", g4Distout, "\n")
-  ggsave(paste("plots/", g4Distout, sep=""), width = 25, height = 10)
-  
-  
-  
-  p
-  
-  
-}
-
-
-
-
-
-sizeDist <- function(){
-  bp_data<-getData()
-  
-  bp_data<-filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
-  
-  bp_data$length <- ifelse(bp_data$length == 0, 0.01, bp_data$length)
-  bp_data$length <- (bp_data$length*1000)
-  bp_data<-droplevels(bp_data)
-  fillCols<-setCols(bp_data, "type", fill='Y')
-  cols<-setCols(bp_data, "type", fill='N')
-  
-  
-  bp_data <- transform(bp_data, type = reorder(type, length))
-  
-  p <- ggplot(bp_data, aes(type, length))
-  p <- p + geom_violin(aes(fill=type))
-  p <- p + geom_jitter(width=.1, height=.1)
- 
-  p <- p + scale_y_log10("Length (Bp)") 
-  p <- p + slideTheme() +
-    theme(
-      axis.title.x=element_blank(),
-      panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
+    theme(axis.title.x=element_blank(),
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 45, hjust=1),
+          axis.text = element_text(size=40), axis.title = element_text(size=90)
     )
-  p <- p + fillCols
-  p <- p + cols 
-
+  p<-p + scale_x_discrete(expand = c(0.01, 0.01))
+  p<-p + scale_y_continuous("Number of calls", expand = c(0.01, 0.01))
+  p<-p + facet_wrap(~genotype)
+  # p<-p + coord_flip()
+  # p<-p + scale_y_reverse()
   
-  sizedistOut<-paste("sizeDist.png")
-  cat("Writing file", sizedistOut, "\n")
-  ggsave(paste("plots/", sizedistOut, sep=""), width = 15, height = 10)
-
+  types_outfile<-paste("sv_types_by_", object, ext, sep = "")
+  cat("Writing file", types_outfile, "\n")
+  ggsave(paste("plots/", types_outfile, sep=""), width = 22, height = 22)
+  
   p
-  
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1425,10 +1198,6 @@ typeLen <- function(size_threshold = 1, notch=0){
 }
 
 
-
-
-
-
 genomeHits <- function(notch=0){
   if(notch){
     bp_data<-exNotch()
@@ -1459,8 +1228,6 @@ genomeHits <- function(notch=0){
   
   p
 }
-
-
 
 
 typeLenCount <- function(size_threshold = 1, notch=0){
@@ -1506,7 +1273,6 @@ typeLenCount <- function(size_threshold = 1, notch=0){
   
   p
 }
-
 
 
 bpGenAll <- function(object=NA, notch=0){

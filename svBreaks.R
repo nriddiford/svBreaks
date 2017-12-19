@@ -25,22 +25,22 @@ suppressMessages(library(rtracklayer))
 #' @return Dataframe
 #' 
 getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data='data/isc_genes_rnaSeq.csv'){
-  # bp_data<-read.delim(infile, header = F)
+  bp_data<-read.delim(infile, header = F)
   
   ###
   
-  germline<-read.delim('../svParser/germline/summary/merged/all_bps_filtered.txt')
-  colnames(germline) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
-  germline$genotype <- 'germline'
-  somatic<-read.delim('../svParser/filtered/summary/merged/all_bps_filtered.txt')
-  colnames(somatic) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
-  somatic$genotype <- 'somatic'
-  
-  bp_data <- rbind(somatic,germline)
+  # germline<-read.delim('../svParser/germline/summary/merged/all_bps_filtered.txt')
+  # colnames(germline) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  # germline$genotype <- 'germline'
+  # somatic<-read.delim('../svParser/filtered/summary/merged/all_bps_filtered.txt')
+  # colnames(somatic) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  # somatic$genotype <- 'somatic'
+  # 
+  # bp_data <- rbind(somatic,germline)
   
   ###
   
-  # colnames(bp_data) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
+  colnames(bp_data) <- c("event", "bp_no", "sample", "genotype", "chrom", "bp", "gene", "feature", "type", "length")
   
   gene_lengths<-read.delim(gene_lengths_file, header = T)
   
@@ -67,10 +67,14 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data<-filter(bp_data, chrom != "211000022280116")
   
   #filter out samples
-  bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
+  bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" & sample != 'A373R11' )
   
   # filter on genotype
-  # bp_data<-filter(bp_data, genotype == 'somatic')
+  bp_data<-filter(bp_data, genotype != 'germline_recurrent')
+  # bp_data<-filter(bp_data, genotype == 'germline_private')
+  # bp_data<-filter(bp_data, genotype == 'somatic_tumour')
+  # bp_data<-filter(bp_data, genotype == 'somatic_normal')
+  
   
   # Filter for old/new data
   # bp_data <- filter(bp_data, !grepl("^A|H", sample))
@@ -240,13 +244,15 @@ bpFeatures <- function(notch=0){
   # To condense exon counts into "exon"
   bp_data$feature<-as.factor(gsub("_.*", "", bp_data$feature))
   
+  bp_data <- filter(bp_data, feature != 'pseudogene' & feature != 'snoRNA' & feature != 'stop' & feature != 'tRNA' )
+  bp_data<-droplevels(bp_data)
   # Reoders descending
   bp_data$feature<-factor(bp_data$feature, levels = names(sort(table(bp_data$feature), decreasing = TRUE)))
   
   cols<-setCols(bp_data, "feature")
   
   p<-ggplot(bp_data)
-  p<-p + geom_bar(aes(feature, fill = genotype, group=reverse(genotype)),stat="count", position=position_dodge())
+  p<-p + geom_bar(aes(feature, fill = genotype, group=genotype),stat="count", position=position_dodge())
   #p<-p + cols
   p<-p + slideTheme() +
     theme(axis.title.x=element_blank(),
@@ -264,6 +270,28 @@ bpFeatures <- function(notch=0){
   p
 }
 
+
+svsbySample <- function(){
+  bp_data<-getData()
+  bp_data<-filter(bp_data, bp_no != "bp2")
+  
+  sampleSvs <- bp_data %>%
+    group_by(sample, genotype) %>%
+    summarise(n=n()) %>%
+    ungroup() %>%
+    transform(sample = reorder(sample, -n))
+  
+  p <- ggplot(sampleSvs)
+  p <- p + slideTheme() +
+    theme(axis.title.x=element_blank(),
+          panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5))
+  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
+  p <- p + scale_y_continuous("Number of SVs",expand = c(0.01, 0.01))
+  p <- p + geom_bar(aes(sample, n, fill = genotype, group=genotype),stat="identity")
+  p
+  
+}
 
 
 sizeDist <- function(){
@@ -545,11 +573,12 @@ bpFeatureEnrichmentPlot <- function() {
   p<-ggplot(feature_enrichment)
   p<-p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat="identity")
   p<-p + guides(fill=FALSE)
-  p<-p + ylim(-2,2)
+  p<-p + ylim(-3,3)
   p<-p + cleanTheme() +
     theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
           axis.text.x = element_text(angle = 45, hjust=1)
     )
+  # p <- p + facet_wrap(~genotype)
   
   feat_plot <- paste("feat_plot.pdf")
   cat("Writing file", feat_plot, "\n")
@@ -812,7 +841,7 @@ dist2Motif <- function(feature_file="data/tss_locations.txt",sim=NA, print=0,sen
       theme(strip.text = element_text(size=20),
           legend.position="top")
     
-    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+    p<-p + facet_wrap(~chrom, ncol = 7, scales = "free_y")
 
     if(is.na(sim)){
       distout<-paste("bp", feature, 'dist.pdf', sep='')
@@ -889,7 +918,7 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', li
   p<-p + geom_density(data=real_data,aes(min_dist, fill = Source), alpha = 0.4)
   p<-p + geom_density(data=sim_data,aes(min_dist, fill = Source), alpha = 0.4)
   if(is.na(all)){
-    p<-p + facet_wrap(~chrom, ncol = 3, scales = "free_y")
+    p<-p + facet_wrap(~chrom, ncol = 2)
   }
 
   p<-p + scale_x_continuous(paste("Distance to", feature, scale, sep=' '),
@@ -908,6 +937,7 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature='tss', li
   
   p<-p + slideTheme() +
     theme(strip.text = element_text(size=20),
+          axis.text.y = element_blank(),
           legend.position="top")
   
   overlay<-paste("bp", feature, 'dist_overlay.pdf', sep='')
@@ -1018,7 +1048,7 @@ bpRainfall <- function(){
   distances<-filter(distances, chrom != 4, chrom != "Y")
   
   p<-ggplot(distances)
-  p<-p + geom_point(aes(bp/1000000, logdist, colour = sample))
+  p<-p + geom_point(aes(bp/1000000, logdist, colour = genotype))
   p <- p + cleanTheme() +
     theme(axis.text.x = element_text(angle=45, hjust = 1),
           panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),

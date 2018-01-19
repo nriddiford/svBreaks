@@ -346,12 +346,12 @@ tumourEvolution <- function(sample=NA){
     droplevels()
 
   bp_data <- bp_data %>% 
-    arrange(gene, -allele_freq) %>% 
-    group_by(gene) %>%
+    group_by(gene, sample) %>%
     filter(bp_no != "bp2") %>%
-    filter(sample == 'HUM-7') %>%
+    # filter(sample == 'HUM-7') %>%
     mutate(count = seq(n())) %>%
     mutate(gene2 = ifelse(count == 1, as.character(gene), paste(gene, count, sep="_"))) %>%
+    arrange(gene, -allele_freq) %>% 
     transform(gene2 = reorder(gene2, -allele_freq)) 
   
   
@@ -387,7 +387,7 @@ tumourEvolution2 <- function(){
   p <- p + geom_point(aes(gene, allele_freq, colour=sample),size=2, stat='identity')
   p <- p + theme(axis.text.x = element_text(angle = 90, hjust=1)
                  )
-  
+  p <- p + facet_wrap(~sample, scales = 'free_x')
   p <- p + ylim(0,1)
   
   p

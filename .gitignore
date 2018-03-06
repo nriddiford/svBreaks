@@ -1,3 +1,11 @@
 data/**
 plots/*
 .Rhistory
+.Rproj.user
+.RData
+inst/extdata/*
+!inst/extdata/tss_locations.txt
+!inst/extdata/isc_genes_rnaSeq.csv
+!inst/extdata/intervals.bed
+!inst/extdata/genomic_features.txt
+!inst/extdata/gene_lengths.txt

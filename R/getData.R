@@ -46,11 +46,10 @@ getData <- function(infile = system.file("extdata", "all_bps_filtered.txt", pack
   bp_data <- dplyr::filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" & sample != "A373R11")
 
   # filter on genotype
-  # bp_data<-filter(bp_data, genotype != 'germline_recurrent')
-  # bp_data<-filter(bp_data, genotype == 'germline_private')
-  # bp_data<-filter(bp_data, genotype == 'somatic_tumour')
-  # bp_data<-filter(bp_data, genotype == 'somatic_normal')
-
+  # bp_data<-dplyr::filter(bp_data, genotype != 'germline_recurrent')
+  # bp_data<-dplyr::filter(bp_data, genotype == 'germline_private')
+  bp_data<-dplyr::filter(bp_data, genotype == 'somatic_tumour')
+  # bp_data<-dplyr::filter(bp_data, genotype == 'somatic_normal')
 
   # Filter for old/new data
   # bp_data <- filter(bp_data, !grepl("^A|H", sample))

@@ -5,9 +5,9 @@ if (length(new.packages)) {
   install.packages(new.packages)
 }
 cat("Silently loading packages...")
-suppressMessages(library(ggplot2))
+# suppressMessages(library(ggplot2))
 suppressMessages(library(plyr))
-suppressMessages(library(dplyr))
+suppressMessages(library(tidyverse))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggpubr))
 suppressMessages(library(rtracklayer))
@@ -24,26 +24,13 @@ suppressMessages(library(rtracklayer))
 #' @export
 #' @return Dataframe
 #'
-getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="data/gene_lengths.txt", expression_data="data/isc_genes_rnaSeq.csv") {
+getData <- function(infile = system.file('extdata', "all_bps_filtered.txt", package = 'svBreaksTest'), gene_lengths_file=system.file('extdata', "gene_lengths.txt", package = 'svBreaksTest'), expression_data=system.file('extdata', "isc_genes_rnaSeq.csv", package = 'svBreaksTest')) {
   bp_data <- read.delim(infile, header = F)
 
-  ###
-
-  # germline<-read.delim('../svParser/germline/summary/merged/all_bps_filtered.txt')
-  # colnames(germline) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
-  # germline$genotype <- 'germline'
-  # somatic<-read.delim('../svParser/filtered/summary/merged/all_bps_filtered.txt')
-  # colnames(somatic) <- c("event", "bp_no", "sample", "chrom", "bp", "gene", "feature", "type", "length")
-  # somatic$genotype <- 'somatic'
-  #
-  # bp_data <- rbind(somatic,germline)
-
-  ###
-
   # colnames(bp_data) <- c("event", "bp_no", "sample", "genotype", "chrom", "bp", "gene", "feature", "type", "length")
-  colnames(bp_data) <- c("event", "bp_no", "sample", "allele_freq", "genotype", "chrom", "bp", "gene", "feature", "type", "length")
+  colnames(bp_data) <- c("event", "bp_no", "sample", "genotype", "chrom", "bp", "gene", "feature", "chrom2",  "bp2", "gene2", "feature2", "type", "length")
 
-  bp_data$allele_freq <- suppressWarnings(as.numeric(as.character(bp_data$allele_freq)))
+  # bp_data$allele_freq <- suppressWarnings(as.numeric(as.character(bp_data$allele_freq)))
 
   gene_lengths <- read.delim(gene_lengths_file, header = T)
 
@@ -58,7 +45,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   bp_data <- join(bp_data, seq_data, "id", type = "left")
 
   bp_data$fpkm <- ifelse(is.na(bp_data$fpkm), 0, round(bp_data$fpkm, 1))
-  
+
   bp_data$bp <- as.numeric(as.character(bp_data$bp))
 
   # Filter for genes expressed in RNA-Seq data
@@ -77,7 +64,7 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   # filter on genotype
   # bp_data<-filter(bp_data, genotype != 'germline_recurrent')
   # bp_data<-filter(bp_data, genotype == 'germline_private')
-  bp_data<-filter(bp_data, genotype == 'somatic_tumour')
+  # bp_data<-filter(bp_data, genotype == 'somatic_tumour')
   # bp_data<-filter(bp_data, genotype == 'somatic_normal')
 
 
@@ -92,14 +79,27 @@ getData <- function(infile = "data/all_bps_filtered.txt", gene_lengths_file="dat
   return(bp_data)
 }
 
-## exNotch
+## notchFilt
 
-exNotch <- function() {
-  cat("Excluding bps in Notch\n")
+notchFilt <- function(keep=0) {
   bp_data <- getData()
-  bp_data <- filter(bp_data, !(chrom == "X" & bp >= 2700000 & bp <= 3400000))
-  bp_data <- droplevels(bp_data)
-  return(bp_data)
+  bp_data <- filter(bp_data, genotype == 'somatic_tumour')
+  if (keep) {
+    cat("Selecting for bps in Notch\n")
+    notchIn <- bp_data %>%
+      filter(chrom == "X" & bp >= 2700000 & bp2 <= 3400000) %>%
+      # filter(gene != 'N', gene2 != 'N') %>%
+      droplevels()
+    return(notchIn)
+  }
+  else{
+    cat("Excluding bps in Notch\n")
+    noNotch <- bp_data %>%
+      filter(!(chrom == "X" & bp >= 2700000 & bp2 <= 3400000)) %>%
+      filter(gene != 'N', gene2 != 'N') %>%
+      droplevels()
+    return(noNotch)
+  }
 }
 
 ## cleanTheme
@@ -114,7 +114,8 @@ cleanTheme <- function(base_size = 12) {
     axis.line.x = element_line(color = "black", size = 0.5),
     axis.line.y = element_line(color = "black", size = 0.5),
     axis.text = element_text(size = 20),
-    axis.title = element_text(size = 30)
+    axis.title = element_text(size = 30),
+    plot.margin = unit(1:4, "line")
   )
 }
 
@@ -129,7 +130,8 @@ slideTheme <- function(base_size = 25) {
     axis.line.y = element_line(color = "black", size = 0.5),
     axis.text = element_text(size = 30),
     axis.title = element_text(size = 50),
-    strip.text = element_text(size = 25)
+    strip.text = element_text(size = 25),
+    plot.margin = unit(1:4, "line")
   )
 }
 
@@ -155,23 +157,27 @@ setCols <- function(df, col, fill="Y", set="Pastel2") {
 
 bpStats <- function(colSample=NA) {
   bp_data <- getData()
-  bp_data <- filter(bp_data, bp_no == "bp1")
-  bp_data <- droplevels(bp_data)
 
   sampleSvs <- bp_data %>%
-    group_by_(.dots = c("sample", "genotype")) %>%
-    # group_by(sample) %>%
-    summarise(n = n()) %>%
-    ungroup() %>%
-    transform(sample = reorder(sample, -n))
+    filter(bp_no == "bp1") %>%
+    filter(genotype != 'X') %>%
+    droplevels() %>%
+    group_by(sample, genotype) %>%
+    tally() %>%
+    mutate(var = case_when(genotype == "somatic_tumour" ~ n)) %>%
+    arrange(-var) %>%
+    select(everything(), -var)
 
-  # sampleSvs <- transform(count, sample = reorder(sample, -n))
+
   if (!is.na(colSample)) {
     sampleSvs$colour <- ifelse(sampleSvs$sample == colSample, "#FF3333", "grey37")
   }
   else {
     sampleSvs$colour <- "grey37"
   }
+
+  # sampleSvs$sample <- factor(sampleSvs$sample, levels = names(sort(table(sampleSvs$sample[sampleSvs$genotype=='somatic_tumour']), decreasing = TRUE)))
+
 
   p <- ggplot(sampleSvs)
   p <- p + geom_histogram(aes(sample, n, fill = colour), stat = "identity")
@@ -193,6 +199,7 @@ bpStats <- function(colSample=NA) {
   ggsave(paste("plots/", sampleSVs, sep = ""), width = 10, height = 10)
 
   cat("sample", "SVs", sep = "\t", "\n")
+  bp_data <- filter(bp_data, genotype == 'somatic_tumour')
   rank <- sort(table(bp_data$sample), decreasing = TRUE)
   rank <- as.array(rank)
 
@@ -238,7 +245,7 @@ bpStats <- function(colSample=NA) {
 
 bpFeatures <- function(notch=0) {
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
   else {
@@ -281,23 +288,25 @@ bpFeatures <- function(notch=0) {
 svsbySample <- function() {
   bp_data <- getData()
   bp_data <- filter(bp_data, bp_no != "bp2")
+  bp_data$sample <- factor(bp_data$sample)
 
   sampleSvs <- bp_data %>%
     group_by(sample, genotype) %>%
-    summarise(n = n()) %>%
+    tally() %>%
     ungroup() %>%
-    transform(sample = reorder(sample, -n))
+    arrange(-n)
+
 
   p <- ggplot(sampleSvs)
+  p <- p + geom_bar(aes(sample, n, fill = genotype), stat = "identity")
+  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
+  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01))
   p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
-  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01))
-  p <- p + geom_bar(aes(sample, n, fill = genotype, group = genotype), stat = "identity")
   p
 }
 
@@ -339,59 +348,59 @@ sizeDist <- function() {
   p
 }
 
-tumourEvolution <- function(sample=NA) {
-  bp_data <- getData()
-
-  bp_data <- bp_data %>%
-    filter(!is.na(allele_freq)) %>%
-    filter(genotype == "somatic_tumour") %>%
-    droplevels()
-
-  bp_data <- bp_data %>%
-    group_by(gene, sample) %>%
-    filter(bp_no != "bp2") %>%
-    # filter(sample == 'HUM-7') %>%
-    mutate(count = seq(n())) %>%
-    mutate(gene2 = ifelse(count == 1, as.character(gene), paste(gene, count, sep = "_"))) %>%
-    arrange(gene, -allele_freq) %>%
-    transform(gene2 = reorder(gene2, -allele_freq))
-
-
-
-  bp_data$colour <- ifelse(bp_data$bp >= 2700000 & bp_data$bp <= 3500000 & bp_data$chrom == "X", "#A52A2A", "gray37")
-
-  p <- ggplot(bp_data)
-  p <- p + geom_bar(aes(gene2, allele_freq, fill = colour), stat = "identity")
-  # p <- p + scale_y_discrete("Allele frequency", breaks=seq(0,1,by=0.1), labels = seq(0,1,by=0.1), )
-  p <- p + ylim(0, 1)
-  p <- p + theme(
-    axis.text = element_text(size = 20),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-    # axis.text.x=element_blank(),
-    # axis.ticks.x=element_blank()
-  )
-  p <- p + scale_fill_identity()
-  p <- p + facet_wrap(~sample, scales = "free_x")
-  p
-}
-
-tumourEvolution2 <- function() {
-  bp_data <- getData()
-
-  bp_data <- bp_data %>%
-    filter(genotype == "somatic_tumour") %>%
-    filter(bp_no != "bp2") %>%
-    transform(gene = reorder(gene, -allele_freq)) %>%
-    droplevels()
-
-  p <- ggplot(bp_data)
-  p <- p + geom_point(aes(gene, allele_freq, colour = sample), size = 2, stat = "identity")
-  p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  p <- p + facet_wrap(~sample, scales = "free_x")
-  p <- p + ylim(0, 1)
-
-  p
-}
+# tumourEvolution <- function(sample=NA) {
+#   bp_data <- getData()
+#
+#   bp_data <- bp_data %>%
+#     filter(!is.na(allele_freq)) %>%
+#     filter(genotype == "somatic_tumour") %>%
+#     droplevels()
+#
+#   bp_data <- bp_data %>%
+#     group_by(gene, sample) %>%
+#     filter(bp_no != "bp2") %>%
+#     # filter(sample == 'HUM-7') %>%
+#     mutate(count = seq(n())) %>%
+#     mutate(gene2 = ifelse(count == 1, as.character(gene), paste(gene, count, sep = "_"))) %>%
+#     arrange(gene, -allele_freq) %>%
+#     transform(gene2 = reorder(gene2, -allele_freq))
+#
+#
+#
+#   bp_data$colour <- ifelse(bp_data$bp >= 2700000 & bp_data$bp <= 3500000 & bp_data$chrom == "X", "#A52A2A", "gray37")
+#
+#   p <- ggplot(bp_data)
+#   p <- p + geom_bar(aes(gene2, allele_freq, fill = colour), stat = "identity")
+#   # p <- p + scale_y_discrete("Allele frequency", breaks=seq(0,1,by=0.1), labels = seq(0,1,by=0.1), )
+#   p <- p + ylim(0, 1)
+#   p <- p + theme(
+#     axis.text = element_text(size = 20),
+#     axis.text.x = element_text(angle = 45, hjust = 1)
+#     # axis.text.x=element_blank(),
+#     # axis.ticks.x=element_blank()
+#   )
+#   p <- p + scale_fill_identity()
+#   p <- p + facet_wrap(~sample, scales = "free_x")
+#   p
+# }
+#
+# tumourEvolution2 <- function() {
+#   bp_data <- getData()
+#
+#   bp_data <- bp_data %>%
+#     filter(genotype == "somatic_tumour") %>%
+#     filter(bp_no != "bp2") %>%
+#     transform(gene = reorder(gene, -allele_freq)) %>%
+#     droplevels()
+#
+#   p <- ggplot(bp_data)
+#   p <- p + geom_point(aes(gene, allele_freq, colour = sample), size = 2, stat = "identity")
+#   p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+#   p <- p + facet_wrap(~sample, scales = "free_x")
+#   p <- p + ylim(0, 1)
+#
+#   p
+# }
 
 
 ## notchHits
@@ -522,25 +531,34 @@ notchDels <- function(infile = "data/Notch_hits.txt") {
   bp_data <- dplyr::rename(bp_data, length = length.Kb.)
 
   # bp_data<-filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
+  filter_samples <- c("A373R1", "A373R7", "A512R17")
 
-
+  # Problem with events not being clustered properly for CNV-Seq
   bp_data <- bp_data %>%
+    filter(!(sample %in% filter_samples & length > 5000)) %>%
+    filter(type != 'TRA') %>%
+    group_by(sample, event) %>%
+    mutate(count = seq(n())) %>%
+    ungroup() %>%
     group_by(sample) %>%
-    slice(which.max(length))
+    mutate(sample_count = seq(n())) %>%
+    mutate(sample2 = ifelse(sample_count == 1 & count == 1, as.character(sample), paste(sample, sample_count, sep = "_"))) %>%
+    # slice(which.max(length)) %>%
+    droplevels()
 
   bp_data <- droplevels(bp_data)
 
   bp_data$colour <- ifelse(bp_data$sample == "A373R1" | bp_data$sample == "A373R7" | bp_data$sample == "A512R17", "#FF3333", "gray37")
 
-  bp_data <- transform(bp_data, sample = reorder(sample, -length))
+  bp_data <- transform(bp_data, sample2 = reorder(sample2, -length))
 
   p <- ggplot(bp_data)
-  p <- p + geom_bar(aes(sample, length, fill = colour), stat = "identity")
+  p <- p + geom_bar(aes(sample2, length, fill = colour), stat = "identity")
   # p<-p + scale_y_discrete(expand = c(0.01,0.01), breaks=seq(0,500,by=100))
   p <- p + slideTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 45, hjust = 1)
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
 
   p <- p + scale_fill_identity()
@@ -597,6 +615,7 @@ bpFeatureEnrichment <- function(features="data/genomic_features.txt", genome_len
       # Log2FC<-round(Log2FC, 1)
       list(feature = f, observed = classCount[f], expected = featureExpect, Log2FC = Log2FC, test = test, sig = sig_val, p_val = p_val)
     }
+
   }
 
   enriched <- lapply(levels(bp_data$feature), fun)
@@ -728,22 +747,20 @@ bpGeneEnrichmentPlot <- function(n=2) {
 
   gene_enrichment <- transform(gene_enrichment, gene = reorder(gene, -fc))
 
-  gene_enrichment$test <- ifelse(gene_enrichment$Log2FC >= 0, "enriched", "depleted")
+  gene_enrichment$test <- ifelse(gene_enrichment$Log2FC >= 0, "#469BDBFE", "#E3464EC6")
 
   gene_enrichment <- filter(gene_enrichment, observed >= 2)
   gene_enrichment <- droplevels(gene_enrichment)
 
-  # highlightedGene <- filter(gene_enrichment, gene == "N")
-  # highlightedGene <- droplevels(highlightedGene)
-
   p <- ggplot(gene_enrichment)
-  p <- p + geom_bar(aes(gene, Log2FC, fill = as.character(test)), stat = "identity")
-  # p<-p + geom_bar(data=highlightedGene, aes(gene, Log2FC, fill="red"), colour="black", stat="identity")
+  p <- p + geom_bar(aes(gene, Log2FC, fill = test), stat = "identity")
   p <- p + guides(fill = FALSE)
+  p <- p + scale_fill_identity()
+
   p <- p + slideTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
       axis.text = element_text(size = 40), axis.title = element_text(size = 90)
     )
 
@@ -821,15 +838,16 @@ bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=
 dist2Motif <- function(feature_file="data/tss_locations.txt", sim=NA, print=0, send=0, feature="tss") {
   if (is.na(sim)) {
     bp_data <- getData()
+    # bp_data <- notchFilt(keep=0)
+
     bp_data <- filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" )
-    # bp_data<-filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
-    
     bp_data <- droplevels(bp_data)
     bp_data <- dplyr::rename(bp_data, pos = bp)
   }
 
   else {
     cat("Generating simulated bp_data\n")
+    # hit_count <- nrow(notchFilt(keep=0))
     hit_count <- nrow(getData())
     bp_data <- bpSim(N = hit_count, write = print)
     colnames(bp_data) <- c("chrom", "pos", "v3", "v4", "v5")
@@ -837,7 +855,7 @@ dist2Motif <- function(feature_file="data/tss_locations.txt", sim=NA, print=0, s
     bp_data <- droplevels(bp_data)
   }
 
-  
+
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   if (feature == "Promoter") {
@@ -912,12 +930,15 @@ dist2Motif <- function(feature_file="data/tss_locations.txt", sim=NA, print=0, s
 
     p <- p + scale_y_continuous("Density")
     p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
-    p<-p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
+    p<-p + facet_wrap(~chrom, scale = "free_x", nrow = 5)
     p <- p + geom_rug(aes(min_dist, colour = chrom))
     p <- p + slideTheme() +
       theme(
         strip.text = element_text(size = 20),
-        legend.position = "top"
+        legend.position = "top",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
       )
 
     # p <- p + facet_wrap(~chrom, ncol = 7, scales = "free_y")
@@ -1031,46 +1052,6 @@ distOverlay <- function(feature_file="data/tss_locations.txt", feature="tss", li
 }
 
 
-featureDensity <- function() {
-  # tss_positions<-read.delim("data/tss_locations.txt", header=F)
-  # tss_positions$type<-"TSS"
-  # colnames(tss_positions)<-c("chrom", "pos", "type")
-  g4_positions <- read.delim("data/g4_positions.txt", header = F)
-  g4_positions$type <- "G4"
-  colnames(g4_positions) <- c("chrom", "pos", "type")
-  invR_positions <- read.delim("data/invRepeats.txt", header = F)
-  invR_positions$type <- "SIR"
-  colnames(invR_positions) <- c("chrom", "pos", "type")
-  cru_positions <- read.delim("data/cruciform_positions.txt", header = F)
-  cru_positions$type <- "Cru"
-  colnames(cru_positions) <- c("chrom", "pos", "type")
-
-  locations <- rbind.data.frame(g4_positions, invR_positions, cru_positions)
-
-  locations$type <- as.factor(locations$type)
-  locations$pos <- as.numeric(locations$pos / 1000000)
-  locations <- filter(locations, chrom != "Y", chrom != 4)
-  locations <- droplevels(locations)
-
-  p <- ggplot(locations)
-  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4)
-  p <- p + geom_rug(aes(pos, colour = type), sides = "b", alpha = 0.05)
-  p <- p + facet_wrap(type~chrom, scale = "free_x", ncol = 5)
-  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 10))
-
-  nonBDNA <- paste("nonBform.pdf")
-  cat("Writing file", nonBDNA, "\n")
-  ggsave(paste("plots/", nonBDNA, sep = ""), width = 20, height = 10)
-
-  p
-}
-
-
-
-
-
-
-
 bpinGene <- function(gene_lengths="data/gene_lengths.txt", gene2plot="dnc") {
   gene_lengths <- read.delim(gene_lengths, header = T)
   region <- filter(gene_lengths, gene == gene2plot)
@@ -1133,7 +1114,7 @@ bpRainfall <- function() {
   distances <- filter(distances, chrom != 4, chrom != "Y")
 
   p <- ggplot(distances)
-  p <- p + geom_point(aes(bp / 1000000, logdist, colour = sample))
+  p <- p + geom_point(aes(bp / 1000000, logdist, colour = genotype))
   p <- p + cleanTheme() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
@@ -1248,7 +1229,39 @@ svTypes <- function(notch=0, object=NA) {
 }
 
 
+featureDensity <- function() {
+  # tss_positions<-read.delim("data/tss_locations.txt", header=F)
+  # tss_positions$type<-"TSS"
+  # colnames(tss_positions)<-c("chrom", "pos", "type")
+  g4_positions <- read.delim("data/g4_positions.txt", header = F)
+  g4_positions$type <- "G4"
+  colnames(g4_positions) <- c("chrom", "pos", "type")
+  invR_positions <- read.delim("data/invRepeats.txt", header = F)
+  invR_positions$type <- "SIR"
+  colnames(invR_positions) <- c("chrom", "pos", "type")
+  cru_positions <- read.delim("data/cruciform_positions.txt", header = F)
+  cru_positions$type <- "Cru"
+  colnames(cru_positions) <- c("chrom", "pos", "type")
 
+  locations <- rbind.data.frame(g4_positions, invR_positions, cru_positions)
+
+  locations$type <- as.factor(locations$type)
+  locations$pos <- as.numeric(locations$pos / 1000000)
+  locations <- filter(locations, chrom != "Y", chrom != 4)
+  locations <- droplevels(locations)
+
+  p <- ggplot(locations)
+  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4)
+  p <- p + geom_rug(aes(pos, colour = type), sides = "b", alpha = 0.05)
+  p <- p + facet_wrap(type~chrom, scale = "free_x", ncol = 5)
+  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 10))
+
+  nonBDNA <- paste("nonBform.pdf")
+  cat("Writing file", nonBDNA, "\n")
+  ggsave(paste("plots/", nonBDNA, sep = ""), width = 20, height = 10)
+
+  p
+}
 
 
 
@@ -1275,7 +1288,7 @@ svTypes <- function(notch=0, object=NA) {
 
 typeLen <- function(size_threshold = 1, notch=0) {
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
   else {
@@ -1319,7 +1332,7 @@ typeLen <- function(size_threshold = 1, notch=0) {
 
 genomeHits <- function(notch=0) {
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
   else {
@@ -1352,7 +1365,7 @@ genomeHits <- function(notch=0) {
 
 typeLenCount <- function(size_threshold = 1, notch=0) {
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
   else {
@@ -1404,7 +1417,7 @@ bpGenAll <- function(object=NA, notch=0) {
   }
 
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
 
@@ -1445,7 +1458,7 @@ bpChromDist <- function(object=NA, notch=0) {
   }
 
   if (notch) {
-    bp_data <- exNotch()
+    bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
 

@@ -5,7 +5,6 @@
 #'
 #' Plot counts of different svTypes
 #' @import tidyverse
-#' @import RColorBrewer
 #' @export
 
 svTypes <- function(notch=0, object=NA) {
@@ -15,7 +14,7 @@ svTypes <- function(notch=0, object=NA) {
 
   if (notch) {
     bp_data <- getData()
-    bp_data <- filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
+    bp_data <- dplyr::filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
 
     ext <- "_Notch.pdf"
   }
@@ -38,7 +37,7 @@ svTypes <- function(notch=0, object=NA) {
   }
 
   # Only take bp1 for each event
-  bp_data <- filter(bp_data, bp_no != "bp2")
+  bp_data <- dplyr::filter(bp_data, bp_no != "bp2")
   bp_data <- droplevels(bp_data)
 
   p <- ggplot(bp_data)
@@ -88,7 +87,7 @@ featureDensity <- function() {
 
   locations$type <- as.factor(locations$type)
   locations$pos <- as.numeric(locations$pos / 1000000)
-  locations <- filter(locations, chrom != "Y", chrom != 4)
+  locations <- dplyr::filter(locations, chrom != "Y", chrom != 4)
   locations <- droplevels(locations)
 
   p <- ggplot(locations)
@@ -108,7 +107,6 @@ featureDensity <- function() {
 #'
 #' Plot the length of different sv types
 #' @import tidyverse
-#' @import RColorBrewer
 #' @export
 
 typeLen <- function(size_threshold = 1, notch=0) {
@@ -124,7 +122,7 @@ typeLen <- function(size_threshold = 1, notch=0) {
   cols <- setCols(bp_data, "type")
 
   # Only take bp1 for each event
-  bp_data <- filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
+  bp_data <- dplyr::filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
 
   bp_data$length <- (bp_data$length / 1000)
 
@@ -158,7 +156,6 @@ typeLen <- function(size_threshold = 1, notch=0) {
 #'
 #' Plot the length of different sv types as counts
 #' @import tidyverse
-#' @import RColorBrewer
 #' @export
 
 typeLenCount <- function(size_threshold = 1, notch=0) {
@@ -174,7 +171,7 @@ typeLenCount <- function(size_threshold = 1, notch=0) {
   cols <- setCols(bp_data, "type")
 
   # Only take bp1 for each event
-  bp_data <- filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
+  bp_data <- dplyr::filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
 
   bp_data$length <- (bp_data$length / 1000)
 
@@ -250,7 +247,6 @@ genomeHits <- function(notch=0) {
 #'
 #' Plot distribution of brekpoints across the genome
 #' @import tidyverse
-#' @import RColorBrewer
 #' @export
 
 bpGenAll <- function(object=NA, notch=0) {
@@ -296,7 +292,6 @@ bpGenAll <- function(object=NA, notch=0) {
 #'
 #' Plot distribution of brekpoints across the genome by chromosome
 #' @import tidyverse
-#' @import RColorBrewer
 #' @export
 
 bpChromDist <- function(object=NA, notch=0) {
@@ -324,7 +319,7 @@ bpChromDist <- function(object=NA, notch=0) {
 
     cat("Chrom", c, "length:", len, sep = " ", "\n")
 
-    per_chrom <- filter(bp_data, chrom == c)
+    per_chrom <- dplyr::filter(bp_data, chrom == c)
 
     p <- ggplot(per_chrom)
     p <- p + geom_histogram(aes(bp / 1000000, fill = get(object)), binwidth = 0.1, alpha = 0.8)

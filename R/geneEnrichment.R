@@ -12,7 +12,7 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
   bp_data <- getData()
-  bp_data <- filter(bp_data, gene != "intergenic")
+  bp_data <- dplyr::filter(bp_data, gene != "intergenic")
 
   bp_count <- nrow(bp_data)
 
@@ -43,7 +43,7 @@ bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_l
   enriched <- do.call(rbind, enriched)
   genesFC <- as.data.frame(enriched)
   # Filter for genes with few observations
-  genesFC <- filter(genesFC, observed >= n)
+  genesFC <- dplyr::filter(genesFC, observed >= n)
   # Sort by FC value
   genesFC <- dplyr::arrange(genesFC, desc(as.integer(fc)))
   genesFC$expected <- round(as.numeric(genesFC$expected), digits = 2)
@@ -83,7 +83,7 @@ bpGeneEnrichmentPlot <- function(n=2) {
 
   gene_enrichment$test <- ifelse(gene_enrichment$Log2FC >= 0, "#469BDBFE", "#E3464EC6")
 
-  gene_enrichment <- filter(gene_enrichment, observed >= 2)
+  gene_enrichment <- dplyr::filter(gene_enrichment, observed >= 2)
   gene_enrichment <- droplevels(gene_enrichment)
 
   p <- ggplot(gene_enrichment)
@@ -132,7 +132,7 @@ bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=
   allGenes <- read.delim("data/all_genes_filtered.txt", header = F)
   colnames(allGenes) <- c("event", "sample", "genotype", "type", "chrom", "gene")
 
-  allGenes <- filter(allGenes, sample != "A373R1" & sample != "A373R7" & sample != "A512R17", gene != "-", genotype == "somatic_tumour")
+  allGenes <- dplyr::filter(allGenes, sample != "A373R1" & sample != "A373R7" & sample != "A512R17", gene != "-", genotype == "somatic_tumour")
 
 
   geneCount <- nrow(allGenes)
@@ -164,7 +164,7 @@ bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=
   enriched <- do.call(rbind, enriched)
   genesFC <- as.data.frame(enriched)
   # Filter for genes with few observations
-  genesFC <- filter(genesFC, observed >= n)
+  genesFC <- dplyr::filter(genesFC, observed >= n)
   # Sort by FC value
   genesFC <- dplyr::arrange(genesFC, desc(as.integer(observed)))
   genesFC$expected <- round(as.numeric(genesFC$expected), digits = 2)
@@ -173,4 +173,3 @@ bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=
 
   return(genesFC)
 }
-

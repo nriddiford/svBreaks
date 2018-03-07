@@ -125,11 +125,13 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt") {
 #' @keywords enrichment
 #' @import tidyverse
 #' @export
-#'
-bpAllGenes <- function(gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340) {
+
+bpAllGenes <- function(gene_lengths_in = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
+                       affected_genes = system.file("extdata", "all_genes_filtered.txt", package="svBreaks"),
+                       n=3, genome_length=118274340) {
   cat("Showing genes affected by a SV at least", n, "times", "\n")
-  gene_lengths <- read.delim(gene_lengths, header = T)
-  allGenes <- read.delim("data/all_genes_filtered.txt", header = F)
+  gene_lengths <- read.delim(gene_lengths_in, header = T)
+  allGenes <- read.delim(affected_genes, header = F)
   colnames(allGenes) <- c("event", "sample", "genotype", "type", "chrom", "gene")
 
   allGenes <- dplyr::filter(allGenes, sample != "A373R1" & sample != "A373R7" & sample != "A512R17", gene != "-", genotype == "somatic_tumour")

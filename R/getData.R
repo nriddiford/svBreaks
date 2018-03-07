@@ -40,7 +40,7 @@ getData <- function(infile = system.file("extdata", "all_bps_filtered.txt", pack
   # bp_data<-filter(bp_data, fpkm == 0)
 
   # filter on chroms
-  bp_data <- dplyr::filter(bp_data, chrom != "211000022280116")
+  # bp_data <- dplyr::filter(bp_data, chrom != "211000022280116")
 
   # filter out samples
   bp_data <- dplyr::filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" & sample != "A373R11")

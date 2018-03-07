@@ -9,25 +9,33 @@
 
 
 dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
-  if (is.na(sim)) {
-    bp_data <- getData()
-    # bp_data <- notchFilt(keep=0)
+  real_data <- getData()
+  # real_data <- notchFilt(keep=0)
+  real_data <- real_data %>%
+    dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
+    dplyr::rename(pos = bp) %>%
+    droplevels()
 
-    bp_data <- dplyr::filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" )
-    bp_data <- droplevels(bp_data)
-    bp_data <- dplyr::rename(bp_data, pos = bp)
+  if (is.na(sim)) {
+    bp_data <- real_data
   }
 
   else {
     cat("Generating simulated bp_data\n")
     # hit_count <- nrow(notchFilt(keep=0))
-    hit_count <- nrow(getData())
-    bp_data <- bpSim(N = hit_count, write = print)
-    colnames(bp_data) <- c("chrom", "pos", "v3", "v4", "v5")
-    bp_data <- dplyr::filter(bp_data, chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" )
-    bp_data <- droplevels(bp_data)
+    simByChrom <- list()
+    for (n in c(1:2)){
+      cat(n, "\n")
+    }
+    for (c in levels(real_data$chrom)){
+      hitcount <- nrow(real_data[real_data$chrom== c,])
+      cat(paste("Simulating", hitcount, "breakpoints on chromosome", c), "\n")
+      bp_data <- dtableShuffle(nSites = hit_count, byChrom = c)
+      simByChrom[[c]] <- bp_data
+    }
+    simData <- as.data.frame(do.call(rbind, simByChrom))
+    rownames(simData) <- NULL
   }
-
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
@@ -131,14 +139,13 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
   }
 }
 
-## @knitr dist2Motif
+# distOverlay
 #'
 #' Calculate the distance from each breakpoint to closest motif
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
 #' @import tidyverse
 #' @export
-#'
 
 distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
@@ -234,7 +241,6 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 }
 
 
-
 #' bpSim
 #'
 #' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
@@ -244,6 +250,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 #' @import rtracklayer
 #' @keywords sim
 #' @export
+
 bpSim <- function(intervals=system.file("extdata", "intervals.bed", package="svBreaks"), N=1000, write=F) {
   intFile <- import.bed(intervals)
   space <- sum(width(intFile))
@@ -259,4 +266,50 @@ bpSim <- function(intervals=system.file("extdata", "intervals.bed", package="svB
   }
   remove(new_b)
   return(data.frame(bedOut))
+}
+
+#' dtableShuffle
+#'
+#' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
+#' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
+#' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
+#' @import data.table
+#' @keywords sim
+#' @export
+
+dtableShuffle <- function(nSites = 1e3, byChrom=NA){
+  intervals=system.file("extdata", "intervals.bed", package="svBreaks")
+  bed <- fread(intervals)
+  colnames(bed) <- c("chrom", "start", "end", "NA")
+
+  bed <- bed %>%
+    select(chrom:end) %>%
+    mutate(size = (end-start)+1)  %>%
+    as.data.table()
+
+  if(is.na(byChrom)){
+    # Randomly sample bed file rows, proportional to the length of each range
+    simulatedBps <- bed[sample(.N, size=nSites, replace=TRUE, prob=bed$size)]
+
+    # Randomly sample uniformly within each chosen range
+    simulatedBps[, position := sample(start:end, size=1), by=1:dim(simulatedBps)[1]]
+  } else {
+    bed <- bed %>%
+      filter(chrom == byChrom) %>%
+      as.data.table()
+
+    # Randomly sample bed file rows, proportional to the length of each range
+    simulatedBps <- bed[sample(.N, size=nSites, replace=TRUE, prob=bed$size)]
+
+    # Randomly sample uniformly within each chosen range
+    simulatedBps[, position := sample(start:end, size=1), by=1:dim(simulatedBps)[1]]
+  }
+
+
+  simulatedBps <- simulatedBps %>%
+    mutate(pos = position) %>%
+    select(chrom, pos)  %>%
+    mutate(chrom = as.factor(chrom))
+
+  return(simulatedBps)
 }

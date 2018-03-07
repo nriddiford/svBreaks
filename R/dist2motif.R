@@ -192,6 +192,13 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
     expnd <- c(.0005, .0005)
     labs <- c("-1", "1")
   }
+  else if (lim == 5) {
+    cat("Setting limits to -+1kb\n")
+    lims <- c(-5000, 5000)
+    brks <- c(-5000, 5000)
+    expnd <- c(.0005, .0005)
+    labs <- c("-5", "5")
+  }
   else {
     cat("Setting limits to -+10kb\n")
     lims <- c(-10000, 10000)

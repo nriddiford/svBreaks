@@ -10,3 +10,4 @@ inst/extdata/*
 !inst/extdata/intervals.bed
 !inst/extdata/genomic_features.txt
 !inst/extdata/gene_lengths.txt
+.Rbuildignore

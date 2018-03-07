@@ -4,7 +4,7 @@
 \alias{dtableShuffle}
 \title{dtableShuffle}
 \usage{
-dtableShuffle(nSites = 1000, byChrom = NA)
+dtableShuffle(nSites = 1000, byChrom = NA, iterations = 2)
 }
 \arguments{
 \item{intervals}{File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]}

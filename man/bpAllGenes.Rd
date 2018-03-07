@@ -4,8 +4,8 @@
 \alias{bpAllGenes}
 \title{Calculate the enrichment of genes affected by SVs (as opposed to breakpoint hits)}
 \usage{
-bpAllGenes(gene_lengths = "data/gene_lengths.txt", n = 3,
-  genome_length = 118274340)
+bpAllGenes(gene_lengths = system.file("extdata", "gene_lengths.txt", package =
+  "svBreaks"), n = 3, genome_length = 118274340)
 }
 \description{
 Calculate the enrichment of genes affected by SVs (as opposed to breakpoint hits)

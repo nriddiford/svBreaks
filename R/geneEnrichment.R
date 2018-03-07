@@ -6,8 +6,8 @@
 #' @keywords enrichment
 #' @import tidyverse
 #' @export
-#'
-bpGeneEnrichment <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340, print=NA) {
+
+bpGeneEnrichment <- function(gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
   cat("Showing genes hit at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
@@ -126,7 +126,7 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt") {
 #' @import tidyverse
 #' @export
 #'
-bpAllGenes <- function(gene_lengths="data/gene_lengths.txt", n=3, genome_length=118274340) {
+bpAllGenes <- function(gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340) {
   cat("Showing genes affected by a SV at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths, header = T)
   allGenes <- read.delim("data/all_genes_filtered.txt", header = F)

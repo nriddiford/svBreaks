@@ -12,25 +12,40 @@ generateData <- function(sim=NA){
   # real_data <- notchFilt(keep=0)
   real_data <- real_data %>%
     dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
-    dplyr::rename(pos = bp) %>%
+    dplyr::mutate(pos = bp) %>%
+    dplyr::select(chrom, pos) %>%
     droplevels()
 
   if (!is.na(sim)) {
-    # for (i in (1:iterations)){
-    # cat("Running iteration", i, "\n")
-    simByChrom <- list()
 
-    for (c in levels(real_data$chrom)){
-      hitCount <- nrow(real_data[real_data$chrom== c,])
-      cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
-      bp_data <- dtableShuffle(nSites = hitCount, byChrom = c)
-      simByChrom[[c]] <- bp_data
-      # simByChrom[[]]$iteration <- i
+
+    byIteration <- list()
+
+    #run each iteration
+    for (i in 1:2){
+      cat("Running iteration", i, "\n")
+      simByChrom <- list()
+
+      for (c in levels(real_data$chrom)){
+        hitCount <- nrow(real_data[real_data$chrom== c,])
+        if (i == 1){
+          cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
+        }
+        bp_data <- dtableShuffle(nSites = hitCount, byChrom = c)
+        bp_data$iteration <- i
+        simByChrom[[c]] <- bp_data
+      }
+      result <- as.data.frame(do.call(rbind, simByChrom))
+      rownames(result) <- NULL
+      byIteration[[i]] <- result
     }
-    bp_data <- as.data.frame(do.call(rbind, simByChrom))
-    rownames(bp_data) <- NULL
-    return(bp_data)
+
+    #combine each iteration into one data frame
+    final <- bind_rows(byIteration)
+
+    return(final)
   } else{
+    real_data$iteration <- 1
     return(real_data)
   }
 }
@@ -43,6 +58,7 @@ generateData <- function(sim=NA){
 #' @export
 
 dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+  # chrom pos iteration
   bp_data <- generateData(sim=sim)
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
@@ -77,9 +93,9 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     index <- which.min(abs(tss_df$pos - p))
     closestTss <- tss_df$pos[index]
     chrom <- as.character(tss_df$chrom[index])
-    gene <- as.character(tss_df$gene[index])
+    # gene <- as.character(tss_df$gene[index])
     dist <- (p - closestTss)
-    list(p, closestTss, dist, chrom, gene)
+    list(p, closestTss, dist, chrom)
   }
 
   l <- list()
@@ -91,7 +107,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     dist2tss <- do.call(rbind, dist2tss)
     dist2tss <- as.data.frame(dist2tss)
 
-    colnames(dist2tss) <- c("bp", "closest_tss", "min_dist", "chrom", "closest_gene")
+    colnames(dist2tss) <- c("bp", "closest_tss", "min_dist", "chrom")
     dist2tss$min_dist <- as.numeric(dist2tss$min_dist)
     l[[c]] <- dist2tss
   }
@@ -118,6 +134,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     p <- p + scale_y_continuous("Density")
     p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
     p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
+    # p <- p + facet_grid(chrom ~ iteration, )
     p <- p + geom_rug(aes(min_dist, colour = chrom))
     p <- p + slideTheme() +
       theme(

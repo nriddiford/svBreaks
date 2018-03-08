@@ -1,14 +1,13 @@
 # Functions to calculate the distance
 # from each breakpoint to user-provided loci (e.g. TSS)
 
-#' dist2Motif
-#' Calculate the distance from each breakpoint to closest motif
-#' @keywords motif
+#' generateData
+#' Prepare data for dist2motif
+#' @keywords simulate
 #' @import tidyverse
 #' @export
 
-
-dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+generateData <- function(sim=NA){
   real_data <- getData()
   # real_data <- notchFilt(keep=0)
   real_data <- real_data %>%
@@ -16,124 +15,133 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     dplyr::rename(pos = bp) %>%
     droplevels()
 
-  if (is.na(sim)) {
-    bp_data <- real_data
+  if (!is.na(sim)) {
+    # for (i in (1:iterations)){
+    # cat("Running iteration", i, "\n")
+    simByChrom <- list()
+
+    for (c in levels(real_data$chrom)){
+      hitCount <- nrow(real_data[real_data$chrom== c,])
+      cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
+      bp_data <- dtableShuffle(nSites = hitCount, byChrom = c)
+      simByChrom[[c]] <- bp_data
+      # simByChrom[[]]$iteration <- i
+    }
+    bp_data <- as.data.frame(do.call(rbind, simByChrom))
+    rownames(bp_data) <- NULL
+    return(bp_data)
+  } else{
+    return(real_data)
+  }
+}
+
+
+#' dist2Motif
+#' Calculate the distance from each breakpoint to closest motif
+#' @keywords motif
+#' @import tidyverse
+#' @export
+
+dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+  bp_data <- generateData(sim=sim)
+
+  feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
+
+  if (feature == "Promoter") {
+    feature_locations <- getPromoter()
+    cat("Getting gene promoter locations...\n")
   } else {
+    feature_locations <- read.delim(feature_file, header = F)
+    cat("Reading in file:", feature_file, sep = " ", "\n")
+  }
 
-      # for (i in (1:iterations)){
-      # cat("Running iteration", i, "\n")
-      simByChrom <- list()
+  cat("Calculating distances to", feature, sep = " ", "\n")
 
-      for (c in levels(real_data$chrom)){
-        hitCount <- nrow(real_data[real_data$chrom== c,])
-        cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
-        bp_data <- dtableShuffle(nSites = hitCount, byChrom = c)
-        simByChrom[[c]] <- bp_data
-        # simByChrom[[]]$iteration <- i
-      }
+  # feature_locations <- read.delim(feature_file, header = F)
+  colnames(feature_locations) <- c("chrom", "pos")
 
-      bp_data <- as.data.frame(do.call(rbind, simByChrom))
-      rownames(bp_data) <- NULL
-    }
-  # }
-    feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
+  feature_locations$pos <- as.integer(feature_locations$pos)
 
-    if (feature == "Promoter") {
-      feature_locations <- getPromoter()
-      cat("Getting gene promoter locations...\n")
-    } else {
-      feature_locations <- read.delim(feature_file, header = F)
-      cat("Reading in file:", feature_file, sep = " ", "\n")
-    }
+  # Will throw error if SVs don't exist on a chrom...
 
-    cat("Calculating distances to", feature, sep = " ", "\n")
+  # Removes chroms with fewer than 10 observations
+  svCount <- table(bp_data$chrom)
+  bp_data <- subset(bp_data, chrom %in% names(svCount[svCount >= 10]))
+  bp_data <- droplevels(bp_data)
 
-    # feature_locations <- read.delim(feature_file, header = F)
-    colnames(feature_locations) <- c("chrom", "pos")
-
-    feature_locations$pos <- as.integer(feature_locations$pos)
-
-    # Will throw error if SVs don't exist on a chrom...
-
-    # Removes chroms with fewer than 10 observations
-    svCount <- table(bp_data$chrom)
-    bp_data <- subset(bp_data, chrom %in% names(svCount[svCount >= 10]))
-    bp_data <- droplevels(bp_data)
-
-    feature_locations <- subset(feature_locations, chrom %in% levels(bp_data$chrom))
-    feature_locations <- droplevels(feature_locations)
+  feature_locations <- subset(feature_locations, chrom %in% levels(bp_data$chrom))
+  feature_locations <- droplevels(feature_locations)
 
 
-    fun2 <- function(p) {
-      index <- which.min(abs(tss_df$pos - p))
-      closestTss <- tss_df$pos[index]
-      chrom <- as.character(tss_df$chrom[index])
-      gene <- as.character(tss_df$gene[index])
-      dist <- (p - closestTss)
-      list(p, closestTss, dist, chrom, gene)
-    }
+  fun2 <- function(p) {
+    index <- which.min(abs(tss_df$pos - p))
+    closestTss <- tss_df$pos[index]
+    chrom <- as.character(tss_df$chrom[index])
+    gene <- as.character(tss_df$gene[index])
+    dist <- (p - closestTss)
+    list(p, closestTss, dist, chrom, gene)
+  }
 
-    l <- list()
+  l <- list()
 
-    for (c in levels(bp_data$chrom)) {
-      df <- dplyr::filter(bp_data, chrom == c)
-      tss_df <- dplyr::filter(feature_locations, chrom == c)
-      dist2tss <- lapply(df$pos, fun2)
-      dist2tss <- do.call(rbind, dist2tss)
-      dist2tss <- as.data.frame(dist2tss)
-
-      colnames(dist2tss) <- c("bp", "closest_tss", "min_dist", "chrom", "closest_gene")
-      dist2tss$min_dist <- as.numeric(dist2tss$min_dist)
-      l[[c]] <- dist2tss
-    }
-
-    dist2tss <- do.call(rbind, l)
+  for (c in levels(bp_data$chrom)) {
+    df <- dplyr::filter(bp_data, chrom == c)
+    tss_df <- dplyr::filter(feature_locations, chrom == c)
+    dist2tss <- lapply(df$pos, fun2)
+    dist2tss <- do.call(rbind, dist2tss)
     dist2tss <- as.data.frame(dist2tss)
-    dist2tss$chrom <- as.character(dist2tss$chrom)
 
-    dist2tss <- arrange(dist2tss, (abs(min_dist)))
+    colnames(dist2tss) <- c("bp", "closest_tss", "min_dist", "chrom", "closest_gene")
+    dist2tss$min_dist <- as.numeric(dist2tss$min_dist)
+    l[[c]] <- dist2tss
+  }
 
-    if (send == 1) {
-      return(dist2tss)
-    } else {
-      p <- ggplot(dist2tss)
-      p <- p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
-      p <- p + scale_x_continuous(
-        paste("Distance to", feature, "(Kb)", sep = " "),
-        limits = c(-10000, 10000),
-        breaks = c(-10000, -1000, 1000, 10000),
-        expand = c(.0005, .0005),
-        labels = c("-10", "-1", "1", "10")
+  dist2tss <- do.call(rbind, l)
+  dist2tss <- as.data.frame(dist2tss)
+  dist2tss$chrom <- as.character(dist2tss$chrom)
+
+  dist2tss <- arrange(dist2tss, (abs(min_dist)))
+
+  if (send == 1) {
+    return(dist2tss)
+  } else {
+    p <- ggplot(dist2tss)
+    p <- p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
+    p <- p + scale_x_continuous(
+      paste("Distance to", feature, "(Kb)", sep = " "),
+      limits = c(-10000, 10000),
+      breaks = c(-10000, -1000, 1000, 10000),
+      expand = c(.0005, .0005),
+      labels = c("-10", "-1", "1", "10")
+    )
+
+    p <- p + scale_y_continuous("Density")
+    p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
+    p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
+    p <- p + geom_rug(aes(min_dist, colour = chrom))
+    p <- p + slideTheme() +
+      theme(
+        strip.text = element_text(size = 20),
+        legend.position = "top",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing = unit(4, "lines")
       )
 
-      p <- p + scale_y_continuous("Density")
-      p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
-      p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
-      p <- p + geom_rug(aes(min_dist, colour = chrom))
-      p <- p + slideTheme() +
-        theme(
-          strip.text = element_text(size = 20),
-          legend.position = "top",
-          axis.title.y = element_blank(),
-          axis.text.y = element_blank(),
-          axis.text.x = element_text(angle = 45, hjust = 1),
-          panel.spacing = unit(4, "lines")
-        )
+    # p <- p + facet_wrap(~chrom, ncol = 7, scales = "free_y")
 
-      # p <- p + facet_wrap(~chrom, ncol = 7, scales = "free_y")
-
-      if (is.na(sim)) {
-        distout <- paste("bp", feature, "dist.pdf", sep = "")
-      } else {
-        distout <- paste("bp", feature, "dist_sim.pdf", sep = "")
-      }
-
-      cat("Writing file", distout, "\n")
-      ggsave(paste("plots/", distout, sep = ""), width = 20, height = 10)
-
-      p
+    if (is.na(sim)) {
+      distout <- paste("bp", feature, "dist.pdf", sep = "")
+    } else {
+      distout <- paste("bp", feature, "dist_sim.pdf", sep = "")
     }
 
+    cat("Writing file", distout, "\n")
+    ggsave(paste("plots/", distout, sep = ""), width = 20, height = 10)
+
+    p
+  }
 }
 
 # distOverlay

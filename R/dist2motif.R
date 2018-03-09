@@ -5,6 +5,7 @@
 #' Prepare data for dist2motif
 #' @keywords simulate
 #' @import tidyverse
+#' @import RColorBrewer
 #' @export
 
 generateData <- function(sim=NA){
@@ -56,6 +57,7 @@ generateData <- function(sim=NA){
 #' Calculate the distance from each breakpoint to closest motif
 #' @keywords motif
 #' @import tidyverse
+#' @import RColorBrewer
 #' @export
 
 dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
@@ -174,6 +176,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
 #' @import tidyverse
+#' @import RColorBrewer
 #' @export
 
 distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA, n=10) {
@@ -291,33 +294,57 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 }
 
 
-#' bpSim
+
+#' simSig
 #'
-#' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
-#' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
-#' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
-#' @import GenomicRanges
-#' @import rtracklayer
+#' Calculate the median distance between breakpoints (per-chrom) and feature
+#' and perform test
+#' @param real_data Dataframe containing real data (as produced by generateData())
+#' @param real_data Dataframe containing real data (as produced by generateData())
+#' @import tidyverse
+#' @import RColorBrewer
 #' @keywords sim
 #' @export
 
-bpSim <- function(intervals=system.file("extdata", "intervals.bed", package="svBreaks"), N=1000, write=F) {
-  intFile <- import.bed(intervals)
-  space <- sum(width(intFile))
-  positions <- sample(c(1:space), N)
-  cat("Simulating", N, "breakpoints", sep = " ", "\n")
-  new_b <- GRanges(
-    seqnames = as.character(rep(seqnames(intFile), width(intFile))),
-    ranges = IRanges(start = unlist(mapply(seq, from = start(intFile), to = end(intFile))), width = 1)
-  )
-  bedOut <- new_b[positions]
-  if (write) {
-    export.bed(new_b[positions], "data/simulatedBPs.bed")
-  }
-  remove(new_b)
-  return(data.frame(bedOut))
-}
+r<- real_data
+s<- sim_data
 
+
+simSig <- function(r, s){
+  real <- r
+  simulated <- s
+
+  simulated <- simulated %>%
+    group_by(chrom, iteration) %>%
+    dplyr::mutate( count = n(),
+            median = median(min_dist),
+            mean = mean(min_dist),
+            sd = sd(min_dist),
+            Source = factor(Source)) %>%
+    ungroup()
+
+  real <- real %>%
+    group_by(chrom, iteration) %>%
+    dplyr::mutate( count = n(),
+                   median = median(min_dist),
+                   mean = mean(min_dist),
+                   sd = sd(min_dist),
+                   Source = factor(Source)) %>%
+    ungroup()
+
+  combined <- suppressWarnings(full_join(real, simulated))
+  print(head(combined, 20))
+
+  colours <- c("#E7B800", "#00AFBB")
+
+  p <- ggplot(combined)
+  p <- p + geom_boxplot(aes(chrom, min_dist, fill = Source), alpha = 0.6)
+  p <- p + scale_y_continuous("Distance", limits=c(-5000, 5000))
+  p <- p + facet_wrap(~iteration, ncol = 2)
+  p <- p + scale_fill_manual(values = colours)
+
+  p
+}
 #' dtableShuffle
 #'
 #' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)

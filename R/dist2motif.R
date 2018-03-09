@@ -176,25 +176,31 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 #' @import tidyverse
 #' @export
 
-distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA) {
+distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA, n=10) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   if (feature == "promoter") {
     real_data <- dist2Motif(send = 1, feature = feature)
-    sim_data <- dist2Motif(feature = feature, sim = 1, send = 1)
+    sim_data <- dist2Motif(feature = feature, sim = n, send = 1)
   }
   else {
     real_data <- dist2Motif(feature_file = feature_file, send = 1, feature = feature)
-    sim_data <- dist2Motif(feature_file = feature_file, feature = feature, sim = 1, send = 1)
+    sim_data <- dist2Motif(feature_file = feature_file, feature = feature, sim = n, send = 1)
   }
 
   real_data$Source <- "Real"
   sim_data$Source <- "Sim"
 
-  sim_data <- dplyr::filter(sim_data, chrom != "Y", chrom != 4)
-  sim_data <- droplevels(sim_data)
-  real_data <- dplyr::filter(real_data, chrom != "Y", chrom != 4)
-  real_data <- droplevels(real_data)
+
+  dummy_iterations <- list()
+  for (i in levels(sim_data$iteration)){
+    real_data$iteration <- as.factor(i)
+    dummy_iterations[[i]] <- real_data
+  }
+  real_data <- do.call(rbind, dummy_iterations)
+
+  real_data$iteration <- factor(real_data$iteration, levels = 1:n)
+  sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
   colours <- c("#E7B800", "#00AFBB")
 
@@ -261,6 +267,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
+  p <- p + facet_wrap(~iteration, ncol = 5)
 
   p <- p + slideTheme() +
     theme(
@@ -268,6 +275,13 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
       axis.text.y = element_blank(),
       legend.position = "top"
     )
+  if(n>5){
+    p <- p + theme(
+      strip.text = element_text(size = 10),
+      panel.spacing = unit(0.8, "lines"),
+      axis.text = element_text(size = 12)
+    )
+  }
 
   overlay <- paste("bp", feature, "dist_overlay.pdf", sep = "")
   cat("Writing file", overlay, "\n")

@@ -19,8 +19,8 @@ generateData <- function(sim=NA){
   if (!is.na(sim)) {
     byIteration <- list()
     #run each iteration
-    for (i in 1:10){
-      cat("Running iteration", i, "\n")
+    for (i in 1:sim){
+      cat("Running simulation", i, "\n")
       simByChrom <- list()
 
       for (c in levels(real_data$chrom)){
@@ -45,7 +45,8 @@ generateData <- function(sim=NA){
 
     return(final)
   } else{
-    real_data$iteration <- 1
+    cat("Using real data", "\n")
+    real_data$iteration <- as.factor(1)
     return(real_data)
   }
 }
@@ -127,6 +128,8 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
   if (send == 1) {
     return(dist2tss)
   } else {
+    # here we just wnat to make a plot for the simulated data so just show for iteration 1
+    dist2tss <- dplyr::filter(dist2tss, iteration==1)
     p <- ggplot(dist2tss)
     p <- p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
     p <- p + scale_x_continuous(

@@ -17,17 +17,15 @@ generateData <- function(sim=NA){
     droplevels()
 
   if (!is.na(sim)) {
-
-
     byIteration <- list()
-
     #run each iteration
-    for (i in 1:2){
+    for (i in 1:10){
       cat("Running iteration", i, "\n")
       simByChrom <- list()
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
+        # hitCount <- 5
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -42,6 +40,8 @@ generateData <- function(sim=NA){
 
     #combine each iteration into one data frame
     final <- bind_rows(byIteration)
+    final$iteration <- as.factor(final$iteration)
+
 
     return(final)
   } else{
@@ -58,7 +58,7 @@ generateData <- function(sim=NA){
 #' @export
 
 dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
-  # chrom pos iteration
+  # df : chrom pos iteration
   bp_data <- generateData(sim=sim)
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
@@ -73,13 +73,11 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 
   cat("Calculating distances to", feature, sep = " ", "\n")
 
-  # feature_locations <- read.delim(feature_file, header = F)
   colnames(feature_locations) <- c("chrom", "pos")
 
   feature_locations$pos <- as.integer(feature_locations$pos)
 
   # Will throw error if SVs don't exist on a chrom...
-
   # Removes chroms with fewer than 10 observations
   svCount <- table(bp_data$chrom)
   bp_data <- subset(bp_data, chrom %in% names(svCount[svCount >= 10]))
@@ -93,30 +91,38 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     index <- which.min(abs(tss_df$pos - p))
     closestTss <- tss_df$pos[index]
     chrom <- as.character(tss_df$chrom[index])
-    # gene <- as.character(tss_df$gene[index])
     dist <- (p - closestTss)
     list(p, closestTss, dist, chrom)
   }
 
-  l <- list()
+  byIteration <- list()
 
-  for (c in levels(bp_data$chrom)) {
-    df <- dplyr::filter(bp_data, chrom == c)
-    tss_df <- dplyr::filter(feature_locations, chrom == c)
-    dist2tss <- lapply(df$pos, fun2)
-    dist2tss <- do.call(rbind, dist2tss)
-    dist2tss <- as.data.frame(dist2tss)
+  for (i in levels(bp_data$iteration)){
+    byChrom <- list()
+    df1 <- dplyr::filter(bp_data, iteration == i)
 
-    colnames(dist2tss) <- c("bp", "closest_tss", "min_dist", "chrom")
-    dist2tss$min_dist <- as.numeric(dist2tss$min_dist)
-    l[[c]] <- dist2tss
+    for (c in levels(bp_data$chrom)) {
+      df <- dplyr::filter(df1, chrom == c)
+      tss_df <- dplyr::filter(feature_locations, chrom == c)
+
+      dist2tss <- lapply(df$pos, fun2)
+      dist2tss <- do.call(rbind, dist2tss)
+
+      new <- data.frame(matrix(unlist(dist2tss), nrow=nrow(df)))
+      new$iteration <- i
+      colnames(new) <- c("bp", "closest_tss", "min_dist", "chrom", "iteration")
+
+      byChrom[[c]] <- new
+    }
+    perIter <- do.call(rbind, byChrom)
+    byIteration[[i]] <- perIter
   }
-
-  dist2tss <- do.call(rbind, l)
-  dist2tss <- as.data.frame(dist2tss)
-  dist2tss$chrom <- as.character(dist2tss$chrom)
-
-  dist2tss <- arrange(dist2tss, (abs(min_dist)))
+  final <- do.call(rbind, byIteration)
+  rownames(final) <- NULL
+  final$iteration <- as.factor(final$iteration)
+  final$chrom <- as.character(final$chrom)
+  final$min_dist <- as.numeric(as.character(final$min_dist))
+  dist2tss <- final
 
   if (send == 1) {
     return(dist2tss)
@@ -145,8 +151,6 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
         axis.text.x = element_text(angle = 45, hjust = 1),
         panel.spacing = unit(4, "lines")
       )
-
-    # p <- p + facet_wrap(~chrom, ncol = 7, scales = "free_y")
 
     if (is.na(sim)) {
       distout <- paste("bp", feature, "dist.pdf", sep = "")

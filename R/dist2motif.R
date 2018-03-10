@@ -30,7 +30,7 @@ generateData <- function(sim=NA){
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
-        bp_data <- dtableShuffle(nSites = hitCount, byChrom = c)
+        bp_data <- bpSim(nSites = hitCount, byChrom = c)
         bp_data$iteration <- i
         simByChrom[[c]] <- bp_data
       }
@@ -205,6 +205,9 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   real_data$iteration <- factor(real_data$iteration, levels = 1:n)
   sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
+  # Perform significance testing
+  wilCoxAll <- simSig(r = real_data, s = sim_data)
+
   colours <- c("#E7B800", "#00AFBB")
 
   scale <- "(Kb)"
@@ -270,7 +273,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
-  p <- p + facet_wrap(~iteration, ncol = 5)
+  p <- p + facet_wrap(~iteration, ncol = 10)
 
   p <- p + slideTheme() +
     theme(
@@ -291,6 +294,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
 
   p
+  return(wilCoxAll)
 }
 
 
@@ -303,12 +307,9 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 #' @param real_data Dataframe containing real data (as produced by generateData())
 #' @import tidyverse
 #' @import RColorBrewer
+#' @import broom
 #' @keywords sim
 #' @export
-
-r<- real_data
-s<- sim_data
-
 
 simSig <- function(r, s){
   real <- r
@@ -321,6 +322,7 @@ simSig <- function(r, s){
             mean = mean(min_dist),
             sd = sd(min_dist),
             Source = factor(Source)) %>%
+    # filter(min_dist < quantile(simulated$min_dist, 0.95)) %>%
     ungroup()
 
   real <- real %>%
@@ -330,12 +332,31 @@ simSig <- function(r, s){
                    mean = mean(min_dist),
                    sd = sd(min_dist),
                    Source = factor(Source)) %>%
+    # filter(min_dist < quantile(simulated$min_dist, 0.95)) %>%
     ungroup()
 
   combined <- suppressWarnings(full_join(real, simulated))
-  print(head(combined, 20))
 
+  wilCox <- combined %>%
+    group_by(iteration, chrom) %>%
+    do(tidy(wilcox.test(min_dist ~ Source, data = .))) %>%
+    ungroup()
+
+  tTest <- combined %>%
+    group_by(iteration, chrom) %>%
+    do(tidy(t.test(min_dist ~ Source, data = .))) %>%
+    ungroup()
+
+  wilCoxAll <- combined %>%
+    group_by(iteration) %>%
+    do(tidy(wilcox.test(min_dist ~ Source, data = .))) %>%
+    arrange(p.value) %>%
+    ungroup()
+
+  head(wilCoxAll, 25)
   colours <- c("#E7B800", "#00AFBB")
+
+  # qqnorm(combined$min_dist);qqline(combined$min_dist, col = 2)
 
   p <- ggplot(combined)
   p <- p + geom_boxplot(aes(chrom, min_dist, fill = Source), alpha = 0.6)
@@ -343,9 +364,12 @@ simSig <- function(r, s){
   p <- p + facet_wrap(~iteration, ncol = 2)
   p <- p + scale_fill_manual(values = colours)
 
-  p
+  # p
+  return(wilCoxAll)
+
 }
-#' dtableShuffle
+
+#' bpSim
 #'
 #' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
 #' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
@@ -354,7 +378,7 @@ simSig <- function(r, s){
 #' @keywords sim
 #' @export
 
-dtableShuffle <- function(nSites = 1e3, byChrom = NA, iterations = 2 ){
+bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 2 ){
   intervals=system.file("extdata", "intervals.bed", package="svBreaks")
   bed <- fread(intervals)
   colnames(bed) <- c("chrom", "start", "end", "NA")

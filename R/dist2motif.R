@@ -412,14 +412,16 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     ksPval <- round(result1$p.value, 4)
     # result2 <- leveneTest(df$min_dist, df$Source, center='mean')
     # lPval <- round(result2$`Pr(>F)`[1], 4)
-    rKurtosis <- kurtosis(rl$min_dist)
-    sKurtosis <-kurtosis(sm$min_dist)
-    rSkew <- skewness(rl$min_dist)
-    sSkew <- skewness(sm$min_dist)
+    rKurtosis <- round(kurtosis(rl$min_dist), 2)
+    sKurtosis <- round(kurtosis(sm$min_dist), 2)
+    rSkew <- round(skewness(rl$min_dist), 2)
+    sSkew <- round(skewness(sm$min_dist), 2)
     fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
-    fStat <- fStat$statistic
+    fRatio <- round(fStat$statistic, 2)
+    fStat <- round(fStat$p.value, 4)
     vals <- data.frame(iteration = i,
                        KS = ksPval,
+                       Fstat_ratio = fRatio,
                        Fstat = fStat,
                        real_kurtosis = rKurtosis,
                        sim_kurtosis = sKurtosis,
@@ -433,7 +435,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   rownames(pVals_df) <- NULL
   pVals_df <- pVals_df %>%
     arrange(Fstat)
-  print(pVals_df)
+  print(pVals_df, row.names = FALSE)
 
 
   ## Boxplot per chrom

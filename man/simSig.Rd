@@ -4,11 +4,9 @@
 \alias{simSig}
 \title{simSig}
 \usage{
-simSig(r, s)
+simSig(r, s, test = NA, max_dist = 5000)
 }
 \arguments{
-\item{real_data}{Dataframe containing real data (as produced by generateData())}
-
 \item{real_data}{Dataframe containing real data (as produced by generateData())}
 }
 \description{

@@ -2,6 +2,7 @@
 #' bpRainfall
 #' Plot log10 distances between snvs as rainfall plot
 #' @import ggplot2
+#' @import dplyr
 #' @keywords rainfall
 #' @export
 

@@ -4,7 +4,8 @@
 #' generateData
 #' Prepare data for dist2motif
 #' @keywords simulate
-#' @import tidyverse
+#' @import ggplot2
+#' @import dplyr
 #' @import RColorBrewer
 #' @export
 
@@ -26,6 +27,7 @@ generateData <- function(sim=NA){
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
+        # hitCount <- (hitCount*10)
         # hitCount <- 5
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
@@ -40,9 +42,9 @@ generateData <- function(sim=NA){
     }
 
     #combine each iteration into one data frame
-    final <- bind_rows(byIteration)
+    # final <- dplyr::bind_rows(byIteration)
+    final <- as.data.frame(do.call(rbind, byIteration))
     final$iteration <- as.factor(final$iteration)
-
 
     return(final)
   } else{
@@ -56,7 +58,8 @@ generateData <- function(sim=NA){
 #' dist2Motif
 #' Calculate the distance from each breakpoint to closest motif
 #' @keywords motif
-#' @import tidyverse
+#' @import ggplot2
+#' @import dplyr
 #' @import RColorBrewer
 #' @export
 
@@ -130,7 +133,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
   if (send == 1) {
     return(dist2tss)
   } else {
-    # here we just wnat to make a plot for the simulated data so just show for iteration 1
+    # here we just want to make a plot for the simulated data so just show for iteration 1
     dist2tss <- dplyr::filter(dist2tss, iteration==1)
     p <- ggplot(dist2tss)
     p <- p + geom_density(aes(min_dist, fill = chrom), alpha = 0.3)
@@ -175,7 +178,9 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 #' Calculate the distance from each breakpoint to closest motif
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
-#' @import tidyverse
+#' @import dplyr
+#' @import ggplot2
+#' @import ggpubr
 #' @import RColorBrewer
 #' @export
 
@@ -194,19 +199,19 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   real_data$Source <- "Real"
   sim_data$Source <- "Sim"
 
-
   dummy_iterations <- list()
   for (i in levels(sim_data$iteration)){
     real_data$iteration <- as.factor(i)
     dummy_iterations[[i]] <- real_data
   }
   real_data <- do.call(rbind, dummy_iterations)
+  rownames(real_data) <- NULL
 
   real_data$iteration <- factor(real_data$iteration, levels = 1:n)
   sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
   # Perform significance testing
-  wilCoxAll <- simSig(r = real_data, s = sim_data)
+  combined <- simSig(r = real_data, s = sim_data, max_dist = (lim*1000))
 
   colours <- c("#E7B800", "#00AFBB")
 
@@ -237,7 +242,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
     labs <- c("-1", "1")
   }
   else if (lim == 5) {
-    cat("Setting limits to -+1kb\n")
+    cat("Setting limits to -+5kb\n")
     lims <- c(-5000, 5000)
     brks <- c(-5000, 5000)
     expnd <- c(.0005, .0005)
@@ -251,9 +256,32 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
     labs <- c("-10", "-1", "1", "10")
   }
 
-  p <- ggplot()
-  p <- p + geom_density(data = real_data, aes(min_dist, fill = Source), alpha = 0.4)
-  p <- p + geom_density(data = sim_data, aes(min_dist, fill = Source), alpha = 0.4)
+  # pp <- ggboxplot(combined, x = "Source", y = "min_dist",
+  #                color = "Source", palette = "jco",
+  #                add = "jitter",
+  #                facet.by = "iteration")
+  # # Use only p.format as label. Remove method name.
+  # pp + stat_compare_means(label = "p.format")
+
+  # combined <- combined %>%
+  #   filter(abs(min_dist) <=5000 )
+
+
+  # pp <- ggdensity(combined, x = "min_dist",
+  #                 color = "Source",
+  #                 fill = "Source",
+  #                 add = "median",
+  #                 facet.by = "iteration",
+  #                 rug = TRUE,
+  #                 palette = c("#00AFBB", "#E7B800"))
+  # pp
+  #
+
+  p <- ggplot(combined)
+  # p <- p + geom_density(data = real_data, aes(min_dist, fill = Source), alpha = 0.4)
+  # p <- p + geom_density(data = sim_data, aes(min_dist, fill = Source), alpha = 0.4)
+  p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
+
   if (is.na(all)) {
     p <- p + facet_wrap(~chrom, ncol = 2)
   }
@@ -268,12 +296,13 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   p <- p + scale_y_continuous("Density")
   p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
 
-  p <- p + geom_rug(data = real_data, aes(min_dist, colour = Source), sides = "b")
-  p <- p + geom_rug(data = sim_data, aes(min_dist, colour = Source), sides = "t")
+  p <- p + geom_rug(data = combined[combined$Source=='Real',], aes(min_dist, colour = Source), sides = "b")
+  p <- p + geom_rug(data = combined[combined$Source=='Sim',], aes(min_dist, colour = Source), sides = "t")
 
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
-  p <- p + facet_wrap(~iteration, ncol = 10)
+
+  p <- p + facet_wrap(~iteration, ncol = 5)
 
   p <- p + slideTheme() +
     theme(
@@ -281,20 +310,21 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
       axis.text.y = element_blank(),
       legend.position = "top"
     )
-  if(n>5){
+
+  if(n>=20){
     p <- p + theme(
       strip.text = element_text(size = 10),
       panel.spacing = unit(0.8, "lines"),
       axis.text = element_text(size = 12)
     )
+    p <- p + facet_wrap(~iteration, ncol = 5)
   }
 
-  overlay <- paste("bp", feature, "dist_overlay.pdf", sep = "")
+  overlay <- paste("bp", feature, "_dist_overlay_", lim, "kb.png", sep = "")
   cat("Writing file", overlay, "\n")
   ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
 
   p
-  return(wilCoxAll)
 }
 
 
@@ -304,56 +334,110 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
 #' Calculate the median distance between breakpoints (per-chrom) and feature
 #' and perform test
 #' @param real_data Dataframe containing real data (as produced by generateData())
-#' @param real_data Dataframe containing real data (as produced by generateData())
-#' @import tidyverse
+#' @import dplyr
+#' @import ggplot2
 #' @import RColorBrewer
 #' @import broom
+#' @import car
+#' @import PerformanceAnalytics
 #' @keywords sim
 #' @export
 
-simSig <- function(r, s){
-  real <- r
-  simulated <- s
+simSig <- function(r, s, test=NA, max_dist=5000){
 
-  simulated <- simulated %>%
+  if(!(is.na(test))){
+    ####
+    # dummy data
+    # set.seed(42)
+    dummyReal <- data.frame(Source=rep('Real'), min_dist=sample(-1000:1000, 1000, replace=TRUE), iteration=rep(1:10))
+    dummySim <- data.frame(Source=rep('Sim'), min_dist=sample(-2000:2000, 1000, replace=TRUE), iteration=rep(1:10))
+    dummyCombined <- suppressWarnings(dplyr::full_join(dummyReal, dummySim))
+
+    dummyCombined$Source <- as.factor(dummyCombined$Source)
+    dummyCombined$iteration <- as.factor(dummyCombined$iteration)
+
+    dummyCoc <- dummyCombined %>%
+      group_by(iteration) %>%
+      do(tidy(wilcox.test(min_dist ~ Source, exact=FALSE, data = . ))) %>%
+
+      arrange(p.value) %>%
+      ungroup()
+
+    dummyCombined %>%
+      group_by(iteration) %>%
+      do(tidy(leveneTest(dummyCombined$min_dist, dummyCombined$Source, center = 'mean', data = .))) %>%
+
+      arrange(p.value) %>%
+      ungroup()
+
+
+    p <- ggplot(dummyCombined)
+    p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
+    p
+
+    return(dummyCombined)
+  }
+  #####
+
+  simulated <- s %>%
     group_by(chrom, iteration) %>%
     dplyr::mutate( count = n(),
             median = median(min_dist),
             mean = mean(min_dist),
             sd = sd(min_dist),
             Source = factor(Source)) %>%
-    # filter(min_dist < quantile(simulated$min_dist, 0.95)) %>%
+    filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
-  real <- real %>%
-    group_by(chrom, iteration) %>%
+  real <- r %>%
+    dplyr::group_by(chrom, iteration) %>%
     dplyr::mutate( count = n(),
                    median = median(min_dist),
                    mean = mean(min_dist),
                    sd = sd(min_dist),
                    Source = factor(Source)) %>%
-    # filter(min_dist < quantile(simulated$min_dist, 0.95)) %>%
+    filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
-  combined <- suppressWarnings(full_join(real, simulated))
+  combined <- suppressWarnings(dplyr::full_join(real, simulated))
+  combined$Source <- as.factor(combined$Source)
 
-  wilCox <- combined %>%
-    group_by(iteration, chrom) %>%
-    do(tidy(wilcox.test(min_dist ~ Source, data = .))) %>%
-    ungroup()
+  combined$iteration <- as.factor(combined$iteration)
+  pVals = list()
+  for(i in levels(combined$iteration)){
+    df <- filter(combined, iteration==i)
+    rl <- filter(df, Source == "Real")
+    sm <- filter(df, Source == "Sim")
+    result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
+    ksPval <- round(result1$p.value, 4)
+    # result2 <- leveneTest(df$min_dist, df$Source, center='mean')
+    # lPval <- round(result2$`Pr(>F)`[1], 4)
+    rKurtosis <- kurtosis(rl$min_dist)
+    sKurtosis <-kurtosis(sm$min_dist)
+    rSkew <- skewness(rl$min_dist)
+    sSkew <- skewness(sm$min_dist)
+    fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
+    fStat <- fStat$statistic
+    vals <- data.frame(iteration = i,
+                       KS = ksPval,
+                       Fstat = fStat,
+                       real_kurtosis = rKurtosis,
+                       sim_kurtosis = sKurtosis,
+                       real_skew = rSkew,
+                       sim_sweq = sSkew)
+    pVals[[i]] <- vals
 
-  tTest <- combined %>%
-    group_by(iteration, chrom) %>%
-    do(tidy(t.test(min_dist ~ Source, data = .))) %>%
-    ungroup()
+  }
 
-  wilCoxAll <- combined %>%
-    group_by(iteration) %>%
-    do(tidy(wilcox.test(min_dist ~ Source, data = .))) %>%
-    arrange(p.value) %>%
-    ungroup()
+  pVals_df <- do.call(rbind, pVals)
+  rownames(pVals_df) <- NULL
+  pVals_df <- pVals_df %>%
+    arrange(Fstat)
+  print(pVals_df)
 
-  head(wilCoxAll, 25)
+
+  ## Boxplot per chrom
+
   colours <- c("#E7B800", "#00AFBB")
 
   # qqnorm(combined$min_dist);qqline(combined$min_dist, col = 2)
@@ -364,9 +448,8 @@ simSig <- function(r, s){
   p <- p + facet_wrap(~iteration, ncol = 2)
   p <- p + scale_fill_manual(values = colours)
 
-  # p
-  return(wilCoxAll)
-
+  #p
+  return(combined)
 }
 
 #' bpSim
@@ -374,19 +457,21 @@ simSig <- function(r, s){
 #' Generate simulated SV breakpoints acroos genomic regions (e.g. mappable regions)
 #' @param intervals File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]
 #' @param N Number of random breakpoints to generate [Default nrow(bp_data)]
-#' @import data.table
+#' @import dplyr
+#' @importFrom data.table fread as.data.table
 #' @keywords sim
 #' @export
 
-bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 2 ){
+bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 10 ){
   intervals=system.file("extdata", "intervals.bed", package="svBreaks")
-  bed <- fread(intervals)
+  bed <- data.table::fread(intervals)
   colnames(bed) <- c("chrom", "start", "end", "NA")
 
   bed <- bed %>%
-    select(chrom:end) %>%
-    mutate(size = (end-start)+1)  %>%
-    as.data.table()
+    dplyr::select(chrom:end) %>%
+    dplyr::mutate(size = (end-start)+1)  %>%
+    as.data.table() %>%
+    droplevels()
 
   if(is.na(byChrom)){
     # Randomly sample bed file rows, proportional to the length of each range
@@ -396,7 +481,7 @@ bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 2 ){
     simulatedBps[, position := sample(start:end, size=1), by=1:dim(simulatedBps)[1]]
   } else {
     bed <- bed %>%
-      filter(chrom == byChrom) %>%
+      dplyr::filter(chrom == byChrom) %>%
       as.data.table()
 
     # Randomly sample bed file rows, proportional to the length of each range
@@ -406,11 +491,10 @@ bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 2 ){
     simulatedBps[, position := sample(start:end, size=1), by=1:dim(simulatedBps)[1]]
   }
 
-
   simulatedBps <- simulatedBps %>%
-    mutate(pos = position) %>%
-    select(chrom, pos)  %>%
-    mutate(chrom = as.factor(chrom))
+    dplyr::mutate(pos = position) %>%
+    dplyr::select(chrom, pos)  %>%
+    dplyr::mutate(chrom = as.factor(chrom))
 
   return(simulatedBps)
 }

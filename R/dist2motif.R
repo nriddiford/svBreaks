@@ -28,7 +28,6 @@ generateData <- function(sim=NA){
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
         # hitCount <- (hitCount*10)
-        # hitCount <- 5
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -187,6 +186,8 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA, n=10) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
+  scaleFactor <- lim*1000
+
   if (feature == "promoter") {
     real_data <- dist2Motif(send = 1, feature = feature)
     sim_data <- dist2Motif(feature = feature, sim = n, send = 1)
@@ -211,61 +212,73 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
   # Perform significance testing
-  combined <- simSig(r = real_data, s = sim_data, max_dist = (lim*1000))
+  combined <- simSig(r = real_data, s = sim_data, max_dist = scaleFactor)
 
   colours <- c("#E7B800", "#00AFBB")
 
+  cat("Setting limits to -+", lim, "Kb\n", sep='')
+
   scale <- "(Kb)"
-  if (lim == 0.1) {
-    cat("Setting limits to -+100bp\n")
-    lims <- c(-100, 100)
-    brks <- c(-100, -10, 10, 100)
-    expnd <- c(.0005, .0005)
-    labs <- c("-100", "-10", "10", "100")
-    scale <- "(bp)"
-  }
 
-  else if (lim == 0.5) {
-    cat("Setting limits to -+0.5kb\n")
-    lims <- c(-500, 500)
-    brks <- c(-500, -100, 100, 500)
-    expnd <- c(.0005, .0005)
-    labs <- c("-500", "-100", "100", "500")
-    scale <- "(bp)"
-  }
+  lims <- c(as.numeric(paste("-", scaleFactor, sep = '')), scaleFactor)
+  brks <- c(as.numeric(paste("-", scaleFactor, sep = '')),
+            as.numeric(paste("-", scaleFactor/10, sep = '')),
+            scaleFactor/10,
+            scaleFactor)
+  labs <- as.character(brks/1000)
+  expnd <- c(.0005, .0005)
 
-  else if (lim == 1) {
-    cat("Setting limits to -+1kb\n")
-    lims <- c(-1000, 1000)
-    brks <- c(-1000, 1000)
-    expnd <- c(.0005, .0005)
-    labs <- c("-1", "1")
-  }
-  else if (lim == 5) {
-    cat("Setting limits to -+5kb\n")
-    lims <- c(-5000, 5000)
-    brks <- c(-5000, 5000)
-    expnd <- c(.0005, .0005)
-    labs <- c("-5", "5")
-  }
-  else {
-    cat("Setting limits to -+10kb\n")
-    lims <- c(-10000, 10000)
-    brks <- c(-10000, -1000, 1000, 10000)
-    expnd <- c(.0005, .0005)
-    labs <- c("-10", "-1", "1", "10")
-  }
+
+
+
+  # if (lim == 0.1) {
+  #   cat("Setting limits to -+100bp\n")
+  #   lims <- c(-100, 100)
+  #   brks <- c(-100, -10, 10, 100)
+  #   expnd <- c(.0005, .0005)
+  #   labs <- c("-100", "-10", "10", "100")
+  #   scale <- "(bp)"
+  # }
+  #
+  # else if (lim == 0.5) {
+  #   cat("Setting limits to -+0.5kb\n")
+  #   lims <- c(-500, 500)
+  #   brks <- c(-500, -100, 100, 500)
+  #   expnd <- c(.0005, .0005)
+  #   labs <- c("-500", "-100", "100", "500")
+  #   scale <- "(bp)"
+  # }
+  #
+  # else if (lim == 1) {
+  #   cat("Setting limits to -+1kb\n")
+  #   lims <- c(-1000, 1000)
+  #   brks <- c(-1000, 1000)
+  #   expnd <- c(.0005, .0005)
+  #   labs <- c("-1", "1")
+  # }
+  # else if (lim == 5) {
+  #   cat("Setting limits to -+5kb\n")
+  #   lims <- c(-5000, 5000)
+  #   brks <- c(-5000, 5000)
+  #   expnd <- c(.0005, .0005)
+  #   labs <- c("-5", "5")
+  # }
+  # else {
+  #   cat("Setting limits to -+10kb\n")
+  #   lims <- c(-10000, 10000)
+  #   brks <- c(-10000, -1000, 1000, 10000)
+  #   expnd <- c(.0005, .0005)
+  #   labs <- c("-10", "-1", "1", "10")
+  # }
 
   # pp <- ggboxplot(combined, x = "Source", y = "min_dist",
-  #                color = "Source", palette = "jco",
-  #                add = "jitter",
-  #                facet.by = "iteration")
-  # # Use only p.format as label. Remove method name.
-  # pp + stat_compare_means(label = "p.format")
-
-  # combined <- combined %>%
-  #   filter(abs(min_dist) <=5000 )
-
+  #                 color = "Source", palette = "jco",
+  #                 add = "jitter",
+  #                 facet.by = c("iteration", "chrom"))
+  #  # Use only p.format as label. Remove method name.
+  # pp + stat_compare_means(label = "p.format",
+  #                         method = "t.test")
+  # pp
 
   # pp <- ggdensity(combined, x = "min_dist",
   #                 color = "Source",
@@ -302,20 +315,21 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
 
-  p <- p + facet_wrap(~iteration, ncol = 5)
+  p <- p + facet_wrap(~iteration)
 
   p <- p + slideTheme() +
     theme(
       strip.text = element_text(size = 20),
       axis.text.y = element_blank(),
+      axis.text.x = element_text(size = 12),
       legend.position = "top"
     )
 
   if(n>=20){
     p <- p + theme(
       strip.text = element_text(size = 10),
-      panel.spacing = unit(0.8, "lines"),
-      axis.text = element_text(size = 12)
+      panel.spacing = unit(0.8, "lines")
+      # axis.text = element_text(size = 12)
     )
     p <- p + facet_wrap(~iteration, ncol = 5)
   }
@@ -325,6 +339,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
 
   p
+  # pp
 }
 
 
@@ -410,8 +425,8 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     sm <- filter(df, Source == "Sim")
     result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
     ksPval <- round(result1$p.value, 4)
-    # result2 <- leveneTest(df$min_dist, df$Source, center='mean')
-    # lPval <- round(result2$`Pr(>F)`[1], 4)
+    result2 <- leveneTest(df$min_dist, df$Source, center='mean')
+    lPval <- round(result2$`Pr(>F)`[1], 4)
     rKurtosis <- round(kurtosis(rl$min_dist), 2)
     sKurtosis <- round(kurtosis(sm$min_dist), 2)
     rSkew <- round(skewness(rl$min_dist), 2)
@@ -419,14 +434,18 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
     fRatio <- round(fStat$statistic, 2)
     fStat <- round(fStat$p.value, 4)
+    sig <- ifelse(fStat <= 0.01, "**",
+                  ifelse(fStat <= 0.05, "*", ""))
     vals <- data.frame(iteration = i,
                        KS = ksPval,
+                       Levenes = lPval,
                        Fstat_ratio = fRatio,
                        Fstat = fStat,
                        real_kurtosis = rKurtosis,
                        sim_kurtosis = sKurtosis,
                        real_skew = rSkew,
-                       sim_sweq = sSkew)
+                       sim_sweq = sSkew,
+                       sig = sig)
     pVals[[i]] <- vals
 
   }
@@ -434,7 +453,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   pVals_df <- do.call(rbind, pVals)
   rownames(pVals_df) <- NULL
   pVals_df <- pVals_df %>%
-    arrange(Fstat)
+    arrange(Fstat, KS, Levenes)
   print(pVals_df, row.names = FALSE)
 
 

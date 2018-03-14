@@ -27,7 +27,7 @@ generateData <- function(sim=NA){
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
-        # hitCount <- (hitCount*10)
+        hitCount <- (hitCount*10)
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -434,8 +434,11 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
     fRatio <- round(fStat$statistic, 2)
     fStat <- round(fStat$p.value, 4)
-    sig <- ifelse(fStat <= 0.01, "**",
-                  ifelse(fStat <= 0.05, "*", ""))
+
+    sig <- ifelse(fStat <= 0.001, "***",
+                      ifelse(stat$p.value <= 0.01, "**",
+                             ifelse(fStat <= 0.05, "*", "")))
+
     vals <- data.frame(iteration = i,
                        KS = ksPval,
                        Levenes = lPval,

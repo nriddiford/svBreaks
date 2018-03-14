@@ -66,39 +66,61 @@ svTypes <- function(notch=0, object=NA) {
 #' featureDensity
 #'
 #' Plot density of several feature tyopes across the genome
-#' @import tidyverse
+#' @import dplyr
+#' @import ggplot2
 #' @export
 
-featureDensity <- function() {
-  # tss_positions<-read.delim("data/tss_locations.txt", header=F)
-  # tss_positions$type<-"TSS"
-  # colnames(tss_positions)<-c("chrom", "pos", "type")
-  g4_positions <- read.delim("data/g4_positions.txt", header = F)
-  g4_positions$type <- "G4"
-  colnames(g4_positions) <- c("chrom", "pos", "type")
-  invR_positions <- read.delim("data/invRepeats.txt", header = F)
-  invR_positions$type <- "SIR"
-  colnames(invR_positions) <- c("chrom", "pos", "type")
-  cru_positions <- read.delim("data/cruciform_positions.txt", header = F)
-  cru_positions$type <- "Cru"
-  colnames(cru_positions) <- c("chrom", "pos", "type")
+featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.txt", package="svBreaks"), feature1 = 'G4',
+                           feature_file2 = NA, feature2 = NA,
+                           feature_file3 = NA, feature3 = NA) {
 
-  locations <- rbind.data.frame(g4_positions, invR_positions, cru_positions)
+  n = 1
 
-  locations$type <- as.factor(locations$type)
-  locations$pos <- as.numeric(locations$pos / 1000000)
-  locations <- dplyr::filter(locations, chrom != "Y", chrom != 4)
-  locations <- droplevels(locations)
+  file_list = list()
+
+  f1 <- read.delim(feature_file1, header = F)
+  f1$type <- feature1
+  colnames(f1) <- c("chrom", "pos", "type")
+  file_list[[n]] <- f1
+
+  if (!is.na(feature_file2)){
+    n = n + 1
+    f2 <- read.delim(feature_file2, header = F)
+    f2$type <- feature2
+    colnames(f2) <- c("chrom", "pos", "type")
+    file_list[[n]]  <- f2
+  }
+  if (!is.na(feature_file3)){
+    n = n + 1
+    f3 <- read.delim(feature_file3, header = F)
+    f3$type <- feature3
+    colnames(f3) <- c("chrom", "pos", "type")
+    file_list[[n]]  <- f3
+  }
+
+  files <- do.call(rbind, file_list)
+  rownames(files) <- NULL
+
+  chroms = c("2L", "2R", "3L", "3R", "X")
+  locations <- files %>%
+    mutate(type = as.factor(type)) %>%
+    mutate(pos = as.numeric(pos/1000000)) %>%
+    filter(chrom %in% chroms) %>%
+    arrange(chrom, pos) %>%
+    droplevels()
+
 
   p <- ggplot(locations)
   p <- p + geom_density(aes(pos, fill = type), alpha = 0.4)
-  p <- p + geom_rug(aes(pos, colour = type), sides = "b", alpha = 0.05)
-  p <- p + facet_wrap(type~chrom, scale = "free_x", ncol = 5)
-  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 10))
+  p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
+  p <- p + facet_wrap(~chrom, scale = "free_x", nrow=length(levels(locations$chrom)))
+  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 1))
+  p <- p + slideTheme() +
+    theme(axis.text.y = element_blank())
 
-  nonBDNA <- paste("nonBform.pdf")
-  cat("Writing file", nonBDNA, "\n")
-  ggsave(paste("plots/", nonBDNA, sep = ""), width = 20, height = 10)
+  featurePlot <- paste("feature_dist.png")
+  cat("Writing file", featurePlot, "\n")
+  ggsave(paste("plots/", featurePlot, sep = ""), width = 20, height = 10)
 
   p
 }

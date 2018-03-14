@@ -4,7 +4,9 @@
 \alias{featureDensity}
 \title{featureDensity}
 \usage{
-featureDensity()
+featureDensity(feature_file1 = system.file("extdata", "g4_positions.txt",
+  package = "svBreaks"), feature1 = "G4", feature_file2 = NA,
+  feature2 = NA, feature_file3 = NA, feature3 = NA)
 }
 \description{
 Plot density of several feature tyopes across the genome

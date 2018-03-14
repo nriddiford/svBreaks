@@ -42,10 +42,11 @@ bpFeatureEnrichment <- function(features=system.file("extdata", "genomic_feature
         stat <- binom.test(x = classCount[f], n = mutCount, p = featureFraction, alternative = "less")
         test <- "depletion"
       }
-      sig_val <- "F"
-      if (stat$p.value <= 0.05) {
-        sig_val <- "T"
-      }
+
+      sig_val <- ifelse(stat$p.value <= 0.001, "***",
+                        ifelse(stat$p.value <= 0.01, "**",
+                               ifelse(stat$p.value <= 0.05, "*", "")))
+
       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
       Log2FC <- log2(fc)
       # Log2FC<-round(Log2FC, 1)

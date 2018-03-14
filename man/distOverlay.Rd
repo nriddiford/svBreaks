@@ -6,7 +6,7 @@
 Overlay the same number of random simulated breakpoints}
 \usage{
 distOverlay(feature_file = system.file("extdata", "tss_locations.txt", package
-  = "svBreaks"), feature = "tss", lim = 10, all = NA, n = 10)
+  = "svBreaks"), feature = "tss", lim = 10, byChrom = NA, n = 10)
 }
 \description{
 Calculate the distance from each breakpoint to closest motif

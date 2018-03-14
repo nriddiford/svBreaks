@@ -183,7 +183,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 #' @import RColorBrewer
 #' @export
 
-distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, all=NA, n=10) {
+distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
@@ -229,48 +229,6 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   expnd <- c(.0005, .0005)
 
 
-
-
-  # if (lim == 0.1) {
-  #   cat("Setting limits to -+100bp\n")
-  #   lims <- c(-100, 100)
-  #   brks <- c(-100, -10, 10, 100)
-  #   expnd <- c(.0005, .0005)
-  #   labs <- c("-100", "-10", "10", "100")
-  #   scale <- "(bp)"
-  # }
-  #
-  # else if (lim == 0.5) {
-  #   cat("Setting limits to -+0.5kb\n")
-  #   lims <- c(-500, 500)
-  #   brks <- c(-500, -100, 100, 500)
-  #   expnd <- c(.0005, .0005)
-  #   labs <- c("-500", "-100", "100", "500")
-  #   scale <- "(bp)"
-  # }
-  #
-  # else if (lim == 1) {
-  #   cat("Setting limits to -+1kb\n")
-  #   lims <- c(-1000, 1000)
-  #   brks <- c(-1000, 1000)
-  #   expnd <- c(.0005, .0005)
-  #   labs <- c("-1", "1")
-  # }
-  # else if (lim == 5) {
-  #   cat("Setting limits to -+5kb\n")
-  #   lims <- c(-5000, 5000)
-  #   brks <- c(-5000, 5000)
-  #   expnd <- c(.0005, .0005)
-  #   labs <- c("-5", "5")
-  # }
-  # else {
-  #   cat("Setting limits to -+10kb\n")
-  #   lims <- c(-10000, 10000)
-  #   brks <- c(-10000, -1000, 1000, 10000)
-  #   expnd <- c(.0005, .0005)
-  #   labs <- c("-10", "-1", "1", "10")
-  # }
-
   # pp <- ggboxplot(combined, x = "Source", y = "min_dist",
   #                 color = "Source", palette = "jco",
   #                 add = "jitter",
@@ -291,13 +249,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   #
 
   p <- ggplot(combined)
-  # p <- p + geom_density(data = real_data, aes(min_dist, fill = Source), alpha = 0.4)
-  # p <- p + geom_density(data = sim_data, aes(min_dist, fill = Source), alpha = 0.4)
   p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
-
-  if (is.na(all)) {
-    p <- p + facet_wrap(~chrom, ncol = 2)
-  }
 
   p <- p + scale_x_continuous(
     paste("Distance to", feature, scale, sep = " "),
@@ -315,7 +267,11 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
 
-  p <- p + facet_wrap(~iteration)
+  if (!is.na(byChrom)) {
+    p <- p + facet_wrap(iteration~chrom, ncol = length(levels(as.factor(combined$chrom))))
+  } else {
+    p <- p + facet_wrap(~iteration)
+  }
 
   p <- p + slideTheme() +
     theme(
@@ -331,7 +287,7 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
       panel.spacing = unit(0.8, "lines")
       # axis.text = element_text(size = 12)
     )
-    p <- p + facet_wrap(~iteration, ncol = 5)
+    # p <- p + facet_wrap(~iteration, ncol = 5)
   }
 
   overlay <- paste("bp", feature, "_dist_overlay_", lim, "kb.png", sep = "")

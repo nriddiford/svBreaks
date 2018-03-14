@@ -436,7 +436,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     fStat <- round(fStat$p.value, 4)
 
     sig <- ifelse(fStat <= 0.001, "***",
-                      ifelse(stat$p.value <= 0.01, "**",
+                      ifelse(fStat <= 0.01, "**",
                              ifelse(fStat <= 0.05, "*", "")))
 
     vals <- data.frame(iteration = i,

@@ -357,7 +357,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
             mean = mean(min_dist),
             sd = sd(min_dist),
             Source = factor(Source)) %>%
-    filter(abs(min_dist) <= max_dist ) %>%
+    # filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
   real <- r %>%
@@ -367,7 +367,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
                    mean = mean(min_dist),
                    sd = sd(min_dist),
                    Source = factor(Source)) %>%
-    filter(abs(min_dist) <= max_dist ) %>%
+    # filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
   combined <- suppressWarnings(dplyr::full_join(real, simulated))

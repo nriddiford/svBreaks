@@ -1,5 +1,36 @@
 #' Functions related to Notch
 
+#' notchFilt
+#'
+#' Function to filter in/out events affecting a locus (in this case the Drosophila Notch locus)
+#' @param infile File to process [Required]
+#' @keywords parse
+#' @import tidyverse
+#' @export
+#' @return Dataframe
+#'
+notchFilt <- function(..., keep=0) {
+  bp_data <- getData(..., genotype=='somatic_tumour')
+  # bp_data <- filter(bp_data, genotype == 'somatic_tumour')
+  if (keep) {
+    cat("Selecting for bps in Notch\n")
+    notchIn <- bp_data %>%
+      filter(chrom == "X" & bp >= 2700000 & bp2 <= 3400000) %>%
+      # filter(gene != 'N', gene2 != 'N') %>%
+      droplevels()
+    return(notchIn)
+  }
+  else{
+    cat("Excluding bps in Notch\n")
+    noNotch <- bp_data %>%
+      filter(!(chrom == "X" & bp >= 2700000 & bp2 <= 3400000)) %>%
+      filter(gene != 'N', gene2 != 'N') %>%
+      droplevels()
+    return(noNotch)
+  }
+}
+
+
 #' notchHits
 #' Plot the breakpint density over Notch
 #' @keywords Notch
@@ -126,46 +157,41 @@ notchHits <- function(infile = "data/Notch_hits.txt") {
 #' notchDels
 #' Plot the size of deletions affecting Notch
 #' @keywords Notch
-#' @import tidyverse
+#' @import dplyr
+#' @import ggplot2
+#' @import ggsci
 #' @export
+notchDels <- function(...) {
+  notch_data <- notchFilt(keep=1)
 
-notchDels <- function(infile = "data/Notch_hits.txt") {
-  bp_data <- read.delim(infile, header = T)
-  bp_data <- dplyr::select(bp_data, "sample", "event", "source", "type", "chromosome1", "bp1", "chromosome2", "bp2", "length.Kb.", "affected_genes")
-  bp_data <- dplyr::rename(bp_data, length = length.Kb.)
-
-  # bp_data<-dplyr::filter(bp_data, sample != "A373R1" & sample != "A373R7" & sample != "A512R17" )
-  filter_samples <- c("A373R1", "A373R7", "A512R17")
+  filter_samples <- c("A373R1", "A373R7", "A512R17", "A785-A788R11", "A785-A788R1", "A785-A788R3", "A785-A788R9")
 
   # Problem with events not being clustered properly for CNV-Seq
-  bp_data <- bp_data %>%
-    dplyr::filter(!(sample %in% filter_samples & length > 5000)) %>%
+  notch_data <- notch_data %>%
+    # dplyr::filter(!(sample %in% filter_samples & length > 5000)) %>%
     dplyr::filter(type != 'TRA') %>%
+    dplyr::filter(type != 'BND') %>%
+    dplyr::filter(bp_no == 'bp1') %>%
     group_by(sample, event) %>%
-    mutate(count = seq(n())) %>%
+    filter(!duplicated(event)) %>%
     ungroup() %>%
     group_by(sample) %>%
-    mutate(sample_count = seq(n())) %>%
-    mutate(sample2 = ifelse(sample_count == 1 & count == 1, as.character(sample), paste(sample, sample_count, sep = "_"))) %>%
-    # slice(which.max(length)) %>%
-    droplevels()
+    dplyr::mutate(allLength = sum(length))
 
-  bp_data <- droplevels(bp_data)
 
-  bp_data$colour <- ifelse(bp_data$sample == "A373R1" | bp_data$sample == "A373R7" | bp_data$sample == "A512R17", "#FF3333", "gray37")
-
-  bp_data <- transform(bp_data, sample2 = reorder(sample2, -length))
-
-  p <- ggplot(bp_data)
-  p <- p + geom_bar(aes(sample2, length, fill = colour), stat = "identity")
-  # p<-p + scale_y_discrete(expand = c(0.01,0.01), breaks=seq(0,500,by=100))
+  p <- ggplot(notch_data)
+  p <- p + geom_bar(aes(fct_reorder(sample, -allLength), length, fill = type), alpha = 0.7, stat = "identity")
+  p <- p + scale_y_continuous("Length (Kb)")
   p <- p + slideTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      axis.title.x = element_blank()
     )
+  p <- p + scale_fill_jco()
 
-  p <- p + scale_fill_identity()
+
+  # p <- p + scale_fill_identity()
   dels_out <- paste("NotchDels.pdf")
   cat("Writing file", dels_out, "\n")
   ggsave(paste("plots/", dels_out, sep = ""), width = 30, height = 15)

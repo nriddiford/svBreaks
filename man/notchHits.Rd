@@ -2,14 +2,12 @@
 % Please edit documentation in R/notch.R
 \name{notchHits}
 \alias{notchHits}
-\title{Functions related to Notch
-notchHits
+\title{notchHits
 Plot the breakpint density over Notch}
 \usage{
 notchHits(infile = "data/Notch_hits.txt")
 }
 \description{
-Functions related to Notch
 notchHits
 Plot the breakpint density over Notch
 }

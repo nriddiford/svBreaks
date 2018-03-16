@@ -5,7 +5,7 @@
 \title{notchDels
 Plot the size of deletions affecting Notch}
 \usage{
-notchDels(infile = "data/Notch_hits.txt")
+notchDels(...)
 }
 \description{
 notchDels

@@ -4,7 +4,7 @@
 \alias{getData}
 \title{getData}
 \usage{
-getData(infile = system.file("extdata", "all_bps_filtered.txt", package =
+getData(..., infile = system.file("extdata", "all_bps_filtered.txt", package =
   "svBreaks"), gene_lengths_file = system.file("extdata", "gene_lengths.txt",
   package = "svBreaks"), expression_data = system.file("extdata",
   "isc_genes_rnaSeq.csv", package = "svBreaks"))

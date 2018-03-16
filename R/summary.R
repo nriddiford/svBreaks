@@ -13,27 +13,21 @@ bpStats <- function(colSample=NA) {
 
   sampleSvs <- bp_data %>%
     dplyr::filter(bp_no == "bp1") %>%
-    dplyr::filter(genotype != 'X') %>%
-    droplevels() %>%
     group_by(sample, genotype) %>%
     tally() %>%
-    mutate(var = case_when(genotype == "somatic_tumour" ~ n)) %>%
-    arrange(-var) %>%
-    select(everything(), -var)
+    mutate(som_count = ifelse(genotype=='somatic_tumour', n, 1))
 
+  exclude_samples <- c("A373R1", "A373R7", "A512R17", "A373R11")
 
   if (!is.na(colSample)) {
-    sampleSvs$colour <- ifelse(sampleSvs$sample == colSample, "#FF3333", "grey37")
+    sampleSvs$colour <- ifelse(sampleSvs$sample %in% exclude_samples, "#C72424FE", "grey37")
   }
   else {
     sampleSvs$colour <- "grey37"
   }
 
-  # sampleSvs$sample <- factor(sampleSvs$sample, levels = names(sort(table(sampleSvs$sample[sampleSvs$genotype=='somatic_tumour']), decreasing = TRUE)))
-
-
   p <- ggplot(sampleSvs)
-  p <- p + geom_histogram(aes(sample, n, fill = colour), stat = "identity")
+  p <- p + geom_bar(aes(fct_reorder(sample, som_count), n, fill = colour), stat = "identity")
   # p <- p + scale_y_continuous("Number of variants", limits = c(0, 20), expand = c(0.01, 0.01), breaks=seq(0,20,by=2))
   p <- p + scale_y_continuous("Number of variants", expand = c(0.01, 0.01))
 
@@ -49,7 +43,7 @@ bpStats <- function(colSample=NA) {
 
   sampleSVs <- paste("SVs_sample.png")
   cat("Writing file", sampleSVs, "\n")
-  ggsave(paste("plots/", sampleSVs, sep = ""), width = 10, height = 10)
+  ggsave(paste("plots/", sampleSVs, sep = ""), width = 20, height = 10)
 
   cat("sample", "SVs", sep = "\t", "\n")
   bp_data <- dplyr::filter(bp_data, genotype == 'somatic_tumour')

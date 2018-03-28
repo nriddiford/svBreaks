@@ -5,7 +5,7 @@
 \title{generateData
 Prepare data for dist2motif}
 \usage{
-generateData(sim = NA)
+generateData(..., sim = NA)
 }
 \description{
 generateData

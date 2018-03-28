@@ -6,7 +6,7 @@
 sizeDist
 Plot the size distribution for different types of structual variants}
 \usage{
-sizeDist()
+sizeDist(...)
 }
 \description{
 A function to plot the size distribution of SV types

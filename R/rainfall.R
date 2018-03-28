@@ -7,7 +7,7 @@
 #' @export
 
 bpRainfall <- function() {
-  bp_data <- getData()
+  bp_data <- getData(genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11"))
 
   # bp_data<-dplyr::filter(bp_data, sample != "A373R11" & sample != 'A373R13')
   distances <- do.call(rbind, lapply(
@@ -25,7 +25,7 @@ bpRainfall <- function() {
   distances <- dplyr::filter(distances, chrom != 4, chrom != "Y")
 
   p <- ggplot(distances)
-  p <- p + geom_point(aes(bp / 1000000, logdist, colour = genotype))
+  p <- p + geom_point(aes(bp / 1000000, logdist, colour = sample))
   p <- p + cleanTheme() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),

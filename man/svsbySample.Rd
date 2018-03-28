@@ -5,7 +5,7 @@
 \title{svsbySample
 Plot the number of structural breakpoints per sample}
 \usage{
-svsbySample()
+svsbySample(colSample = NA)
 }
 \description{
 svsbySample

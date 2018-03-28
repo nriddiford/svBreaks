@@ -4,7 +4,7 @@
 #' @param infile File to process [Required]
 #' @keywords parse breakpoints data
 #' @import plyr
-#' @import tidyverse
+#' @import dplyr
 #' @export
 #' @return Dataframe
 

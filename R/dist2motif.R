@@ -9,8 +9,8 @@
 #' @import RColorBrewer
 #' @export
 
-generateData <- function(sim=NA){
-  real_data <- getData()
+generateData <- function(..., sim=NA){
+  real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
   # real_data <- notchFilt(keep=0)
   real_data <- real_data %>%
     dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
@@ -27,7 +27,7 @@ generateData <- function(sim=NA){
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
-        hitCount <- (hitCount*10)
+        # hitCount <- (hitCount*10)
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -62,9 +62,9 @@ generateData <- function(sim=NA){
 #' @import RColorBrewer
 #' @export
 
-dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+dist2Motif <- function(..., feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
   # df : chrom pos iteration
-  bp_data <- generateData(sim=sim)
+  bp_data <- generateData(..., sim=sim)
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
@@ -166,7 +166,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
     }
 
     cat("Writing file", distout, "\n")
-    ggsave(paste("plots/", distout, sep = ""), width = 20, height = 10)
+    ggsave(paste("plots/", distout, sep = ""), width = 10, height = 10)
 
     p
   }
@@ -183,7 +183,7 @@ dist2Motif <- function(feature_file = system.file("extdata", "tss_locations.txt"
 #' @import RColorBrewer
 #' @export
 
-distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
+distOverlay <- function(..., feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
@@ -193,8 +193,8 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
     sim_data <- dist2Motif(feature = feature, sim = n, send = 1)
   }
   else {
-    real_data <- dist2Motif(feature_file = feature_file, send = 1, feature = feature)
-    sim_data <- dist2Motif(feature_file = feature_file, feature = feature, sim = n, send = 1)
+    real_data <- dist2Motif(..., feature_file = feature_file, send = 1, feature = feature)
+    sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
   }
 
   real_data$Source <- "Real"
@@ -249,8 +249,14 @@ distOverlay <- function(feature_file=system.file("extdata", "tss_locations.txt",
   #
 
   p <- ggplot(combined)
-  p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
+  p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4, adjust=0.5)
+  
+  # p <- p + geom_freqpoly(aes(min_dist, y = ..count../sum(..count..), group = Source, colour = Source))
 
+  # p <- ggplot(combined, aes(sample = min_dist, colour = Source, group = Source))
+  # p <- p + stat_qq()
+  # 
+  
   p <- p + scale_x_continuous(
     paste("Distance to", feature, scale, sep = " "),
     limits = lims,
@@ -357,7 +363,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
             mean = mean(min_dist),
             sd = sd(min_dist),
             Source = factor(Source)) %>%
-    # filter(abs(min_dist) <= max_dist ) %>%
+    filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
   real <- r %>%
@@ -367,7 +373,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
                    mean = mean(min_dist),
                    sd = sd(min_dist),
                    Source = factor(Source)) %>%
-    # filter(abs(min_dist) <= max_dist ) %>%
+    filter(abs(min_dist) <= max_dist ) %>%
     ungroup()
 
   combined <- suppressWarnings(dplyr::full_join(real, simulated))
@@ -381,8 +387,12 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     sm <- filter(df, Source == "Sim")
     result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
     ksPval <- round(result1$p.value, 4)
-    result2 <- leveneTest(df$min_dist, df$Source, center='mean')
+    result2 <- leveneTest(df$min_dist, df$Source, center='median')
     lPval <- round(result2$`Pr(>F)`[1], 4)
+    rmed <- round(median(rl$min_dist)/1000, 2)
+    smed <- round(median(sm$min_dist)/1000, 2)
+    rsd <- round(sd(rl$min_dist)/1000, 2)
+    ssd <- round(sd(sm$min_dist)/1000, 2)
     rKurtosis <- round(kurtosis(rl$min_dist), 2)
     sKurtosis <- round(kurtosis(sm$min_dist), 2)
     rSkew <- round(skewness(rl$min_dist), 2)
@@ -390,7 +400,8 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
     fRatio <- round(fStat$statistic, 2)
     fStat <- round(fStat$p.value, 4)
-
+    
+    
     sig <- ifelse(fStat <= 0.001, "***",
                       ifelse(fStat <= 0.01, "**",
                              ifelse(fStat <= 0.05, "*", "")))
@@ -400,10 +411,14 @@ simSig <- function(r, s, test=NA, max_dist=5000){
                        Levenes = lPval,
                        Fstat_ratio = fRatio,
                        Fstat = fStat,
+                       real_median = rmed,
+                       sim_median = smed,
+                       real_sd = rsd,
+                       sim_sd = ssd,
                        real_kurtosis = rKurtosis,
                        sim_kurtosis = sKurtosis,
                        real_skew = rSkew,
-                       sim_sweq = sSkew,
+                       sim_skew = sSkew,
                        sig = sig)
     pVals[[i]] <- vals
 
@@ -413,8 +428,8 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   rownames(pVals_df) <- NULL
   pVals_df <- pVals_df %>%
     arrange(Fstat, KS, Levenes)
+  
   print(pVals_df, row.names = FALSE)
-
 
   ## Boxplot per chrom
 

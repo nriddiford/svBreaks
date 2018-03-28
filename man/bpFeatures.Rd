@@ -5,7 +5,7 @@
 \title{bpFeatures
 Get some basic stats for breakpoints}
 \usage{
-bpFeatures(notch = 0)
+bpFeatures(..., notch = 0)
 }
 \arguments{
 \item{notch}{- Set to 1 to exclude Notch events}

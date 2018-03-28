@@ -102,6 +102,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   rownames(files) <- NULL
 
   chroms = c("2L", "2R", "3L", "3R", "X")
+
   locations <- files %>%
     mutate(type = as.factor(type)) %>%
     mutate(pos = as.numeric(pos/1000000)) %>%
@@ -109,9 +110,9 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
     arrange(chrom, pos) %>%
     droplevels()
 
-
+  
   p <- ggplot(locations)
-  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4)
+  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.2)
   p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
   p <- p + facet_wrap(~chrom, scale = "free_x", nrow=length(levels(locations$chrom)))
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 1))
@@ -363,3 +364,81 @@ bpChromDist <- function(object=NA, notch=0) {
     ggsave(paste("plots/", per_chrom, sep = ""), width = 20, height = 10)
   }
 }
+
+
+
+#' bootStrap
+#'
+#' Plot reav vs sim data bootstrapped n times
+#' @import ggplot2
+#' @import dplyr
+#' @export
+
+bootStrap <- function(..., feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
+                      feature="tss", n=10) {
+  
+  
+  nsim <- function(n, m = 0, s = 1) {
+    z <- rnorm(n)
+    m + s * ((z - median(z)) / sd(z))
+  }
+  
+  
+  nboot <- function(x, R) {
+    n <- length(x)
+    m <- median(x)
+    s <- sd(x)
+    do.call(rbind,
+            lapply(1 : R,
+                   function(i) {
+                     xx <- sort(nsim(n, m, s))
+                     p <- seq_along(x) / n - 0.5 / n
+                     data.frame(x = xx, p = p, sim = i)
+                   }))
+  }
+  
+  real_data <- dist2Motif(..., feature_file = feature_file, send = 1, feature = feature)
+  sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = 1, send = 1)
+  
+  
+  real_data <- real_data %>% 
+    filter(abs(min_dist) <= 30000 )
+    
+  
+  real <- nboot(real_data$min_dist, n)
+  sim <- nboot(sim_data$min_dist, n)
+  
+  real$source <- 'real'
+  sim$source <- 'sim'
+  
+  p <- ggplot()
+  p <- p + geom_density(data=real, aes(x, fill = source), alpha = 0.4, adjust=1)
+  p <- p + geom_density(data=sim, aes(x, fill = source), alpha = 0.4, adjust=1)
+  
+  # p <- p + geom_freqpoly(data = real,
+  #               mapping = aes(x, y = ..count../sum(..count..), colour = source))
+  # p <- p + geom_freqpoly(data = sim,
+  #                        mapping = aes(x, y = ..count../sum(..count..), colour = source))
+  
+  
+  p <- p + scale_x_continuous(
+    paste("Distance to", feature, "(Kb)", sep = " "),
+    limits = c(-20000, 20000),
+    breaks = c(-20000, -2000, 2000, 20000),
+    expand = c(.0005, .0005),
+    labels = c("-20", "-2", "2", "20")
+  )
+  
+  p <- p + geom_rug(data = real, aes(x, colour = source), sides = "b")
+  p <- p + geom_rug(data = sim, aes(x, colour = source), sides = "t")
+  
+  p <- p + facet_wrap(~sim)
+  p
+ 
+   # ggplot() +
+   #   geom_line(aes(x = qnorm(p), y = x, group = sim),
+   #             color = "gray", data = real)
+   # 
+  
+}
+

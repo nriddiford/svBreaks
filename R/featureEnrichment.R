@@ -8,9 +8,9 @@
 #' @import tidyverse
 #' @export
 
-bpFeatureEnrichment <- function(features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
+bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
   genome_features <- read.delim(features, header = T)
-  bp_data <- getData()
+  bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
 
   mutCount <- nrow(bp_data)
 
@@ -89,18 +89,18 @@ bpFeatureEnrichment <- function(features=system.file("extdata", "genomic_feature
 #' @import tidyverse
 #' @export
 #'
-bpFeatureEnrichmentPlot <- function() {
-  feature_enrichment <- bpFeatureEnrichment()
+bpFeatureEnrichmentPlot <- function(...) {
+  feature_enrichment <- bpFeatureEnrichment(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
 
-  feature_enrichment <- dplyr::filter(feature_enrichment, observed >= 3)
+  feature_enrichment <- dplyr::filter(feature_enrichment, expected >= 5)
   feature_enrichment <- droplevels(feature_enrichment)
 
   p <- ggplot(feature_enrichment)
   p <- p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat = "identity")
   p <- p + guides(fill = FALSE)
-  p <- p + ylim(-3, 3)
+  p <- p + ylim(-2, 2)
   p <- p + cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),

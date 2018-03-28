@@ -4,7 +4,9 @@
 #' bpStats
 #' Get some basic stats for breakpoints
 #' @keywords stats
-#' @import tidyverse
+#' @import dplyr
+#' @import ggplot2
+#' @import forcats
 #' @export
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
@@ -35,6 +37,7 @@ bpStats <- function(colSample=NA) {
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 20),
+      axis.text.y = element_text(size = 10),
       axis.title.x = element_blank()
     )
   p <- p + scale_fill_identity()
@@ -91,17 +94,17 @@ bpStats <- function(colSample=NA) {
 #' bpFeatures
 #' Get some basic stats for breakpoints
 #' @keywords stats
-#' @import tidyverse
+#' @import dplyr ggplot2 forcats
 #' @export
 #' @param notch - Set to 1 to exclude Notch events
 
-bpFeatures <- function(notch=0) {
+bpFeatures <- function(..., notch=0) {
   if (notch) {
     bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
   }
   else {
-    bp_data <- getData()
+    bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     ext <- ".pdf"
   }
 
@@ -113,10 +116,10 @@ bpFeatures <- function(notch=0) {
   # Reoders descending
   bp_data$feature <- factor(bp_data$feature, levels = names(sort(table(bp_data$feature), decreasing = TRUE)))
 
-  cols <- setCols(bp_data, "feature")
+  # cols <- setCols(bp_data, "feature")
 
   p <- ggplot(bp_data)
-  p <- p + geom_bar(aes(feature, fill = genotype, group = genotype), stat = "count", position = position_dodge())
+  p <- p + geom_bar(aes(feature, fill = feature), stat = "count", position = position_dodge())
   # p<-p + cols
   p <- p + slideTheme() +
     theme(
@@ -126,8 +129,9 @@ bpFeatures <- function(notch=0) {
     )
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
   p <- p + scale_y_continuous(expand = c(0.01, 0.01))
-  p <- p + scale_fill_brewer(palette = "Paired")
-  p <- p + facet_wrap(~genotype)
+  # p <- p + scale_fill_brewer(palette = "Paired")
+  # p <- p + facet_wrap(~genotype)
+  
 
   features_outfile <- paste("Breakpoints_features_count", ext, sep = "")
   cat("Writing file", features_outfile, "\n")
@@ -139,30 +143,38 @@ bpFeatures <- function(notch=0) {
 #' svsbySample
 #' Plot the number of structural breakpoints per sample
 #' @keywords samples
-#' @import tidyverse
 #' @export
 
-svsbySample <- function() {
-  bp_data <- getData()
-  bp_data <- dplyr::filter(bp_data, bp_no != "bp2")
-  bp_data$sample <- factor(bp_data$sample)
+svsbySample <- function(colSample=NA) {
+  bp_data <- getData(genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11"))
 
   sampleSvs <- bp_data %>%
+    filter(bp_no != "bp2") %>% 
     group_by(sample, genotype) %>%
-    tally() %>%
-    ungroup() %>%
-    arrange(-n)
-
-
+    tally()
+  
+  if (!is.na(colSample)) {
+    sampleSvs$colour <- ifelse(sampleSvs$sample == colSample, "#C72424FE", "#636161FE")
+  }
+  else {
+    sampleSvs$colour <- "grey37"
+  }
+  
   p <- ggplot(sampleSvs)
-  p <- p + geom_bar(aes(sample, n, fill = genotype), stat = "identity")
+  p <- p + geom_bar(aes(fct_reorder(sample, -n), fill = colour, n), stat = "identity")
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01))
+  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, 10), breaks = seq(0,10,by=2))
   p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
     )
+  p <- p + scale_fill_identity()
+  
+  svsSample <- 'svsBySample.png'
+  cat("Writing file", svsSample, "\n")
+  ggsave(paste("plots/", svsSample, sep = ""), width = 10, height = 10)
+  
   p
 }

@@ -160,6 +160,7 @@ notchHits <- function(infile = "data/Notch_hits.txt") {
 #' @import dplyr
 #' @import ggplot2
 #' @import ggsci
+#' @import forcats
 #' @export
 notchDels <- function(...) {
   notch_data <- notchFilt(keep=1)

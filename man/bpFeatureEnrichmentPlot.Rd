@@ -4,7 +4,7 @@
 \alias{bpFeatureEnrichmentPlot}
 \title{Plot the enrichment of SVs in genomic features}
 \usage{
-bpFeatureEnrichmentPlot()
+bpFeatureEnrichmentPlot(...)
 }
 \description{
 Plot the enrichment of SVs in genomic features

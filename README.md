@@ -7,6 +7,10 @@ event bp_number sample  genotype  chrom1  bp1 gene1 feature1  chrom2  bp2 gene2 
 1	bp_1	A373R11	germline_recurrent	2L	73837	galectin	exon_2	2L	73896	galectin	exon_2	DEL	0.1
 ```
 
+
+This tool is under constant development. Please feel free to [contact me](mailto:nick.riddiford@curie.fr), or [raise an issue](https://github.com/nriddiford/svBreaks/issues) if you encounter any problems.
+
+
 ## Installation
 
 Install from github:

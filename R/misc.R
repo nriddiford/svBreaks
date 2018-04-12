@@ -73,7 +73,6 @@ svTypes <- function(notch=0, object=NA) {
 featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.txt", package="svBreaks"), feature1 = 'G4',
                            feature_file2 = NA, feature2 = NA,
                            feature_file3 = NA, feature3 = NA) {
-
   n = 1
 
   file_list = list()
@@ -110,12 +109,12 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
     arrange(chrom, pos) %>%
     droplevels()
 
-  
   p <- ggplot(locations)
   p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.2)
   p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
   p <- p + facet_wrap(~chrom, scale = "free_x", nrow=length(levels(locations$chrom)))
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 1))
+  p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   p <- p + slideTheme() +
     theme(axis.text.y = element_blank())
 
@@ -380,13 +379,13 @@ bootStrap <- function(..., feature_file=system.file("extdata", "tss_locations.tx
   
   nsim <- function(n, m = 0, s = 1) {
     z <- rnorm(n)
-    m + s * ((z - median(z)) / sd(z))
+    m + s * ((z - mean(z)) / sd(z))
   }
   
   
   nboot <- function(x, R) {
     n <- length(x)
-    m <- median(x)
+    m <- mean(x)
     s <- sd(x)
     do.call(rbind,
             lapply(1 : R,
@@ -396,6 +395,8 @@ bootStrap <- function(..., feature_file=system.file("extdata", "tss_locations.tx
                      data.frame(x = xx, p = p, sim = i)
                    }))
   }
+  
+  
   
   real_data <- dist2Motif(..., feature_file = feature_file, send = 1, feature = feature)
   sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = 1, send = 1)

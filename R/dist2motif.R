@@ -27,7 +27,7 @@ generateData <- function(..., sim=NA){
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
-        # hitCount <- (hitCount*10)
+        hitCount <- (hitCount*10)
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -77,6 +77,7 @@ dist2Motif <- function(..., feature_file = system.file("extdata", "tss_locations
   }
 
   cat("Calculating distances to", feature, sep = " ", "\n")
+  feature_locations <- feature_locations[,c(1,2)]
 
   colnames(feature_locations) <- c("chrom", "pos")
 
@@ -322,38 +323,38 @@ distOverlay <- function(..., feature_file=system.file("extdata", "tss_locations.
 
 simSig <- function(r, s, test=NA, max_dist=5000){
 
-  if(!(is.na(test))){
-    ####
-    # dummy data
-    # set.seed(42)
-    dummyReal <- data.frame(Source=rep('Real'), min_dist=sample(-1000:1000, 1000, replace=TRUE), iteration=rep(1:10))
-    dummySim <- data.frame(Source=rep('Sim'), min_dist=sample(-2000:2000, 1000, replace=TRUE), iteration=rep(1:10))
-    dummyCombined <- suppressWarnings(dplyr::full_join(dummyReal, dummySim))
-
-    dummyCombined$Source <- as.factor(dummyCombined$Source)
-    dummyCombined$iteration <- as.factor(dummyCombined$iteration)
-
-    dummyCoc <- dummyCombined %>%
-      group_by(iteration) %>%
-      do(tidy(wilcox.test(min_dist ~ Source, exact=FALSE, data = . ))) %>%
-
-      arrange(p.value) %>%
-      ungroup()
-
-    dummyCombined %>%
-      group_by(iteration) %>%
-      do(tidy(leveneTest(dummyCombined$min_dist, dummyCombined$Source, center = 'mean', data = .))) %>%
-
-      arrange(p.value) %>%
-      ungroup()
-
-
-    p <- ggplot(dummyCombined)
-    p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
-    p
-
-    return(dummyCombined)
-  }
+  # if(!(is.na(test))){
+  #   ####
+  #   # dummy data
+  #   # set.seed(42)
+  #   dummyReal <- data.frame(Source=rep('Real'), min_dist=sample(-1000:1000, 1000, replace=TRUE), iteration=rep(1:10))
+  #   dummySim <- data.frame(Source=rep('Sim'), min_dist=sample(-2000:2000, 1000, replace=TRUE), iteration=rep(1:10))
+  #   dummyCombined <- suppressWarnings(dplyr::full_join(dummyReal, dummySim))
+  # 
+  #   dummyCombined$Source <- as.factor(dummyCombined$Source)
+  #   dummyCombined$iteration <- as.factor(dummyCombined$iteration)
+  # 
+  #   dummyCoc <- dummyCombined %>%
+  #     group_by(iteration) %>%
+  #     do(tidy(wilcox.test(min_dist ~ Source, exact=FALSE, data = . ))) %>%
+  # 
+  #     arrange(p.value) %>%
+  #     ungroup()
+  # 
+  #   dummyCombined %>%
+  #     group_by(iteration) %>%
+  #     do(tidy(leveneTest(dummyCombined$min_dist, dummyCombined$Source, center = 'mean', data = .))) %>%
+  # 
+  #     arrange(p.value) %>%
+  #     ungroup()
+  # 
+  # 
+  #   p <- ggplot(dummyCombined)
+  #   p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
+  #   p
+  # 
+  #   return(dummyCombined)
+  # }
   #####
 
   simulated <- s %>%
@@ -387,7 +388,13 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     sm <- filter(df, Source == "Sim")
     result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
     ksPval <- round(result1$p.value, 4)
+    
+    # # Focus on region
+    # df <- filter(combined, )
+    # 
     result2 <- leveneTest(df$min_dist, df$Source, center='median')
+    result3 <- bartlett.test(df$min_dist, df$Source)
+    bPval <- round(result3$p.value, 4)
     lPval <- round(result2$`Pr(>F)`[1], 4)
     rmed <- round(median(rl$min_dist)/1000, 2)
     smed <- round(median(sm$min_dist)/1000, 2)
@@ -402,13 +409,14 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     fStat <- round(fStat$p.value, 4)
     
     
-    sig <- ifelse(fStat <= 0.001, "***",
-                      ifelse(fStat <= 0.01, "**",
-                             ifelse(fStat <= 0.05, "*", "")))
+    sig <- ifelse(lPval <= 0.001, "***",
+                      ifelse(lPval <= 0.01, "**",
+                             ifelse(lPval <= 0.05, "*", "")))
 
     vals <- data.frame(iteration = i,
                        KS = ksPval,
                        Levenes = lPval,
+                       Bartlett = bPval,
                        Fstat_ratio = fRatio,
                        Fstat = fStat,
                        real_median = rmed,
@@ -427,7 +435,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   pVals_df <- do.call(rbind, pVals)
   rownames(pVals_df) <- NULL
   pVals_df <- pVals_df %>%
-    arrange(Fstat, KS, Levenes)
+    arrange(Levenes, KS)
   
   print(pVals_df, row.names = FALSE)
 

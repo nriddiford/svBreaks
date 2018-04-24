@@ -11,3 +11,4 @@ inst/extdata/*
 !inst/extdata/genomic_features.txt
 !inst/extdata/gene_lengths.txt
 .Rbuildignore
+packrat/lib*/

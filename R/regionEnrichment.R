@@ -280,42 +280,26 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed'){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # bpRegionEnrichmentPlot
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr ggplot2
 #' @export
 
 bpRegionEnrichmentPlot <- function(...) {
   feature_enrichment <- bpRegionEnrichment(plot=F)
+  
+  feature_enrichment <- feature_enrichment %>% 
+    mutate(feature = as.character(feature)) %>% 
+    mutate(sig = ifelse(sig=='-', '',sig)) %>% 
+    transform(feature = reorder(feature, -Log2FC))
+  
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
   
-  feature_enrichment <- droplevels(feature_enrichment)
-  
-  
+  maxlog2 <- max(feature_enrichment$Log2FC)
+  adjVal <- (maxlog2*1.5)
   
   p <- ggplot(feature_enrichment)
   p <- p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat = "identity")
@@ -326,6 +310,9 @@ bpRegionEnrichmentPlot <- function(...) {
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
+  p <- p + geom_text(aes(feature, maxlog2, label=sig, vjust=-adjVal),size=5)
+
+ 
   
   feat_plot <- paste("feat_plot.png")
   cat("Writing file", feat_plot, "\n")

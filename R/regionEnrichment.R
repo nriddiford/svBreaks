@@ -192,14 +192,16 @@ Volcano <- function(df){
           y = ~-log10(p_val),
           type = 'scatter',
           mode = 'markers',
-          # height = 1200,
-          # width = 1000,
+          height = 1200,
+          width = 1000,
           # frame = ~p_val,
           text = ~paste("Feature: ", feature, "\n",
                         "Observed: ", observed, "\n",
                         "Expected: ", expected, "\n",
                         "P-val: ", p_val, "\n"),
-          color = ~log10(p_val), size = ~-log10(p_val) ) %>% 
+          color = ~log10(p_val),
+          colors = "Spectral",
+          size = ~-log10(p_val) ) %>% 
     layout(title = "Depletion/Enrichment of breakpoints in genomic features", titlefont = ti,
            xaxis = list(title="Log2(FC)", titlefont = ax),
            yaxis = list(title="-Log10(p)", titlefont = ax),
@@ -224,7 +226,9 @@ mergeOverlaps <- function(f, dataframe=FALSE){
   bedFile <- bedFile[,c(1,2,3)]
   colnames(bedFile) <- c("chr", "start", "end")
   bedFile$chr <- as.character(bedFile$chr)
-  bedFile.sort <- bedr.sort.region(bedFile, check.chr = FALSE)
+  bedFile.sort <- bedr.sort.region(bedFile, check.chr = FALSE, method = 'lexicographical', check.valid = FALSE)
+  bedFile.sort$start <- ifelse(is.na(bedFile.sort$start), 0, bedFile.sort$start)
+  
   bedFile.merged <- bedr(engine = "bedtools", input = list(i = bedFile.sort), method = "merge", params = "",  check.chr = FALSE)
   
   return(data.frame(bedFile.merged, row.names = NULL))

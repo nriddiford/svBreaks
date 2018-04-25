@@ -309,7 +309,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed'){
 #' @export
 
 bpRegionEnrichmentPlot <- function(...) {
-  feature_enrichment <- bpRegionEnrichment()
+  feature_enrichment <- bpRegionEnrichment(plot=F)
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
   

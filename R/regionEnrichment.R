@@ -178,7 +178,6 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
 Volcano <- function(df){
   feature_enrichment <- df
 
-  # feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
   ax <- list(
     size = 25
   )
@@ -208,7 +207,49 @@ Volcano <- function(df){
            showlegend = FALSE)
 }
 
+# ggVolcano
+#'
+#' Plot the enrichment of SVs in genomic features
+#' @keywords enrichment
+#' @import plyr dplyr ggplot2
+#' @import RColorBrewer
+#' @export
 
+ggVolcano <- function(..., df){
+  feature_enrichment <- df
+  
+  arguments <- list(...)
+  
+  if(!is.null(arguments$slop)){
+    slop <- arguments$slop
+    title <- paste("Enrichment/depletion of genomic features\nfor breakpoints +/-", slop, 'bps')
+    outFile <- paste("regionEnrichment_", slop,'.png', sep='')
+  } else {
+    title <- "Enrichment/depletion of genomic features\nfor breakpoints"
+    outFile <- "regionEnrichment.png"
+  }
+  
+  maxLog2 <- max(abs(feature_enrichment$Log2FC))
+  maxLog2 <- round_any(maxLog2, 1, ceiling)
+
+  p <- ggplot(feature_enrichment)
+  p <- p + geom_point(aes(Log2FC, -log10(p_val), size = -log10(p_val), colour = sig))
+  # p <- p + scale_color_hue(l=60, c=50)
+  p <- p + scale_color_brewer(palette="Spectral")
+  # p <- p + scale_color_gradientn(colours = rainbow(100))
+  p <- p + guides(size = FALSE)
+  p <- p + cleanTheme() +
+    theme(
+      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      legend.text=element_text(size=rel(1.5)),
+      legend.key.size = unit(3,"line"),
+      legend.title=element_text(size=rel(2))
+    )
+  p <- p + scale_x_continuous(limits=c(-maxLog2, maxLog2))
+  p <- p + ggtitle(title)
+  p
+  
+}
 # mergeOverlaps
 #'
 #' Implements bedtools merge to merge overlapping regions in bedfile
@@ -290,6 +331,16 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed'){
 
 bpRegionEnrichmentPlot <- function(...) {
   feature_enrichment <- bpRegionEnrichment(..., plot=F)
+  arguments <- list(...)
+  
+  if(!is.null(arguments$slop)){
+    slop <- arguments$slop
+    title <- paste("Enrichment/depletion of genomic features\nfor breakpoints +/-", slop, 'bps')
+    outFile <- paste("regionEnrichment_", slop,'.png', sep='')
+  } else {
+    title <- "Enrichment/depletion of genomic features\nfor breakpoints"
+    outFile <- "regionEnrichment.png"
+  }
   
   feature_enrichment <- feature_enrichment %>% 
     mutate(feature = as.character(feature)) %>% 
@@ -302,6 +353,8 @@ bpRegionEnrichmentPlot <- function(...) {
   maxlog2 <- max(feature_enrichment$Log2FC)
   adjVal <- (maxlog2*1.5)
   
+  print(feature_enrichment)
+
   p <- ggplot(feature_enrichment)
   p <- p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat = "identity")
   p <- p + guides(fill = FALSE)
@@ -312,12 +365,11 @@ bpRegionEnrichmentPlot <- function(...) {
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
   p <- p + geom_text(aes(feature, maxlog2, label=sig, vjust=-adjVal),size=5)
-
+  p <- p + ggtitle(title)
  
   
-  feat_plot <- paste("feat_plot.png")
-  cat("Writing file", feat_plot, "\n")
-  ggsave(paste("plots/", feat_plot, sep = ""), width = 5, height = 10)
+  cat("Writing file", outFile, "\n")
+  ggsave(paste("plots/", outFile, sep = ""), width = nrow(feature_enrichment)/2, height = 10)
   p
 }
 

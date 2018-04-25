@@ -226,8 +226,9 @@ mergeOverlaps <- function(f, dataframe=FALSE){
   bedFile <- bedFile[,c(1,2,3)]
   colnames(bedFile) <- c("chr", "start", "end")
   bedFile$chr <- as.character(bedFile$chr)
+  bedFile$start <- ifelse(bedFile$start < 0, 0, bedFile$start)
+  
   bedFile.sort <- bedr.sort.region(bedFile, check.chr = FALSE, method = 'lexicographical', check.valid = FALSE)
-  bedFile.sort$start <- ifelse(is.na(bedFile.sort$start), 0, bedFile.sort$start)
   
   bedFile.merged <- bedr(engine = "bedtools", input = list(i = bedFile.sort), method = "merge", params = "",  check.chr = FALSE)
   
@@ -288,7 +289,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed'){
 #' @export
 
 bpRegionEnrichmentPlot <- function(...) {
-  feature_enrichment <- bpRegionEnrichment(plot=F)
+  feature_enrichment <- bpRegionEnrichment(..., plot=F)
   
   feature_enrichment <- feature_enrichment %>% 
     mutate(feature = as.character(feature)) %>% 

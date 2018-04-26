@@ -2,7 +2,7 @@
 #'
 #' Calculate the enrichment of SVs in genomic regions
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr
 #' @import data.table
 #' @export
 
@@ -19,9 +19,9 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
     colnames(bps) <- c("chrom", "start", "end")
   }
   
-  if(is.null(bps$end)){
-    bps$end <- bps$start + 1
-  }
+  # if(is.null(bps$end)){
+  #   bps$end <- bps$start + 1
+  # }
   
   cat("Expanding regions by", slop, "\n\n")
   
@@ -76,8 +76,8 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
     annotated <- as.data.frame(foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
     
     bpRegions <- annotated %>% 
-      mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
-      select(chrom, start, end, feature, i.start, i.end)
+      dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
+      dplyr::select(chrom, start, end, feature, i.start, i.end)
     
     regionSpace <- regions %>% 
       group_by(chrom) %>% 
@@ -152,9 +152,9 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
   
   final$count <- as.numeric(final$observed) + as.numeric(final$expected)
   final <- final %>%
-    filter(count >= 5) %>%
-    select(-count) %>% 
-    arrange(p_val, -abs(Log2FC)) %>% 
+    dplyr::filter(count >= 5) %>%
+    dplyr::select(-count) %>% 
+    dplyr::arrange(p_val, -abs(Log2FC)) %>% 
     droplevels()
   
   if(plot){

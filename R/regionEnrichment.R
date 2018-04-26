@@ -16,10 +16,18 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
     
   } else{
     bps <- read.table(breakpoints, header = F)
+    
     if(is.null(bps$V3)){
-      bps$V3 <- bps$V2 + 1
+      bps$V3 <- bps$V2 + 2
     }
+   
     colnames(bps) <- c("chrom", "start", "end")
+    
+    bps <- bps %>% 
+      dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
+      dplyr::mutate(start = as.integer(end-1)) %>%
+      dplyr::select(chrom, start, end)
+      
   }
   
 

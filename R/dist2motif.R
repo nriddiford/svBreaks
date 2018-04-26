@@ -93,16 +93,17 @@ dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata",
 
   cat("Calculating distances to", feature, sep = " ", "\n")
   
-  # Not a good idea if the file supplies single nucleotide data as will shift by 1 ->
+  # Select midpoint of region
   if(is.null(feature_locations$V3)){
     feature_locations$V3 <- feature_locations$V2 + 2
   }
   colnames(feature_locations) <- c("chrom", "start", "end")
   
   feature_locations <- feature_locations %>% 
-    dplyr::mutate(pos = as.integer((end+start)/2)) %>%
+    dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
+    dplyr::mutate(pos = as.integer(end-1)) %>%
     dplyr::select(chrom, pos)
-# 
+
 #   feature_locations <- feature_locations[,c(1,2)]
 # 
 #   colnames(feature_locations) <- c("chrom", "pos")

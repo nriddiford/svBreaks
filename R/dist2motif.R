@@ -9,15 +9,30 @@
 #' @import RColorBrewer
 #' @export
 
-generateData <- function(..., sim=NA){
-  real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-  # real_data <- notchFilt(keep=0)
-  real_data <- real_data %>%
-    dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
-    dplyr::mutate(pos = bp) %>%
-    dplyr::select(chrom, pos) %>%
-    droplevels()
-
+generateData <- function(..., breakpoints=NA, sim=NA){
+  
+  if(is.na(breakpoints)){
+    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    # real_data <- notchFilt(keep=0)
+    real_data <- real_data %>%
+      dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
+      dplyr::mutate(pos = bp) %>%
+      dplyr::select(chrom, pos) %>%
+      droplevels()
+  } else{
+    real_data <- read.table(breakpoints, header = F)
+    if(is.null(real_data$V3)){
+      real_data$V3 <- real_data$V2 + 2
+    }
+    colnames(real_data) <- c("chrom", "start", "end")
+    real_data <- real_data %>% 
+      dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
+      dplyr::mutate(pos = (end+start)/2) %>%
+      dplyr::select(chrom, pos) %>% 
+      droplevels()
+    
+  }
+  
   if (!is.na(sim)) {
     byIteration <- list()
     #run each iteration
@@ -62,9 +77,9 @@ generateData <- function(..., sim=NA){
 #' @import RColorBrewer
 #' @export
 
-dist2Motif <- function(..., feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
   # df : chrom pos iteration
-  bp_data <- generateData(..., sim=sim)
+  bp_data <- generateData(..., breakpoints=breakpoints, sim=sim)
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
@@ -72,16 +87,27 @@ dist2Motif <- function(..., feature_file = system.file("extdata", "tss_locations
     feature_locations <- getPromoter()
     cat("Getting gene promoter locations...\n")
   } else {
-    feature_locations <- read.delim(feature_file, header = F)
+    feature_locations <- read.table(feature_file, header = F)
     cat("Reading in file:", feature_file, sep = " ", "\n")
   }
 
   cat("Calculating distances to", feature, sep = " ", "\n")
-  feature_locations <- feature_locations[,c(1,2)]
+  
+  # Not a good idea if the file supplies single nucleotide data as will shift by 1 ->
+  if(is.null(feature_locations$V3)){
+    feature_locations$V3 <- feature_locations$V2 + 2
+  }
+  colnames(feature_locations) <- c("chrom", "start", "end")
+  
+  feature_locations <- feature_locations %>% 
+    dplyr::mutate(pos = as.integer((end+start)/2)) %>%
+    dplyr::select(chrom, pos)
+# 
+#   feature_locations <- feature_locations[,c(1,2)]
+# 
+#   colnames(feature_locations) <- c("chrom", "pos")
 
-  colnames(feature_locations) <- c("chrom", "pos")
-
-  feature_locations$pos <- as.integer(feature_locations$pos)
+  # feature_locations$pos <- as.integer(feature_locations$pos)
 
   # Will throw error if SVs don't exist on a chrom...
   # Removes chroms with fewer than 10 observations
@@ -184,7 +210,7 @@ dist2Motif <- function(..., feature_file = system.file("extdata", "tss_locations
 #' @import RColorBrewer
 #' @export
 
-distOverlay <- function(..., feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
+distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
@@ -194,7 +220,7 @@ distOverlay <- function(..., feature_file=system.file("extdata", "tss_locations.
     sim_data <- dist2Motif(feature = feature, sim = n, send = 1)
   }
   else {
-    real_data <- dist2Motif(..., feature_file = feature_file, send = 1, feature = feature)
+    real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature)
     sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
   }
 
@@ -389,9 +415,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
     ksPval <- round(result1$p.value, 4)
     
-    # # Focus on region
-    # df <- filter(combined, )
-    # 
+
     result2 <- leveneTest(df$min_dist, df$Source, center='median')
     result3 <- bartlett.test(df$min_dist, df$Source)
     bPval <- round(result3$p.value, 4)
@@ -416,7 +440,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     vals <- data.frame(iteration = i,
                        KS = ksPval,
                        Levenes = lPval,
-                       Bartlett = bPval,
+                       # Bartlett = bPval,
                        Fstat_ratio = fRatio,
                        Fstat = fStat,
                        real_median = rmed,

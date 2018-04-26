@@ -15,12 +15,11 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
       select(chrom, start, end)
     
   } else{
-    bps <- read.delim(breakpoints, header = F)
+    bps <- read.table(breakpoints, header = F)
     if(is.null(bps$V3)){
       bps$V3 <- bps$V2 + 1
     }
     colnames(bps) <- c("chrom", "start", "end")
-    
   }
   
 
@@ -161,8 +160,8 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
   
   if(plot){
     cat("Plotting volcano plot", "\n")
-    print(Volcano(final))
-    # print(ggVolcano(df=final))
+    # print(Volcano(final))
+    print(ggVolcano(df=final))
   }
   # print(final)
   return(final)
@@ -180,6 +179,8 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
 
 Volcano <- function(df){
   feature_enrichment <- df
+  
+  # feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, 2.029830e-272, feature_enrichment$p_val)
   
   maxLog2 <- max(abs(feature_enrichment$Log2FC))
   maxLog2 <- round_any(maxLog2, 1, ceiling)

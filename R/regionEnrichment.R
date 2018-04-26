@@ -16,12 +16,14 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
     
   } else{
     bps <- read.delim(breakpoints, header = F)
+    if(is.null(bps$V3)){
+      bps$V3 <- bps$V2 + 1
+    }
     colnames(bps) <- c("chrom", "start", "end")
+    
   }
   
-  # if(is.null(bps$end)){
-  #   bps$end <- bps$start + 1
-  # }
+
   
   cat("Expanding regions by", slop, "\n\n")
   
@@ -159,8 +161,8 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
   
   if(plot){
     cat("Plotting volcano plot", "\n")
-    # print(Volcano(final))
-    print(ggVolcano(df=final))
+    print(Volcano(final))
+    # print(ggVolcano(df=final))
   }
   # print(final)
   return(final)
@@ -178,6 +180,9 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
 
 Volcano <- function(df){
   feature_enrichment <- df
+  
+  maxLog2 <- max(abs(feature_enrichment$Log2FC))
+  maxLog2 <- round_any(maxLog2, 1, ceiling)
 
   ax <- list(
     size = 25
@@ -202,9 +207,10 @@ Volcano <- function(df){
           color = ~log10(p_val),
           colors = "Spectral",
           size = ~-log10(p_val) ) %>% 
-    layout(title = "Depletion/Enrichment of breakpoints in genomic features", titlefont = ti,
-           xaxis = list(title="Log2(FC)", titlefont = ax),
+    layout(
+           xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
            yaxis = list(title="-Log10(p)", titlefont = ax),
+           # title = "\nEnrichment/depletion of genomic\nfeatures for breakpoints", titlefont = ti,
            showlegend = FALSE)
 }
 
@@ -327,6 +333,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed'){
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
+#' @import plyr
 #' @import dplyr ggplot2
 #' @export
 
@@ -343,29 +350,30 @@ bpRegionEnrichmentPlot <- function(...) {
     outFile <- "regionEnrichment.png"
   }
   
+  
   feature_enrichment <- feature_enrichment %>% 
     mutate(feature = as.character(feature)) %>% 
     mutate(sig = ifelse(sig=='-', '',sig)) %>% 
     transform(feature = reorder(feature, -Log2FC))
   
-  feature_enrichment$feature <- as.character(feature_enrichment$feature)
-  feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
   
-  maxlog2 <- max(feature_enrichment$Log2FC)
-  adjVal <- (maxlog2*1.5)
+  maxLog2 <- max(abs(feature_enrichment$Log2FC))
+  maxLog2 <- round_any(maxLog2, 1, ceiling)
+  
+  adjVal <- (maxLog2*1.5)
   
   print(feature_enrichment)
 
   p <- ggplot(feature_enrichment)
   p <- p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat = "identity")
   p <- p + guides(fill = FALSE)
-  p <- p + ylim(-2, 2)
+  p <- p + ylim(-maxLog2, maxLog2)
   p <- p + cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
     )
-  p <- p + geom_text(aes(feature, maxlog2, label=sig, vjust=-adjVal),size=5)
+  p <- p + geom_text(aes(feature, maxLog2, label=sig, vjust=-adjVal),size=5)
   p <- p + ggtitle(title)
  
   

@@ -159,7 +159,8 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
   
   if(plot){
     cat("Plotting volcano plot", "\n")
-    print(Volcano(final))
+    # print(Volcano(final))
+    print(ggVolcano(df=final))
   }
   # print(final)
   return(final)
@@ -191,8 +192,8 @@ Volcano <- function(df){
           y = ~-log10(p_val),
           type = 'scatter',
           mode = 'markers',
-          height = 1200,
-          width = 1000,
+          # height = 1200,
+          # width = 1000,
           # frame = ~p_val,
           text = ~paste("Feature: ", feature, "\n",
                         "Observed: ", observed, "\n",
@@ -237,13 +238,13 @@ ggVolcano <- function(..., df){
   # p <- p + scale_color_hue(l=60, c=50)
   p <- p + scale_color_brewer(palette="Spectral")
   # p <- p + scale_color_gradientn(colours = rainbow(100))
-  p <- p + guides(size = FALSE)
+  p <- p + guides(size = FALSE, colour = FALSE) 
   p <- p + cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      legend.text=element_text(size=rel(1.5)),
-      legend.key.size = unit(3,"line"),
-      legend.title=element_text(size=rel(2))
+      legend.text=element_text(size=rel(1.5))
+      # legend.key.size = unit(3,"line"),
+      # legend.title=element_text(size=rel(2))
     )
   p <- p + scale_x_continuous(limits=c(-maxLog2, maxLog2))
   p <- p + ggtitle(title)
@@ -373,10 +374,16 @@ bpRegionEnrichmentPlot <- function(...) {
   p
 }
 
+# delsRegionEnrichment
+#'
+#' asdas
+#' @keywords regions overlap
+#' @import data.table
+#' @export
 
 
 delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  genome_length=118274340 ){
-  require(data.table) ## 1.9.3
+  # require(data.table) ## 1.9.3
   if(is.na(breakpoints)){
     breakpoints <- getData(genotype=='somatic_tumour', type=='DEL')
     bps <- breakpoints %>% 

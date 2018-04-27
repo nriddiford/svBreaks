@@ -168,12 +168,11 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
   
   if(plot){
     cat("Plotting volcano plot", "\n")
-    # print(Volcano(final))
-    print(ggVolcano(df=final))
+    print(Volcano(final))
+    # print(ggVolcano(df=final))
   }
   # print(final)
   return(final)
-
 }
 
 
@@ -188,8 +187,11 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
 Volcano <- function(df){
   feature_enrichment <- df
   
-  # feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, 2.029830e-272, feature_enrichment$p_val)
+  minPval <- min(feature_enrichment$p_val[feature_enrichment$p_val>0])
   
+  feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval/abs(feature_enrichment$Log2FC), feature_enrichment$p_val)
+  
+
   maxLog2 <- max(abs(feature_enrichment$Log2FC))
   maxLog2 <- round_any(maxLog2, 1, ceiling)
 
@@ -217,7 +219,7 @@ Volcano <- function(df){
           colors = "Spectral",
           size = ~-log10(p_val) ) %>% 
     layout(
-           xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
+           xaxis = list(title="Log2(FC)", titlefont = ax, range = list(-maxLog2, maxLog2)),
            yaxis = list(title="-Log10(p)", titlefont = ax),
            # title = "\nEnrichment/depletion of genomic\nfeatures for breakpoints", titlefont = ti,
            showlegend = FALSE)

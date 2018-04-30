@@ -4,9 +4,9 @@
 \alias{bpRegionEnrichment}
 \title{Calculate the enrichment of SVs in genomic regions}
 \usage{
-bpRegionEnrichment(bedDir = "inst/extdata/bed/mappable", breakpoints = NA,
-  slop = 0, plot = TRUE, genome_length = 118274340, intersect = FALSE,
-  write = FALSE)
+bpRegionEnrichment(..., bedDir = "inst/extdata/bed/mappable",
+  breakpoints = NA, slop = 0, plot = TRUE, genome_length = 118274340,
+  intersect = FALSE, write = FALSE)
 }
 \description{
 Calculate the enrichment of SVs in genomic regions

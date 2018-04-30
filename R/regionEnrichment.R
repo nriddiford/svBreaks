@@ -6,9 +6,9 @@
 #' @import data.table
 #' @export
 
-bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE ){
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE ){
   if(is.na(breakpoints)){
-    breakpoints <- getData(genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     bps <- breakpoints %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
@@ -136,6 +136,7 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
       
       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
       filename <- tools::file_path_sans_ext(f)
+      filename <- substr(filename, start=1, stop=40)
       list(feature = filename, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value)
     }
     
@@ -184,16 +185,15 @@ bpRegionEnrichment <- function(bedDir='inst/extdata/bed/mappable', breakpoints=N
 #' @import plotly
 #' @export
 
-Volcano <- function(df){
-  feature_enrichment <- df
+Volcano <- function(d){
+  feature_enrichment <- d
   
   minPval <- min(feature_enrichment$p_val[feature_enrichment$p_val>0])
   
   feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval/abs(feature_enrichment$Log2FC), feature_enrichment$p_val)
   
-
   maxLog2 <- max(abs(feature_enrichment$Log2FC))
-  maxLog2 <- round_any(maxLog2, 1, ceiling)
+  maxLog2 <- as.numeric(round_any(maxLog2, 1, ceiling))
 
   ax <- list(
     size = 25
@@ -203,7 +203,7 @@ Volcano <- function(df){
     size = 25
   )
   
-  plot_ly(data = feature_enrichment,
+  p <- plot_ly(data = feature_enrichment,
           x = ~Log2FC,
           y = ~-log10(p_val),
           type = 'scatter',
@@ -219,10 +219,9 @@ Volcano <- function(df){
           colors = "Spectral",
           size = ~-log10(p_val) ) %>% 
     layout(
-           xaxis = list(title="Log2(FC)", titlefont = ax, range = list(-maxLog2, maxLog2)),
-           yaxis = list(title="-Log10(p)", titlefont = ax),
-           # title = "\nEnrichment/depletion of genomic\nfeatures for breakpoints", titlefont = ti,
-           showlegend = FALSE)
+           xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
+           yaxis = list(title="-Log10(p)", titlefont = ax))
+  p
 }
 
 # ggVolcano

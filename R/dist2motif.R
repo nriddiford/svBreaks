@@ -97,6 +97,8 @@ dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata",
   if(is.null(feature_locations$V3)){
     feature_locations$V3 <- feature_locations$V2 + 2
   }
+  feature_locations <- feature_locations[,c(1,2,3)]
+  
   colnames(feature_locations) <- c("chrom", "start", "end")
   
   feature_locations <- feature_locations %>% 
@@ -255,26 +257,6 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
             scaleFactor)
   labs <- as.character(brks/1000)
   expnd <- c(.0005, .0005)
-
-
-  # pp <- ggboxplot(combined, x = "Source", y = "min_dist",
-  #                 color = "Source", palette = "jco",
-  #                 add = "jitter",
-  #                 facet.by = c("iteration", "chrom"))
-  #  # Use only p.format as label. Remove method name.
-  # pp + stat_compare_means(label = "p.format",
-  #                         method = "t.test")
-  # pp
-
-  # pp <- ggdensity(combined, x = "min_dist",
-  #                 color = "Source",
-  #                 fill = "Source",
-  #                 add = "median",
-  #                 facet.by = "iteration",
-  #                 rug = TRUE,
-  #                 palette = c("#00AFBB", "#E7B800"))
-  # pp
-  #
 
   p <- ggplot(combined)
   p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4, adjust=0.5)

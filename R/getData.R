@@ -9,7 +9,7 @@
 #' @return Dataframe
 
 getData <- function(...,
-                    infile = system.file("extdata", "all_bps_filtered.txt", package="svBreaks"),
+                    infile = 'inst/extdata/all_bps_filtered.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks")
                     ) {

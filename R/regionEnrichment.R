@@ -6,7 +6,7 @@
 #' @import data.table
 #' @export
 
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE ){
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE ){
   if(is.na(breakpoints)){
     breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     bps <- breakpoints %>% 
@@ -41,6 +41,22 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   # cat("Analysing all files in directory:", bedFiles, "\n")
   for (f in fileNames){
     # cat("Analysing file:", f, "\n")
+    
+    if(parseName){
+      parts <- unlist(strsplit(basename(tools::file_path_sans_ext(f)), split = '_'))
+      
+      factor <- parts[1]
+      genotype <- parts[2]
+      tissue <- parts[3]
+      element <- parts[4]
+      replicate <- parts[5]
+      id <- unlist(strsplit(parts[7], split= "[.]"))[1]
+      filename <- paste(factor, id, element, sep='_')
+      filename <- substr(filename, start=1, stop=30)
+    }else{
+      filename <- tools::file_path_sans_ext(f)
+      filename <- substr(filename, start=1, stop=30)
+    }
     
     regions <- read.delim(paste(bedDir, f, sep='/'), header = F)
     regions <- regions[,c(1,2,3)]
@@ -135,8 +151,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       sig_val <- ifelse(stat$p.value > 0.05, "-", sig_val)
       
       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
-      filename <- tools::file_path_sans_ext(f)
-      filename <- substr(filename, start=1, stop=40)
+
       list(feature = filename, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value)
     }
     
@@ -172,7 +187,9 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     print(Volcano(final))
     # print(ggVolcano(df=final))
   }
-  # print(final)
+  final <- final %>%
+    dplyr::mutate(Log2FC = round(Log2FC, 2))
+  
   return(final)
 }
 
@@ -192,9 +209,9 @@ Volcano <- function(d){
   
   feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval/abs(feature_enrichment$Log2FC), feature_enrichment$p_val)
   
-  maxLog2 <- max(abs(feature_enrichment$Log2FC))
+  maxLog2 <- max(abs(feature_enrichment$Log2FC[is.finite(feature_enrichment$Log2FC)]))
   maxLog2 <- as.numeric(round_any(maxLog2, 1, ceiling))
-
+  
   ax <- list(
     size = 25
   )
@@ -207,6 +224,7 @@ Volcano <- function(d){
           x = ~Log2FC,
           y = ~-log10(p_val),
           type = 'scatter',
+          # showlegend = FALSE,
           mode = 'markers',
           # height = 1200,
           # width = 1000,
@@ -217,10 +235,12 @@ Volcano <- function(d){
                         "P-val: ", p_val, "\n"),
           color = ~log10(p_val),
           colors = "Spectral",
-          size = ~-log10(p_val) ) %>% 
+          size = ~-log10(p_val)
+          ) %>% 
     layout(
            xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
-           yaxis = list(title="-Log10(p)", titlefont = ax))
+           yaxis = list(title="-Log10(p)", titlefont = ax)
+           )
   p
 }
 
@@ -329,10 +349,14 @@ subtractUnmappable <- function(f, u='~/Documents/Curie/Data/Genomes/Dmel_v6.12/M
 #' @keywords bed
 #' @export
 
-writeBed <- function(df, outDir=getwd(), name='regions.bed'){
-  # svs <- svs %>% 
-  #   mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>% 
-  #   select(chrom, bp, bp2, info)
+writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
+  if(svBreaks){
+    df <- df %>%
+      filter(bp_no=='bp1') %>% 
+      mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>%
+      select(chrom, bp, bp2, info)
+  }
+  
   cat(paste(outDir,name, sep='/'))
   
   write.table(df, file = paste(outDir,name, sep='/'), row.names=F, col.names=F, sep=" ", quote = FALSE)

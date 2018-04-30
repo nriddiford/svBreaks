@@ -188,8 +188,6 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     print(Volcano(final))
     # print(ggVolcano(df=final))
   }
-  final <- final %>%
-    dplyr::mutate(Log2FC = round(Log2FC, 2))
   
   return(final)
 }

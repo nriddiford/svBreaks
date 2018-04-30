@@ -58,7 +58,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       filename <- substr(filename, start=1, stop=30)
     }
     
-    regions <- read.delim(paste(bedDir, f, sep='/'), header = F)
+    regions <- read.table(paste(bedDir, f, sep='/'), header = F)
     regions <- regions[,c(1,2,3)]
     colnames(regions) <- c("chrom", "start", "end")
     
@@ -67,6 +67,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     # This slop wont handle cases where the adjusted regions overlap (they will be counted twice...)
     regions <- regions %>% 
       filter(chrom %in% myChroms) %>% 
+      filter(start < end) %>% 
       mutate(start = start - slop) %>% 
       mutate(end = end + slop) %>% 
       arrange(chrom) %>% 

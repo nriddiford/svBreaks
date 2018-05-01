@@ -213,19 +213,14 @@ dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata",
 #' @import RColorBrewer
 #' @export
 
-distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"), feature="tss", lim=10, byChrom=NA, n=10) {
+distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
+                        feature="tss", lim=10, byChrom=NA, n=10, plot = TRUE) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
 
-  if (feature == "promoter") {
-    real_data <- dist2Motif(send = 1, feature = feature)
-    sim_data <- dist2Motif(feature = feature, sim = n, send = 1)
-  }
-  else {
-    real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature)
-    sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
-  }
+  real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature)
+  sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
 
   real_data$Source <- "Real"
   sim_data$Source <- "Sim"
@@ -242,14 +237,26 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
   # Perform significance testing
-  combined <- simSig(r = real_data, s = sim_data, max_dist = scaleFactor)
+  pVals_and_df <- simSig(r = real_data, s = sim_data, max_dist = scaleFactor)
+  
+  combined <- pVals_and_df[[1]]
+  pVals <- pVals_and_df[[2]]
+  
+  if(plot){
+    print(plotdistanceOverlay(..., d=combined, scaleFactor=scaleFactor, byChrom=byChrom, lim=lim, feature=feature, n=n ))
+  }
+  return(pVals)
+}
 
+plotdistanceOverlay <- function(..., d, feature="tss", lim=10, byChrom=NA, n=10){
+  scaleFactor <- lim*1000
+  combined <- d
   colours <- c("#E7B800", "#00AFBB")
-
+  
   cat("Setting limits to -+", lim, "Kb\n", sep='')
-
+  
   scale <- "(Kb)"
-
+  
   lims <- c(as.numeric(paste("-", scaleFactor, sep = '')), scaleFactor)
   brks <- c(as.numeric(paste("-", scaleFactor, sep = '')),
             as.numeric(paste("-", scaleFactor/10, sep = '')),
@@ -257,12 +264,12 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
             scaleFactor)
   labs <- as.character(brks/1000)
   expnd <- c(.0005, .0005)
-
+  
   p <- ggplot(combined)
   p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4, adjust=0.5)
   
   # p <- p + geom_freqpoly(aes(min_dist, y = ..count../sum(..count..), group = Source, colour = Source))
-
+  
   # p <- ggplot(combined, aes(sample = min_dist, colour = Source, group = Source))
   # p <- p + stat_qq()
   # 
@@ -276,19 +283,19 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   )
   p <- p + scale_y_continuous("Density")
   p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
-
+  
   p <- p + geom_rug(data = combined[combined$Source=='Real',], aes(min_dist, colour = Source), sides = "b")
   p <- p + geom_rug(data = combined[combined$Source=='Sim',], aes(min_dist, colour = Source), sides = "t")
-
+  
   p <- p + scale_fill_manual(values = colours)
   p <- p + scale_colour_manual(values = colours)
-
+  
   if (!is.na(byChrom)) {
     p <- p + facet_wrap(iteration~chrom, ncol = length(levels(as.factor(combined$chrom))))
   } else {
     p <- p + facet_wrap(~iteration)
   }
-
+  
   p <- p + slideTheme() +
     theme(
       strip.text = element_text(size = 20),
@@ -296,7 +303,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
       axis.text.x = element_text(size = 12),
       legend.position = "top"
     )
-
+  
   if(n>=20){
     p <- p + theme(
       strip.text = element_text(size = 10),
@@ -305,15 +312,14 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
     )
     # p <- p + facet_wrap(~iteration, ncol = 5)
   }
-
+  
   overlay <- paste("bp", feature, "_dist_overlay_", lim, "kb.png", sep = "")
   cat("Writing file", overlay, "\n")
   ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
-
+  
   p
-  # pp
+  
 }
-
 
 
 #' simSig
@@ -331,40 +337,6 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @export
 
 simSig <- function(r, s, test=NA, max_dist=5000){
-
-  # if(!(is.na(test))){
-  #   ####
-  #   # dummy data
-  #   # set.seed(42)
-  #   dummyReal <- data.frame(Source=rep('Real'), min_dist=sample(-1000:1000, 1000, replace=TRUE), iteration=rep(1:10))
-  #   dummySim <- data.frame(Source=rep('Sim'), min_dist=sample(-2000:2000, 1000, replace=TRUE), iteration=rep(1:10))
-  #   dummyCombined <- suppressWarnings(dplyr::full_join(dummyReal, dummySim))
-  # 
-  #   dummyCombined$Source <- as.factor(dummyCombined$Source)
-  #   dummyCombined$iteration <- as.factor(dummyCombined$iteration)
-  # 
-  #   dummyCoc <- dummyCombined %>%
-  #     group_by(iteration) %>%
-  #     do(tidy(wilcox.test(min_dist ~ Source, exact=FALSE, data = . ))) %>%
-  # 
-  #     arrange(p.value) %>%
-  #     ungroup()
-  # 
-  #   dummyCombined %>%
-  #     group_by(iteration) %>%
-  #     do(tidy(leveneTest(dummyCombined$min_dist, dummyCombined$Source, center = 'mean', data = .))) %>%
-  # 
-  #     arrange(p.value) %>%
-  #     ungroup()
-  # 
-  # 
-  #   p <- ggplot(dummyCombined)
-  #   p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4)
-  #   p
-  # 
-  #   return(dummyCombined)
-  # }
-  #####
 
   simulated <- s %>%
     group_by(chrom, iteration) %>%
@@ -444,7 +416,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   pVals_df <- pVals_df %>%
     arrange(Levenes, KS)
   
-  print(pVals_df, row.names = FALSE)
+  # print(pVals_df, row.names = FALSE)
 
   ## Boxplot per chrom
 
@@ -459,7 +431,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   p <- p + scale_fill_manual(values = colours)
 
   #p
-  return(combined)
+  return(list(combined,pVals_df))
 }
 
 #' bpSim

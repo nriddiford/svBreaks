@@ -4,7 +4,7 @@
 \alias{writeBed}
 \title{Simple function to write out bedfiels - useful for checking after merging/subtracting...}
 \usage{
-writeBed(df, outDir = getwd(), name = "regions.bed")
+writeBed(df, outDir = getwd(), name = "regions.bed", svBreaks = FALSE)
 }
 \description{
 Simple function to write out bedfiels - useful for checking after merging/subtracting...

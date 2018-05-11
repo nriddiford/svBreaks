@@ -214,7 +214,7 @@ dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata",
 #' @export
 
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                        feature="tss", lim=10, byChrom=NA, n=10, plot = TRUE) {
+                        feature="tss", from='bps', lim=10, byChrom=NA, n=10, plot = TRUE) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
@@ -243,15 +243,26 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   pVals <- pVals_and_df[[2]]
   
   if(plot){
-    print(plotdistanceOverlay(..., d=combined, scaleFactor=scaleFactor, byChrom=byChrom, lim=lim, feature=feature, n=n ))
+    print(plotdistanceOverlay(..., d=combined, from=from, byChrom=byChrom, lim=lim, feature=feature, n=n ))
   }
-  return(pVals)
+  return(list(combined, pVals))
 }
 
-plotdistanceOverlay <- function(..., d, feature="tss", lim=10, byChrom=NA, n=10){
+#' plotdistanceOverlay
+#'
+#' Plot the distance overlay 
+#' @param d Dataframe containing combined real + sim data (d <- distOverlay())
+#' @import dplyr
+#' @import ggplot2
+#' @import RColorBrewer
+#' @import plotly
+#' @import colorspace
+#' @keywords distance
+#' @export
+
+plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE, plotly=FALSE){
   scaleFactor <- lim*1000
   combined <- d
-  colours <- c("#E7B800", "#00AFBB")
   
   cat("Setting limits to -+", lim, "Kb\n", sep='')
   
@@ -263,61 +274,110 @@ plotdistanceOverlay <- function(..., d, feature="tss", lim=10, byChrom=NA, n=10)
             scaleFactor/10,
             scaleFactor)
   labs <- as.character(brks/1000)
-  expnd <- c(.0005, .0005)
+  expnd <- c(0, 0)
   
-  p <- ggplot(combined)
-  p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4, adjust=0.5)
+  if(!facetPlot){
+    cat("Not facetting\n")
+    
+    new <- combined %>% 
+      mutate(iteration = as.factor(ifelse(Source=='Real', 0, iteration)))
+    
+    real_fill <- '#668BCCFE'
+    iterFill <- rainbow_hcl(n)
+    
+    colours <- c(real_fill, iterFill)
+    
+    
+    p <- ggplot(new)
+    
+    p <- p + geom_density(aes(min_dist, fill = iteration), alpha = 0.2, adjust=0.5)
+    p <- p + geom_density(data=new[new$Source=="Real",], aes(min_dist, fill = iteration), alpha = 0.7, adjust=0.5)
+    
+    p <- p + scale_fill_manual(values=colours)
+    
+    p <- p + geom_rug(data=new[new$Source=="Real",], aes(min_dist, colour = iteration), sides = "b")
+    p <- p + scale_colour_manual(values=colours)
+    p <- p + scale_x_continuous(
+      paste("Distance from", from, "to", feature, scale, sep = " "),
+      limits = lims,
+      breaks = brks,
+      expand = c(0,0),
+      labels = labs
+    )
+    p <- p + cleanTheme() +
+      theme(
+        strip.text = element_text(size = 20),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 12),
+        legend.position = "none"
+      )
+    p <- p + scale_y_continuous("Density")
+    p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
   
-  # p <- p + geom_freqpoly(aes(min_dist, y = ..count../sum(..count..), group = Source, colour = Source))
-  
-  # p <- ggplot(combined, aes(sample = min_dist, colour = Source, group = Source))
-  # p <- p + stat_qq()
-  # 
-  
-  p <- p + scale_x_continuous(
-    paste("Distance to", feature, scale, sep = " "),
-    limits = lims,
-    breaks = brks,
-    expand = expnd,
-    labels = labs
-  )
-  p <- p + scale_y_continuous("Density")
-  p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
-  
-  p <- p + geom_rug(data = combined[combined$Source=='Real',], aes(min_dist, colour = Source), sides = "b")
-  p <- p + geom_rug(data = combined[combined$Source=='Sim',], aes(min_dist, colour = Source), sides = "t")
-  
-  p <- p + scale_fill_manual(values = colours)
-  p <- p + scale_colour_manual(values = colours)
-  
-  if (!is.na(byChrom)) {
-    p <- p + facet_wrap(iteration~chrom, ncol = length(levels(as.factor(combined$chrom))))
   } else {
-    p <- p + facet_wrap(~iteration)
+    cat("Plotting each iteration\n")
+    colours <- c("#E7B800", "#00AFBB")
+
+    p <- ggplot(combined)
+    p <- p + geom_density(aes(min_dist, fill = Source, group = Source), alpha = 0.4, adjust=0.5)
+
+    p <- p + scale_x_continuous(
+      paste("Distance from", from, "to", feature, scale, sep = " "),
+      limits = lims,
+      breaks = brks,
+      expand = expnd,
+      labels = labs
+    )
+    p <- p + scale_y_continuous("Density")
+    p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
+
+    p <- p + geom_rug(data = combined[combined$Source=='Real',], aes(min_dist, colour = Source), sides = "b")
+    p <- p + geom_rug(data = combined[combined$Source=='Sim',], aes(min_dist, colour = Source), sides = "t")
+
+    p <- p + scale_fill_manual(values = colours)
+    p <- p + scale_colour_manual(values = colours)
+
+    if (!is.na(byChrom)) {
+      p <- p + facet_wrap(iteration~chrom, ncol = length(levels(as.factor(combined$chrom))))
+    } else {
+      p <- p + facet_wrap(~iteration)
+    }
+
+    p <- p + slideTheme() +
+      theme(
+        strip.text = element_text(size = 20),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 12),
+        legend.position = "top"
+      )
+
+    if(n>=20){
+      p <- p + theme(
+        strip.text = element_text(size = 10),
+        panel.spacing = unit(0.8, "lines")
+        # axis.text = element_text(size = 12)
+      )
+      # p <- p + facet_wrap(~iteration, ncol = 5)
+    }
   }
   
-  p <- p + slideTheme() +
-    theme(
-      strip.text = element_text(size = 20),
-      axis.text.y = element_blank(),
-      axis.text.x = element_text(size = 12),
-      legend.position = "top"
-    )
+ 
   
-  if(n>=20){
-    p <- p + theme(
-      strip.text = element_text(size = 10),
-      panel.spacing = unit(0.8, "lines")
-      # axis.text = element_text(size = 12)
-    )
-    # p <- p + facet_wrap(~iteration, ncol = 5)
+  if(write){
+    overlay <- paste(from, '_to_', feature, "_dist_overlay_", lim, "kb.png", sep = "")
+    cat("Writing file", overlay, "\n")
+    ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
+  } else {
+    cat("Not writing\n")
   }
   
-  overlay <- paste("bp", feature, "_dist_overlay_", lim, "kb.png", sep = "")
-  cat("Writing file", overlay, "\n")
-  ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
-  
-  p
+  if (facetPlot){
+    p
+  } else if (plotly){ 
+    ggplotly(p)
+  } else {
+    p
+  }
   
 }
 

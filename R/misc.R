@@ -72,28 +72,56 @@ svTypes <- function(notch=0, object=NA) {
 
 featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.txt", package="svBreaks"), feature1 = 'G4',
                            feature_file2 = NA, feature2 = NA,
-                           feature_file3 = NA, feature3 = NA) {
+                           feature_file3 = NA, feature3 = NA,
+                           write=TRUE) {
   n = 1
 
   file_list = list()
 
   f1 <- read.delim(feature_file1, header = F)
+  if(is.null(f1$V3)){
+    f1$V3 <- f1$V2 + 2
+  }
+  
   f1$type <- feature1
-  colnames(f1) <- c("chrom", "pos", "type")
+  colnames(f1) <- c("chrom", "start", "end", "type")
+  
+  f1 <- f1 %>% 
+    dplyr::mutate(mid = as.integer(((end+start)/2)+1)) %>%
+    dplyr::select(chrom, mid, type)
+
   file_list[[n]] <- f1
 
   if (!is.na(feature_file2)){
     n = n + 1
     f2 <- read.delim(feature_file2, header = F)
-    f2$type <- feature2
-    colnames(f2) <- c("chrom", "pos", "type")
+    if(is.null(f2$V3)){
+      f2$V3 <- f2$V2 + 2
+    }
+    
+    f2$type <- feature1
+    colnames(f2) <- c("chrom", "start", "end", "type")
+    
+    f2 <- f2 %>% 
+      dplyr::mutate(mid = as.integer(((end+start)/2)+1)) %>%
+      dplyr::select(chrom, mid, type)
+    
     file_list[[n]]  <- f2
   }
   if (!is.na(feature_file3)){
     n = n + 1
     f3 <- read.delim(feature_file3, header = F)
-    f3$type <- feature3
-    colnames(f3) <- c("chrom", "pos", "type")
+    if(is.null(f3$V3)){
+      f3$V3 <- f3$V2 + 2
+    }
+    
+    f3$type <- feature1
+    colnames(f3) <- c("chrom", "start", "end", "type")
+    
+    f3 <- f3 %>% 
+      dplyr::mutate(mid = as.integer(((end+start)/2)+1)) %>%
+      dplyr::select(chrom, mid, type)
+    
     file_list[[n]]  <- f3
   }
 
@@ -104,24 +132,25 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
 
   locations <- files %>%
     mutate(type = as.factor(type)) %>%
-    mutate(pos = as.numeric(pos/1000000)) %>%
+    mutate(pos = as.numeric(mid/1000000)) %>%
     filter(chrom %in% chroms) %>%
-    arrange(chrom, pos) %>%
+    arrange(chrom, mid) %>%
     droplevels()
 
   p <- ggplot(locations)
-  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.2)
+  p <- p + geom_density(aes(mid, fill = type), alpha = 0.4, adjust=0.2)
   p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
   p <- p + facet_wrap(~chrom, scale = "free_x", nrow=length(levels(locations$chrom)))
-  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 1))
+  p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$mid), by = 1))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   p <- p + slideTheme() +
     theme(axis.text.y = element_blank())
 
-  featurePlot <- paste("feature_dist.png")
-  cat("Writing file", featurePlot, "\n")
-  ggsave(paste("plots/", featurePlot, sep = ""), width = 20, height = 10)
-
+  if(write){
+    featurePlot <- paste("feature_dist.png")
+    cat("Writing file", featurePlot, "\n")
+    ggsave(paste("plots/", featurePlot, sep = ""), width = 20, height = 10)
+  }
   p
 }
 

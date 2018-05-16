@@ -319,9 +319,9 @@ plotMonteCarlo <- function(x){
   cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 30),
-      axis.text.y = element_text(size = 30),
-      axis.title = element_text(size = 40)
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 20),
+      axis.text.y = element_text(size = 20),
+      axis.title = element_text(size = 30)
       ) + 
   scale_y_continuous("Frequency", expand = c(0,0)) +
   scale_x_continuous("Number of intersections", expand = c(0,0)) +

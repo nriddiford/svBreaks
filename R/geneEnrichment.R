@@ -147,7 +147,7 @@ bpAllGenes <- function(gene_lengths_in = system.file("extdata", "gene_lengths.tx
 
 
   fun <- function(g) {
-    # Calculate the fraction of geneome occupied by each gene
+    # Calculate the fraction of genome occupied by each gene
     genefraction <- genes[[g]] / genome_length
 
     # How many times should we expect to see this gene hit in our bp_data (given number of obs. and fraction)?
@@ -155,10 +155,13 @@ bpAllGenes <- function(gene_lengths_in = system.file("extdata", "gene_lengths.tx
 
     # observed/expected
     fc <- hit_genes[[g]] / gene_expect
+    
     fc <- round(fc, digits = 1)
     log2FC <- log2(fc)
 
     gene_expect <- round(gene_expect, digits = 3)
+    
+    
     list(gene = g, length = genes[[g]], chromosome = as.character(chroms[[g]]), observed = hit_genes[g], expected = gene_expect, fc = fc, log2FC = log2FC)
   }
 

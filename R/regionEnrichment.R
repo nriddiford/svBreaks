@@ -6,7 +6,7 @@
 #' @import data.table
 #' @export
 
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE ){
   if(is.na(breakpoints)){
     breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     bps <- breakpoints %>% 
@@ -29,6 +29,8 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       dplyr::select(chrom, start, end)
       
   }
+  
+
   
   cat("Expanding regions by", slop, "\n\n")
   
@@ -125,7 +127,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     
     expectedHits <- round(expectedHits, digits = 2)
     expectedHits <- ifelse(expectedHits==0, 0.001, expectedHits)
-
+    
     fc <- inRegion / expectedHits
     Log2FC <- log2(fc)
     
@@ -150,7 +152,6 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       sig_val <- ifelse(stat$p.value > 0.05, "-", sig_val)
       
       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
-      
 
       list(feature = filename, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value)
     }
@@ -177,10 +178,9 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   
   final$count <- as.numeric(final$observed) + as.numeric(final$expected)
   final <- final %>%
-    dplyr::mutate(eScore = abs(Log2FC) * -log10(p_val)) %>% 
-    dplyr::filter(count >= minHits) %>%
+    dplyr::filter(count >= 5) %>%
     dplyr::select(-count) %>% 
-    dplyr::arrange(-eScore, p_val, -abs(Log2FC)) %>% 
+    dplyr::arrange(p_val, -abs(Log2FC)) %>% 
     droplevels()
   
   if(plot){
@@ -207,9 +207,6 @@ Volcano <- function(d){
   minPval <- min(feature_enrichment$p_val[feature_enrichment$p_val>0])
   
   feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval/abs(feature_enrichment$Log2FC), feature_enrichment$p_val)
-  
-  feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval, feature_enrichment$p_val)
-  
   
   maxLog2 <- max(abs(feature_enrichment$Log2FC[is.finite(feature_enrichment$Log2FC)]))
   maxLog2 <- as.numeric(round_any(maxLog2, 1, ceiling))
@@ -289,37 +286,6 @@ ggVolcano <- function(..., df){
   p
   
 }
-
-
-# plotMonteCarlo
-#'
-#' Plot the result of a monte carlo simulation (n shuffles of feature y)
-#' @keywords expected frequency
-#' @import plyr dplyr ggplot2
-#' @import RColorBrewer
-#' @export
-
-plotMonteCarlo <- function(x){
-  
-  x <- x %>% 
-    mutate(fillCol = ifelse(grepl("shuff", feature), "grey37", "#C72424FE"))
-    
-  ggplot(x, aes(observed, fill = fillCol)) +
-  geom_histogram(binwidth = 10) +
-  slideTheme() +
-    theme(
-      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 30),
-      axis.text.y = element_text(size = 30)
-      ) + 
-  scale_y_continuous("Frequency", expand = c(0,0)) +
-  scale_x_continuous("Number of intersections", expand = c(0,0)) +
-  
-  scale_fill_identity()
-
-}
-
-
 # mergeOverlaps
 #'
 #' Implements bedtools merge to merge overlapping regions in bedfile
@@ -458,14 +424,16 @@ bpRegionEnrichmentPlot <- function(...) {
 
 
 delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  genome_length=118274340 ){
+  # require(data.table) ## 1.9.3
   if(is.na(breakpoints)){
     breakpoints <- getData(genotype=='somatic_tumour', type=='DEL')
     bps <- breakpoints %>% 
       filter(bp_no == 'bp1') %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::rename(end = bp2) %>%
+      # dplyr::rename(chr = bp2) %>%
       mutate(width = (end - start)) %>%
-      mutate(end = ifelse(width <= 0, start+1, end)) %>% 
+      # mutate(end = ifelse(width < 0, start+1, end)) %>% 
       # mutate(width2 = (end - start)) %>%
       select(chrom, start, end)
   } else{

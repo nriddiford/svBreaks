@@ -17,7 +17,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   } else{
     bps <- read.table(breakpoints, header = F)
     
-    if(is.null(bps$V3)){
+    if(ncol(bps)<3){
       bps$V3 <- bps$V2 + 2
     }
    

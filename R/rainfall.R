@@ -33,7 +33,7 @@ bpRainfall <- function() {
       strip.text = element_text(size = 20)
     )
 
-  p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 5)
+  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = 5)
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(distances$bp), by = 10))
   p <- p + scale_y_continuous("Genomic Distance")
 

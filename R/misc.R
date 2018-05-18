@@ -142,7 +142,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   p <- ggplot(locations)
   p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.2)
   # p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
-  p <- p + facet_wrap(~chrom, scale = "free_x", nrow=length(levels(locations$chrom)))
+  p <- p + facet_wrap(~chrom, scales = "free_x", nrow=length(levels(locations$chrom)))
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 5))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   p <- p + slideTheme() +
@@ -284,7 +284,7 @@ genomeHits <- function(notch=0) {
       strip.text.x = element_text(size = 15),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted")
     )
-  p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
+  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = 2)
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, 33, by = 1), limits = c(0, 33), expand = c(0.01, 0.01))
 
   sv_gen_dist <- paste("bp_gen.dist", ext, sep = "")
@@ -319,7 +319,7 @@ bpGenAll <- function(object=NA, notch=0) {
 
   p <- ggplot(bp_data)
   p <- p + geom_histogram(aes(bp / 1000000, fill = get(object)), binwidth = 0.1, alpha = 0.8)
-  p <- p + facet_wrap(~chrom, scale = "free_x", ncol = 2)
+  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = 2)
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, 33, by = 1), limits = c(0, 33), expand = c(0.01, 0.01))
   p <- p + scale_y_continuous("Number of Breakpoints", expand = c(0.01, 0.01))
   p <- p + cleanTheme() +

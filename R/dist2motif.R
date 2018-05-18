@@ -6,6 +6,7 @@
 #' @keywords simulate
 #' @import ggplot2
 #' @import dplyr
+#' @import colorspace
 #' @import RColorBrewer
 #' @export
 
@@ -256,7 +257,6 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @import ggplot2
 #' @import RColorBrewer
 #' @import plotly
-#' @import colorspace
 #' @keywords distance
 #' @export
 

@@ -4,7 +4,7 @@
 \alias{Volcano}
 \title{Plot the enrichment of SVs in genomic features}
 \usage{
-Volcano(d)
+Volcano(d, byq = FALSE)
 }
 \description{
 Plot the enrichment of SVs in genomic features

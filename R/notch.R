@@ -16,7 +16,6 @@ notchFilt <- function(..., keep=0) {
     cat("Selecting for bps in Notch\n")
     notchIn <- bp_data %>%
       filter(chrom == "X" & bp >= 2700000 & bp2 <= 3400000) %>%
-      # filter(gene != 'N', gene2 != 'N') %>%
       droplevels()
     return(notchIn)
   }

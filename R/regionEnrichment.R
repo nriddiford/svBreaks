@@ -9,6 +9,7 @@
 bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
   if(is.na(breakpoints)){
     breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    # breakpoints <- notchFilt(..., keep=1, genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     bps <- breakpoints %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
@@ -187,10 +188,11 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   final <- final %>%
     dplyr::mutate(p_val = ifelse(p_val==0, minPval/abs(Log2FC), p_val)) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval, p_val)) %>%
-    dplyr::mutate(eScore = abs(Log2FC) * -log10(p_val)) %>% 
+    dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
+    dplyr::mutate(eScore = round(abs(Log2FC) * -log10(padj),2)) %>% 
     dplyr::filter(count >= minHits) %>%
     dplyr::select(-count) %>% 
-    dplyr::arrange(-eScore, p_val, -abs(Log2FC)) %>% 
+    dplyr::arrange(-eScore, padj, -abs(Log2FC)) %>% 
     droplevels()
   
   if(plot){
@@ -211,8 +213,15 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
 #' @import plotly
 #' @export
 
-Volcano <- function(d){
+Volcano <- function(d, byq=FALSE){
   feature_enrichment <- d
+  
+  var <- feature_enrichment$p_val
+  printVar <- 'P-val'
+  if(byq){
+    var <- var <- feature_enrichment$padj
+    printVar <- 'Adj-p'
+  }
   
   # minPval <- min(feature_enrichment$p_val[feature_enrichment$p_val>0])
   # 
@@ -234,7 +243,7 @@ Volcano <- function(d){
   
   p <- plot_ly(data = feature_enrichment,
           x = ~Log2FC,
-          y = ~-log10(p_val),
+          y = ~-log10(var),
           type = 'scatter',
           # showlegend = FALSE,
           mode = 'markers',
@@ -244,14 +253,16 @@ Volcano <- function(d){
           text = ~paste("Feature: ", feature, "\n",
                         "Observed: ", observed, "\n",
                         "Expected: ", expected, "\n",
-                        "P-val: ", p_val, "\n"),
-          color = ~log10(p_val),
+                        "P-val: ", p_val, "\n",
+                        "Adj. P-val: ", padj, "\n",
+                        "eScore: ", eScore, "\n"),
+          color = ~log10(var),
           colors = "Spectral",
-          size = ~-log10(p_val)
+          size = ~-log10(var)
           ) %>% 
     layout(
            xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
-           yaxis = list(title="-Log10(p)", titlefont = ax)
+           yaxis = list(title=paste("-Log10(", printVar, ")", sep=''), titlefont = ax)
            )
   p
 }
@@ -391,6 +402,7 @@ subtractUnmappable <- function(f, u='~/Documents/Curie/Data/Genomes/Dmel_v6.12/M
 #'
 #' Simple function to write out bedfiels - useful for checking after merging/subtracting...
 #' @keywords bed
+#' @import dplyr
 #' @export
 
 writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
@@ -404,9 +416,10 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
   }
   
   colnames(df[,c(1,2,3)]) <- c("chrom", "start", "end")
+  names(df)[1:3] <- c("chrom", "start", "end")
   
   df <- df %>% 
-    filter(start < end) %>% 
+    filter(as.numeric(start) < as.numeric(end)) %>% 
     droplevels()
   
   cat(paste(outDir,name, sep='/'))

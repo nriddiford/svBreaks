@@ -12,3 +12,4 @@ inst/extdata/*
 !inst/extdata/gene_lengths.txt
 .Rbuildignore
 packrat/lib*/
+packrat/src/

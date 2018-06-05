@@ -10,26 +10,26 @@
 #' @export
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
-bpStats <- function(colSample=NA) {
-  bp_data <- getData()
+bpStats <- function(..., colSample=NA) {
+  exclude_samples <- c("A373R1", "A373R7", "A512R17", "A373R11")
+  
+  bp_data <- getData(...)
 
   sampleSvs <- bp_data %>%
     dplyr::filter(bp_no == "bp1") %>%
     group_by(sample, genotype) %>%
     tally() %>%
+    mutate(n = ifelse(n==0, 0, n)) %>% 
     mutate(som_count = ifelse(genotype=='somatic_tumour', n, 1))
-
-  exclude_samples <- c("A373R1", "A373R7", "A512R17", "A373R11")
-
+  
   if (!is.na(colSample)) {
     sampleSvs$colour <- ifelse(sampleSvs$sample %in% exclude_samples, "#C72424FE", "grey37")
-  }
-  else {
+  } else {
     sampleSvs$colour <- "grey37"
   }
 
   p <- ggplot(sampleSvs)
-  p <- p + geom_bar(aes(fct_reorder(sample, som_count), n, fill = colour), stat = "identity")
+  p <- p + geom_bar(aes(fct_reorder(sample, -som_count), n, fill = colour), stat = "identity")
   # p <- p + scale_y_continuous("Number of variants", limits = c(0, 20), expand = c(0.01, 0.01), breaks=seq(0,20,by=2))
   p <- p + scale_y_continuous("Number of variants", expand = c(0.01, 0.01))
 
@@ -140,28 +140,46 @@ bpFeatures <- function(..., notch=0) {
   p
 }
 
+
 #' svsbySample
 #' Plot the number of structural breakpoints per sample
 #' @keywords samples
+#' @import purr
 #' @export
-
-svsbySample <- function(colSample=NA) {
-  bp_data <- getData(genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11"))
-
+svsbySample <- function(colSample=FALSE) {
+  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+  
+  bp_data <- getData(!sample %in% excludedSamples)
+  
+  sample_names <- levels(bp_data$sample)
+  
   sampleSvs <- bp_data %>%
     filter(bp_no != "bp2") %>% 
     group_by(sample, genotype) %>%
     tally()
   
-  if (!is.na(colSample)) {
-    sampleSvs$colour <- ifelse(sampleSvs$sample == colSample, "#C72424FE", "#636161FE")
-  }
-  else {
-    sampleSvs$colour <- "grey37"
+  missing_samples = list()
+  
+  for(i in 1:length(sample_names)){
+    if(!(sample_names[i] %in% levels(sampleSvs$sample))){
+      cat(sample_names[i], "\n")
+      missing_samples[i] <- sample_names[i]
+    }
   }
   
-  p <- ggplot(sampleSvs)
-  p <- p + geom_bar(aes(fct_reorder(sample, -n), fill = colour, n), stat = "identity")
+  missing_samples <- compact(missing_samples)
+  
+  dat <- data.frame(sample = c(levels(sampleSvs$sample), paste(missing_samples)), count = (c(sampleSvs$n, rep(0, length(missing_samples)) ))) 
+                    
+                    
+  if(colSample) {
+    dat$colour <- ifelse(dat$sample == colSample, "#C72424FE", "#636161FE")
+  } else {
+    dat$colour <- "grey37"
+  }
+  
+  p <- ggplot(dat)
+  p <- p + geom_bar(aes(fct_reorder(sample, -count), count, fill = colour), stat = "identity")
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
   p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, 10), breaks = seq(0,10,by=2))
   p <- p + slideTheme() +

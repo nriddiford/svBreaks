@@ -135,7 +135,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   locations <- files %>%
     mutate(type = as.factor(type)) %>%
     mutate(pos = as.numeric(mid/1000000)) %>%
-    filter(chrom %in% levels(chromosomes$chroms)) %>%
+    filter(chrom %in% chroms) %>%
     arrange(chrom, mid) %>%
     droplevels()
 

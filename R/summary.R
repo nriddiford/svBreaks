@@ -11,16 +11,15 @@
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
 bpStats <- function(..., colSample=NA) {
-  exclude_samples <- c("A373R1", "A373R7", "A512R17", "A373R11")
+  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
   
-  bp_data <- getData(...)
-
+  bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+  
   sampleSvs <- bp_data %>%
     dplyr::filter(bp_no == "bp1") %>%
     group_by(sample, genotype) %>%
     tally() %>%
-    mutate(n = ifelse(n==0, 0, n)) %>% 
-    mutate(som_count = ifelse(genotype=='somatic_tumour', n, 1))
+    mutate(som_count = ifelse(genotype=='somatic_tumour', n/2, 0))
   
   if (!is.na(colSample)) {
     sampleSvs$colour <- ifelse(sampleSvs$sample %in% exclude_samples, "#C72424FE", "grey37")
@@ -49,7 +48,7 @@ bpStats <- function(..., colSample=NA) {
   ggsave(paste("plots/", sampleSVs, sep = ""), width = 20, height = 10)
 
   cat("sample", "SVs", sep = "\t", "\n")
-  bp_data <- dplyr::filter(bp_data, genotype == 'somatic_tumour')
+  bp_data <- dplyr::filter(bp_data, genotype == 'somatic_tumour', bp_no == "bp1")
   rank <- sort(table(bp_data$sample), decreasing = TRUE)
   rank <- as.array(rank)
 
@@ -154,8 +153,8 @@ svsbySample <- function(colSample=FALSE) {
   sample_names <- levels(bp_data$sample)
   
   sampleSvs <- bp_data %>%
-    filter(bp_no != "bp2") %>% 
-    filter(genotype == 'somatic_tumour') %>% 
+    dplyr::filter(bp_no != "bp2") %>% 
+    dplyr::filter(genotype == 'somatic_tumour') %>% 
     droplevels() %>% 
     group_by(sample) %>%
     tally()

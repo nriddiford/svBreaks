@@ -4,62 +4,46 @@
 #' svTypes
 #'
 #' Plot counts of different svTypes
-#' @import tidyverse
+#' @import tidyverse ggsci
 #' @export
+svTypes <- function(notch=FALSE, object='type', keep=FALSE) {
+  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
 
-svTypes <- function(notch=0, object=NA) {
-  if (is.na(object)) {
-    object <- "type"
+  if(notch) {
+    bp_data <- notchFilt(!sample %in% excludedSamples, keep=keep)
+    ext <- "_Notch.png"
+    if(!keep) ext <- "_not_Notch.png"
+  } else {
+    bp_data <- getData(genotype=='somatic_tumour', !sample %in% excludedSamples)
+    ext <- ".png"
   }
+  
+  dat <- bp_data %>% 
+    dplyr::filter(bp_no != "bp2") %>% 
+    group_by(sample, type) %>% 
+    dplyr::summarise(type_count = n()) %>%
+    mutate(sv_count = sum(type_count)) %>% 
+    arrange(-sv_count) %>% 
+    droplevels()
+  
+  # cols <- setCols(df=dat, col=object, set='Pastel1')
 
-  if (notch) {
-    bp_data <- getData()
-    bp_data <- dplyr::filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
-
-    ext <- "_Notch.pdf"
-  }
-  else {
-    bp_data <- getData()
-    ext <- ".pdf"
-  }
-
-  bp_data$type <- ifelse(bp_data$type == "BND", "INV", as.character(bp_data$type))
-  bp_data <- droplevels(bp_data)
-
-  cols <- setCols(bp_data, "type")
-
-  # Reorder by count
-  bp_data$type <- factor(bp_data$type, levels = names(sort(table(bp_data$type), decreasing = TRUE)))
-
-  if (object == "sample") {
-    # Reorder by count
-    bp_data$sample <- factor(bp_data$sample, levels = names(sort(table(bp_data$sample), decreasing = TRUE)))
-  }
-
-  # Only take bp1 for each event
-  bp_data <- dplyr::filter(bp_data, bp_no != "bp2")
-  bp_data <- droplevels(bp_data)
-
-  p <- ggplot(bp_data)
-  p <- p + geom_bar(aes(get(object), fill = type))
-  p <- p + cols
-  p <- p + cleanTheme() +
+  p <- ggplot(dat)
+  p <- p + geom_bar(aes(fct_reorder(sample, -sv_count), type_count, fill = type), stat = 'identity', alpha = 0.7)
+  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
+  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, 10), breaks = seq(0,10,by=2))
+  p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      axis.text = element_text(size = 40), axis.title = element_text(size = 90)
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
     )
-  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of calls", expand = c(0.01, 0.01))
-  p <- p + facet_wrap(~genotype)
-  # p<-p + coord_flip()
-  # p<-p + scale_y_reverse()
-
+  p <- p + scale_fill_jco()
+  
   types_outfile <- paste("sv_types_by_", object, ext, sep = "")
   cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep = ""), width = 22, height = 22)
-
+  ggsave(paste("plots/", types_outfile, sep = ""), width = 10, height = 10)
+  
   p
 }
 
@@ -166,8 +150,7 @@ typeLen <- function(size_threshold = 1, notch=0) {
   if (notch) {
     bp_data <- notchFilt()
     ext <- "_excl.N.pdf"
-  }
-  else {
+  } else {
     bp_data <- getData()
     ext <- ".pdf"
   }
@@ -185,8 +168,7 @@ typeLen <- function(size_threshold = 1, notch=0) {
 
   if (size_threshold <= 1) {
     breaks <- 0.1
-  }
-  else {
+  } else {
     breaks <- 1
   }
 

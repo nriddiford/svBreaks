@@ -9,17 +9,16 @@
 #' @export
 #' @return Dataframe
 #'
-notchFilt <- function(..., keep=0, start=2700000, stop=3400000) {
+notchFilt <- function(..., keep=FALSE, start=2700000, stop=3400000) {
   bp_data <- getData(..., genotype=='somatic_tumour')
   # bp_data <- filter(bp_data, genotype == 'somatic_tumour')
-  if (keep) {
+  if(keep) {
     cat("Selecting for bps in Notch\n")
     notchIn <- bp_data %>%
       filter(chrom == "X" & bp >= start & bp2 <= stop) %>%
       droplevels()
     return(notchIn)
-  }
-  else{
+  } else{
     cat("Excluding bps in Notch\n")
     noNotch <- bp_data %>%
       filter(!(chrom == "X" & bp >= start & bp2 <= stop)) %>%
@@ -35,7 +34,6 @@ notchFilt <- function(..., keep=0, start=2700000, stop=3400000) {
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-
 notchHits <- function(infile = "data/Notch_hits.txt") {
   bp_data <- read.delim(infile, header = T)
   bp_data <- dplyr::select(bp_data, "sample", "event", "source", "type", "chromosome1", "bp1", "chromosome2", "bp2", "length.Kb.", "affected_genes")
@@ -153,31 +151,26 @@ notchHits <- function(infile = "data/Notch_hits.txt") {
   combined_plots
 }
 
+
 #' notchDels
 #' Plot the size of deletions affecting Notch
 #' @keywords Notch
-#' @import dplyr
-#' @import ggplot2
-#' @import ggsci
-#' @import forcats
+#' @import dplyr ggplot2 ggsci forcats
 #' @export
 notchDels <- function(...) {
-  notch_data <- notchFilt(keep=1)
-
-  filter_samples <- c("A373R1", "A373R7", "A512R17", "A785-A788R11", "A785-A788R1", "A785-A788R3", "A785-A788R9")
+  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+  
+  notch_data <- notchFilt(keep=1, !sample %in% excludedSamples)
 
   # Problem with events not being clustered properly for CNV-Seq
   notch_data <- notch_data %>%
-    # dplyr::filter(!(sample %in% filter_samples & length > 5000)) %>%
-    dplyr::filter(type != 'TRA') %>%
-    dplyr::filter(type != 'BND') %>%
+    # dplyr::filter(type != 'TRA') %>%
     dplyr::filter(bp_no == 'bp1') %>%
     group_by(sample, event) %>%
-    filter(!duplicated(event)) %>%
+    dplyr::filter(!duplicated(event)) %>%
     ungroup() %>%
     group_by(sample) %>%
-    dplyr::mutate(allLength = sum(length))
-
+    mutate(allLength = sum(length))
 
   p <- ggplot(notch_data)
   p <- p + geom_bar(aes(fct_reorder(sample, -allLength), length, fill = type), alpha = 0.7, stat = "identity")
@@ -190,9 +183,7 @@ notchDels <- function(...) {
     )
   p <- p + scale_fill_jco()
 
-
-  # p <- p + scale_fill_identity()
-  dels_out <- paste("NotchDels.pdf")
+  dels_out <- paste("NotchDels.png")
   cat("Writing file", dels_out, "\n")
   ggsave(paste("plots/", dels_out, sep = ""), width = 30, height = 15)
 

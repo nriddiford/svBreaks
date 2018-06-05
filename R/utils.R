@@ -46,7 +46,7 @@ slideTheme <- function(base_size = 25) {
 }
 
 
-## @knitr setCols
+## setCols
 #'
 #' Set colour scheme for manual colouring
 #' @keywords colour scheme

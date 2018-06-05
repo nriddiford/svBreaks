@@ -6,7 +6,7 @@
 #' @import data.table
 #' @export
 
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=0, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
   if(is.na(breakpoints)){
     breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     # breakpoints <- notchFilt(..., keep=1, genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
@@ -15,7 +15,26 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       dplyr::mutate(end = start+1) %>%
       select(chrom, start, end)
     
-  } else{
+  } else if(breakpoints=='notch'){
+      Nstart <- 3134870 - 500000
+      Nstop <- 3172221 + 500000
+      N_window <- Nstop - Nstart
+      if(keep){
+        genome_length <- N_window
+      } else {
+        genome_length <- genome_length - N_window
+      }
+      
+      cat("X:", Nstart, "-", Nstop, sep='', "\n")
+      
+      N_filtered <- notchFilt(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"), keep=keep)
+      
+      bps <- N_filtered %>% 
+        dplyr::rename(start = bp) %>% 
+        dplyr::mutate(end = start+1) %>%
+        select(chrom, start, end)
+      
+  } else {
     bps <- read.table(breakpoints, header = F)
     
     if(ncol(bps)<3){
@@ -31,6 +50,8 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       
   }
   
+  
+  cat("Specified genome size:", genome_length, "\n")
   cat("Expanding regions by", slop, "\n\n")
   
   scores <- list()
@@ -42,19 +63,22 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     # cat("Analysing file:", f, "\n")
     
     if(parseName){
-      parts <- unlist(strsplit(basename(tools::file_path_sans_ext(f)), split = '_'))
-      
+      filename <- basename(tools::file_path_sans_ext(f))
+      parts <- unlist(strsplit(filename, split = '_'))
       factor <- parts[1]
       genotype <- parts[2]
       tissue <- parts[3]
       element <- parts[4]
       replicate <- parts[5]
       id <- unlist(strsplit(parts[7], split= "[.]"))[1]
-      filename <- paste(factor, id, element, sep='_')
-      filename <- substr(filename, start=1, stop=30)
     }else{
       filename <- tools::file_path_sans_ext(f)
-      filename <- substr(filename, start=1, stop=30)
+      factor <- unlist(strsplit(basename(tools::file_path_sans_ext(f)), split = "\\."))[1]
+      genotype <- 'wt'
+      tissue <- 'pooled'
+      element <- 'misc'
+      replicate <- '0'
+      id <- 'NA'
     }
     
     regions <- read.table(paste(bedDir, f, sep='/'), header = F)
@@ -72,6 +96,20 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       arrange(chrom) %>% 
       droplevels()
     
+    if(breakpoints=='notch'){
+      if(keep){
+        regions <- regions %>% 
+          filter(chrom == "X", start >= Nstart, end <= Nstop) %>% 
+          droplevels()
+      } else {
+        regions <- regions %>% 
+          filter(!(chrom == "X" & start >= Nstart & end <= Nstop) ) %>% 
+          droplevels()
+      }
+    }
+    
+    if (!nrow(regions)) next
+
     if(intersect){
       cat("Analysing file:", f, "\n")
       merged_regions <- mergeOverlaps(regions, dataframe = T)
@@ -152,8 +190,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       
       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
       
-
-      list(feature = filename, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value)
+      list(feature = factor, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value, genotype=genotype, tissue=tissue, element=element, replicate=replicate, id=id, filename=filename)
     }
     
     biNomialTest <- lapply(f, biTest)
@@ -191,9 +228,10 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
     dplyr::mutate(eScore = round(abs(Log2FC) * -log10(padj),2)) %>% 
     dplyr::filter(count >= minHits) %>%
-    dplyr::select(-count) %>% 
+    dplyr::select(feature:p_val, padj, eScore, genotype, tissue, element, replicate, id, filename, -count) %>% 
     dplyr::arrange(-eScore, padj, -abs(Log2FC)) %>% 
     droplevels()
+
   
   if(plot){
     cat("Plotting volcano plot", "\n")

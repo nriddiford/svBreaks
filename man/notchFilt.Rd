@@ -5,7 +5,7 @@
 \title{Functions related to Notch
 notchFilt}
 \usage{
-notchFilt(..., keep = 0)
+notchFilt(..., keep = 0, start = 2700000, stop = 3400000)
 }
 \arguments{
 \item{infile}{File to process [Required]}

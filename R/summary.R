@@ -144,7 +144,7 @@ bpFeatures <- function(..., notch=0) {
 #' svsbySample
 #' Plot the number of structural breakpoints per sample
 #' @keywords samples
-#' @import purr
+#' @import tidyverse
 #' @export
 svsbySample <- function(colSample=FALSE) {
   excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
@@ -155,14 +155,15 @@ svsbySample <- function(colSample=FALSE) {
   
   sampleSvs <- bp_data %>%
     filter(bp_no != "bp2") %>% 
-    group_by(sample, genotype) %>%
+    filter(genotype == 'somatic_tumour') %>% 
+    droplevels() %>% 
+    group_by(sample) %>%
     tally()
   
   missing_samples = list()
   
   for(i in 1:length(sample_names)){
     if(!(sample_names[i] %in% levels(sampleSvs$sample))){
-      cat(sample_names[i], "\n")
       missing_samples[i] <- sample_names[i]
     }
   }

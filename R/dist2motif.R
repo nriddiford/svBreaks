@@ -243,10 +243,12 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   combined <- pVals_and_df[[1]]
   pVals <- pVals_and_df[[2]]
   
+  
   if(plot){
     print(plotdistanceOverlay(..., d=combined, from=from, byChrom=byChrom, lim=lim, feature=feature, n=n ))
+  }else{
+    return(list(combined, pVals))
   }
-  return(list(combined, pVals))
 }
 
 #' plotdistanceOverlay
@@ -339,7 +341,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
     p <- p + scale_colour_manual(values = colours)
 
     if (!is.na(byChrom)) {
-      p <- p + facet_wrap(iteration~chrom, ncol = length(levels(as.factor(combined$chrom))))
+      p <- p + facet_wrap(~chrom, ncol = length(levels(as.factor(combined$chrom))))
     } else {
       p <- p + facet_wrap(~iteration)
     }

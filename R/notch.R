@@ -9,20 +9,20 @@
 #' @export
 #' @return Dataframe
 #'
-notchFilt <- function(..., keep=0) {
+notchFilt <- function(..., keep=0, start=2700000, stop=3400000) {
   bp_data <- getData(..., genotype=='somatic_tumour')
   # bp_data <- filter(bp_data, genotype == 'somatic_tumour')
   if (keep) {
     cat("Selecting for bps in Notch\n")
     notchIn <- bp_data %>%
-      filter(chrom == "X" & bp >= 2700000 & bp2 <= 3400000) %>%
+      filter(chrom == "X" & bp >= start & bp2 <= stop) %>%
       droplevels()
     return(notchIn)
   }
   else{
     cat("Excluding bps in Notch\n")
     noNotch <- bp_data %>%
-      filter(!(chrom == "X" & bp >= 2700000 & bp2 <= 3400000)) %>%
+      filter(!(chrom == "X" & bp >= start & bp2 <= stop)) %>%
       filter(gene != 'N', gene2 != 'N') %>%
       droplevels()
     return(noNotch)

@@ -5,7 +5,7 @@
 \title{bpStats
 Get some basic stats for breakpoints}
 \usage{
-bpStats(colSample = NA)
+bpStats(..., colSample = NA)
 }
 \arguments{
 \item{colSample}{Set to <samplename> to colour that sample red in the plot}

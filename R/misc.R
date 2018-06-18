@@ -83,7 +83,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
       f2$V3 <- f2$V2 + 2
     }
     
-    f2$type <- feature1
+    f2$type <- feature2
     colnames(f2) <- c("chrom", "start", "end", "type")
     
     f2 <- f2 %>% 
@@ -99,7 +99,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
       f3$V3 <- f3$V2 + 2
     }
     
-    f3$type <- feature1
+    f3$type <- feature3
     colnames(f3) <- c("chrom", "start", "end", "type")
     
     f3 <- f3 %>% 
@@ -128,7 +128,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   # p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
   p <- p + facet_wrap(~chrom, scales = "free_x", nrow=length(levels(locations$chrom)))
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 5))
-  p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
+  # p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   p <- p + slideTheme() +
     theme(axis.text.y = element_blank())
 
@@ -328,7 +328,6 @@ bpGenAll <- function(object=NA, notch=0) {
 #' Plot distribution of brekpoints across the genome by chromosome
 #' @import tidyverse
 #' @export
-
 bpChromDist <- function(object=NA, notch=0) {
   bp_data <- getData()
   ext <- ".pdf"

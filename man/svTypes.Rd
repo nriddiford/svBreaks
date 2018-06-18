@@ -5,7 +5,7 @@
 \title{Misc functions
 svTypes}
 \usage{
-svTypes(notch = 0, object = NA)
+svTypes(notch = FALSE, object = "type", keep = FALSE)
 }
 \description{
 Plot counts of different svTypes

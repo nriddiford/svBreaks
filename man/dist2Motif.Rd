@@ -7,7 +7,7 @@ Calculate the distance from each breakpoint to closest motif}
 \usage{
 dist2Motif(..., breakpoints = NA, feature_file = system.file("extdata",
   "tss_locations.txt", package = "svBreaks"), sim = NA, print = 0,
-  send = 0, feature = "tss")
+  send = 0, feature = "tss", keep = FALSE)
 }
 \description{
 dist2Motif

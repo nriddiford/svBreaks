@@ -2,14 +2,12 @@
 % Please edit documentation in R/sizeDist.R
 \name{sizeDist}
 \alias{sizeDist}
-\title{A function to plot the size distribution of SV types
-sizeDist
+\title{sizeDist
 Plot the size distribution for different types of structual variants}
 \usage{
 sizeDist(...)
 }
 \description{
-A function to plot the size distribution of SV types
 sizeDist
 Plot the size distribution for different types of structual variants
 }

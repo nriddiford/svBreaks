@@ -1,5 +1,3 @@
-#' A function to plot the size distribution of SV types
-
 #' sizeDist
 #' Plot the size distribution for different types of structual variants
 #' @keywords size

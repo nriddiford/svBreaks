@@ -145,10 +145,10 @@ bpFeatures <- function(..., notch=0) {
 #' @keywords samples
 #' @import tidyverse
 #' @export
-svsbySample <- function(colSample=FALSE) {
+svsbySample <- function(..., colSample=NA) {
   excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
   
-  bp_data <- getData(!sample %in% excludedSamples)
+  bp_data <- getData(..., !sample %in% excludedSamples)
   
   sample_names <- levels(bp_data$sample)
   
@@ -172,7 +172,7 @@ svsbySample <- function(colSample=FALSE) {
   dat <- data.frame(sample = c(levels(sampleSvs$sample), paste(missing_samples)), count = (c(sampleSvs$n, rep(0, length(missing_samples)) ))) 
                     
                     
-  if(colSample) {
+  if(!is.na(colSample)) {
     dat$colour <- ifelse(dat$sample == colSample, "#C72424FE", "#636161FE")
   } else {
     dat$colour <- "grey37"
@@ -190,9 +190,51 @@ svsbySample <- function(colSample=FALSE) {
     )
   p <- p + scale_fill_identity()
   
-  svsSample <- 'svsBySample.png'
-  cat("Writing file", svsSample, "\n")
-  ggsave(paste("plots/", svsSample, sep = ""), width = 10, height = 10)
+  # svsSample <- 'svsBySample.png'
+  # cat("Writing file", svsSample, "\n")
+  # ggsave(paste("plots/", svsSample, sep = ""), width = 10, height = 10)
   
-  p
+  # p
+  dat <- dat %>%
+    dplyr::select(-colour) %>% 
+    arrange(-count)
+  
+  return(dat)
 }
+
+#' genesbySample
+#' Plot the number of structural breakpoints per sample
+#' @keywords genes
+#' @import plyr dplyr forcats
+#' @export
+genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered.txt", genome_length=118274340) {
+  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+  
+  bp_data <- getData(genotype=='somatic_tumour', !sample %in% excludedSamples)
+  
+  allGenes <- read.delim(affected_genes, header = F)
+  colnames(allGenes) <- c("event", "sample", "genotype", "type", "chrom", "gene")
+  
+  allGenes <- allGenes %>% 
+    dplyr::filter(genotype=='somatic_tumour', !sample %in% excludedSamples) %>% 
+    dplyr::filter(!(sample=='A373R3' & event== 578)) %>% 
+    dplyr::filter(!(sample=='A373R3' & event== 465)) %>% 
+    dplyr::filter(!(sample=='B241R37' & event== 994)) # germline_recurrent
+
+  allGenes <- allGenes %>% 
+    group_by(sample) %>% 
+    dplyr::summarise(affected_genes = n())
+  
+  p <- ggplot(allGenes, aes(fct_reorder(sample, -affected_genes), affected_genes)) +
+    geom_bar(stat='identity') +
+    theme(
+      axis.title.x = element_blank(),
+      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
+    )
+  
+  return(allGenes)
+
+  
+}
+  

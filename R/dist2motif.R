@@ -9,8 +9,7 @@
 #' @import colorspace
 #' @import RColorBrewer
 #' @export
-
-generateData <- function(..., breakpoints=NA, sim=NA){
+generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
   
   if(is.na(breakpoints)){
     real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
@@ -78,9 +77,10 @@ generateData <- function(..., breakpoints=NA, sim=NA){
 #' @import RColorBrewer
 #' @export
 
-dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA, print=0, send=0, feature="tss") {
+dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA,
+                       print=0, send=0, feature="tss", keep=FALSE) {
   # df : chrom pos iteration
-  bp_data <- generateData(..., breakpoints=breakpoints, sim=sim)
+  bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
 
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
@@ -215,13 +215,15 @@ dist2Motif <- function(..., breakpoints=NA,feature_file = system.file("extdata",
 #' @export
 
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                        feature="tss", from='bps', lim=10, byChrom=NA, n=10, plot = TRUE) {
+                        feature="tss", from='bps', lim=10, byChrom=NA, n=10, plot = TRUE, keep=FALSE) {
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   scaleFactor <- lim*1000
-
-  real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature)
-  sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
+  
+  if(is.na(breakpoints)){
+    real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature, keep=keep)
+    sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
+  }
 
   real_data$Source <- "Real"
   sim_data$Source <- "Sim"
@@ -282,6 +284,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
   
   if(!facetPlot){
 
+    width = 10
     new <- combined %>% 
       mutate(iteration = as.factor(ifelse(Source=='Real', 0, iteration)))
     
@@ -293,8 +296,8 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
     
     p <- ggplot(new)
     
-    p <- p + geom_density(aes(min_dist, fill = iteration), alpha = 0.2, adjust=0.5)
-    p <- p + geom_density(data=new[new$Source=="Real",], aes(min_dist, fill = iteration), alpha = 0.7, adjust=0.5)
+    p <- p + geom_density(aes(min_dist, fill = iteration), alpha = 0.2, adjust=0.6)
+    p <- p + geom_density(data=new[new$Source=="Real",], aes(min_dist, fill = iteration), alpha = 0.7, adjust=0.6)
     
     p <- p + scale_fill_manual(values=colours)
     
@@ -318,6 +321,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
     p <- p + geom_vline(xintercept = 0, colour = "black", linetype = "dotted")
   
   } else {
+    width = 10
     cat("Plotting each iteration\n")
     colours <- c("#E7B800", "#00AFBB")
 
@@ -369,7 +373,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
   if(write){
     overlay <- paste(from, '_to_', feature, "_dist_overlay_", lim, "kb.png", sep = "")
     cat("Writing file", overlay, "\n")
-    ggsave(paste("plots/", overlay, sep = ""), width = 20, height = 10)
+    ggsave(paste("plots/", overlay, sep = ""), width = width, height = 10)
   } 
   
   if (facetPlot){
@@ -482,16 +486,17 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   ## Boxplot per chrom
 
   colours <- c("#E7B800", "#00AFBB")
+  cat("Plotting qq plot of min distances\n")
+  qqnorm(combined$min_dist)
+  qqline(combined$min_dist, col = 2)
 
-  # qqnorm(combined$min_dist);qqline(combined$min_dist, col = 2)
+  # p <- ggplot(combined)
+  # p <- p + geom_boxplot(aes(chrom, min_dist, fill = Source), alpha = 0.6)
+  # p <- p + scale_y_continuous("Distance", limits=c(-5000, 5000))
+  # p <- p + facet_wrap(~iteration, ncol = 2)
+  # p <- p + scale_fill_manual(values = colours)
 
-  p <- ggplot(combined)
-  p <- p + geom_boxplot(aes(chrom, min_dist, fill = Source), alpha = 0.6)
-  p <- p + scale_y_continuous("Distance", limits=c(-5000, 5000))
-  p <- p + facet_wrap(~iteration, ncol = 2)
-  p <- p + scale_fill_manual(values = colours)
-
-  #p
+  # p
   return(list(combined,pVals_df))
 }
 

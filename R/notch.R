@@ -157,11 +157,13 @@ notchHits <- function(infile = "data/Notch_hits.txt") {
 #' @keywords Notch
 #' @import dplyr ggplot2 ggsci forcats
 #' @export
-notchDels <- function(...) {
-  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+notchDels <- function() {
+  # excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
   
-  notch_data <- notchFilt(keep=1, !sample %in% excludedSamples)
-
+  notch_data <- notchFilt(keep=1)
+  bp_data <- getData()
+  sample_names <- levels(bp_data$sample)
+  
   # Problem with events not being clustered properly for CNV-Seq
   notch_data <- notch_data %>%
     # dplyr::filter(type != 'TRA') %>%
@@ -171,6 +173,20 @@ notchDels <- function(...) {
     ungroup() %>%
     group_by(sample) %>%
     mutate(allLength = sum(length))
+  
+  missing_samples = list()
+  
+  for(i in 1:length(sample_names)){
+    if(!(sample_names[i] %in% levels(notch_data$sample))){
+      missing_samples[i] <- sample_names[i]
+    }
+  }
+  
+  missing_samples <- compact(missing_samples)
+  dat <- data.frame(sample = c(levels(notch_data$sample), paste(missing_samples)),
+                    length = c(notch_data$length, rep(0, length(missing_samples)))
+                    ) 
+  
 
   p <- ggplot(notch_data)
   p <- p + geom_bar(aes(fct_reorder(sample, -allLength), length, fill = type), alpha = 0.7, stat = "identity")
@@ -182,7 +198,7 @@ notchDels <- function(...) {
       axis.title.x = element_blank()
     )
   p <- p + scale_fill_jco()
-
+  p
   dels_out <- paste("NotchDels.png")
   cat("Writing file", dels_out, "\n")
   ggsave(paste("plots/", dels_out, sep = ""), width = 30, height = 15)

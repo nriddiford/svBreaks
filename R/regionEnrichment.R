@@ -1,16 +1,15 @@
 # bpRegionEnrichment
-#'
 #' Calculate the enrichment of SVs in genomic regions
 #' @keywords enrichment
 #' @import dplyr
 #' @import data.table
 #' @export
-
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE, slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE,
+                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
   if(is.na(breakpoints)){
-    breakpoints <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-    # breakpoints <- notchFilt(..., keep=1, genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-    bps <- breakpoints %>% 
+    breakpoints <- 'svs'
+    bps <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    bps <- bps %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
       select(chrom, start, end)
@@ -40,6 +39,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     if(ncol(bps)<3){
       bps$V3 <- bps$V2 + 2
     }
+    bps <- bps[,c(1,2,3)]
    
     colnames(bps) <- c("chrom", "start", "end")
     
@@ -47,9 +47,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
       dplyr::mutate(start = as.integer(end-1)) %>%
       dplyr::select(chrom, start, end)
-      
   }
-  
   
   cat("Specified genome size:", genome_length, "\n")
   cat("Expanding regions by", slop, "\n\n")
@@ -120,14 +118,13 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       intersected_regions$chr <- as.factor(intersected_regions$chr)
       regions <- intersected_regions %>% 
         dplyr::rename(chrom=chr)
-      
-      if(write){
-        cat("Writing bed file:", f, "\n")
-        basename <- tools::file_path_sans_ext(f)
-        basename <- paste(basename, '_merged_intersected_', slop, '.bed', sep='')
-        writeBed(df=regions, name = basename)
-      }
-
+    }
+    
+    if(write){
+      cat("Writing bed file:", f, "\n")
+      basename <- tools::file_path_sans_ext(f)
+      basename <- paste(basename, '_merged_intersected_', slop, '.bed', sep='')
+      writeBed(df=regions, name = basename)
     }
    
     # setkey = d1 for breakpoints, d2 for regions
@@ -231,15 +228,17 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     dplyr::select(feature:p_val, padj, eScore, genotype, tissue, element, replicate, id, filename, -count) %>% 
     dplyr::arrange(-eScore, padj, -abs(Log2FC)) %>% 
     droplevels()
-
   
-  if(plot){
-    cat("Plotting volcano plot", "\n")
-    print(Volcano(final))
-    # print(ggVolcano(df=final))
+  if(nrow(final)==0){
+    cat("Fewer than", minHits, "found in all files. Try adjusting 'minHits' to a lower number", sep=" ", "\n")
+  } else { 
+    if(plot){
+      cat("Plotting volcano plot", "\n")
+      print(Volcano(final))
+      # print(ggVolcano(df=final))
+    }
+    return(final)
   }
-  
-  return(final)
 }
 
 
@@ -250,7 +249,6 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
 #' @import dplyr
 #' @import plotly
 #' @export
-
 Volcano <- function(d, byq=FALSE){
   feature_enrichment <- d
   
@@ -460,7 +458,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
     filter(as.numeric(start) < as.numeric(end)) %>% 
     droplevels()
   
-  cat(paste(outDir,name, sep='/'))
+  cat(paste(outDir,name, sep='/'), "\n")
   
   write.table(df, file = paste(outDir,name, sep='/'), row.names=F, col.names=F, sep=" ", quote = FALSE)
 }

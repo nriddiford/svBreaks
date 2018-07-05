@@ -29,7 +29,7 @@ getData <- function(...,
   bp_data <- plyr::join(bp_data, gene_lengths, "gene", type = "left")
 
   # Read in tissue specific expression data
-  seq_data <- read.csv(header = F, expression_data)
+  seq_data <- read.table(header = F, expression_data)
   colnames(seq_data) <- c("id", "fpkm")
   bp_data <- plyr::join(bp_data, seq_data, "id", type = "left")
   

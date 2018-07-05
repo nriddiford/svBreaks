@@ -30,7 +30,6 @@ generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
       dplyr::mutate(pos = (end+start)/2) %>%
       dplyr::select(chrom, pos) %>% 
       droplevels()
-    
   }
   
   if (!is.na(sim)) {
@@ -76,7 +75,6 @@ generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
 #' @import dplyr
 #' @import RColorBrewer
 #' @export
-
 dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA,
                        print=0, send=0, feature="tss", keep=FALSE) {
   # df : chrom pos iteration
@@ -107,12 +105,10 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
     dplyr::mutate(pos = as.integer(end-1)) %>%
     dplyr::select(chrom, pos)
 
-#   feature_locations <- feature_locations[,c(1,2)]
-# 
-#   colnames(feature_locations) <- c("chrom", "pos")
-
+  # feature_locations <- feature_locations[,c(1,2)]
+  # colnames(feature_locations) <- c("chrom", "pos")
   # feature_locations$pos <- as.integer(feature_locations$pos)
-
+  
   # Will throw error if SVs don't exist on a chrom...
   # Removes chroms with fewer than 10 observations
   svCount <- table(bp_data$chrom)
@@ -121,7 +117,6 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
 
   feature_locations <- subset(feature_locations, chrom %in% levels(bp_data$chrom))
   feature_locations <- droplevels(feature_locations)
-
 
   fun2 <- function(p) {
     index <- which.min(abs(tss_df$pos - p))
@@ -140,14 +135,11 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
     for (c in levels(bp_data$chrom)) {
       df <- dplyr::filter(df1, chrom == c)
       tss_df <- dplyr::filter(feature_locations, chrom == c)
-
       dist2tss <- lapply(df$pos, fun2)
       dist2tss <- do.call(rbind, dist2tss)
-
       new <- data.frame(matrix(unlist(dist2tss), nrow=nrow(df)))
       new$iteration <- i
       colnames(new) <- c("bp", "closest_tss", "min_dist", "chrom", "iteration")
-
       byChrom[[c]] <- new
     }
     perIter <- do.call(rbind, byChrom)
@@ -213,15 +205,14 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
 #' @import ggpubr
 #' @import RColorBrewer
 #' @export
-
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                        feature="tss", from='bps', lim=10, byChrom=NA, n=10, plot = TRUE, keep=FALSE) {
+                        feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=FALSE) {
+  
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
-
   scaleFactor <- lim*1000
   
   if(is.na(breakpoints)){
-    real_data <- dist2Motif(..., breakpoints=breakpoints, feature_file = feature_file, send = 1, feature = feature, keep=keep)
+    real_data <- dist2Motif(..., breakpoints = breakpoints, feature_file = feature_file, send = 1, feature = feature, keep=keep)
     sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
   }
 
@@ -245,8 +236,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   combined <- pVals_and_df[[1]]
   pVals <- pVals_and_df[[2]]
   
-  
-  if(plot){
+  if(plot==T){
     print(plotdistanceOverlay(..., d=combined, from=from, byChrom=byChrom, lim=lim, feature=feature, n=n ))
   }else{
     return(list(combined, pVals))
@@ -263,7 +253,6 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @import plotly
 #' @keywords distance
 #' @export
-
 plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE, plotly=FALSE){
   scaleFactor <- lim*1000
   combined <- d
@@ -400,7 +389,6 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
 #' @import PerformanceAnalytics
 #' @keywords sim
 #' @export
-
 simSig <- function(r, s, test=NA, max_dist=5000){
 
   simulated <- s %>%
@@ -509,18 +497,15 @@ simSig <- function(r, s, test=NA, max_dist=5000){
 #' @importFrom data.table fread as.data.table
 #' @keywords sim
 #' @export
-
-bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 10 ){
-  intervals=system.file("extdata", "intervals.bed", package="svBreaks")
+bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 10, intervals=system.file("extdata", "intervals.bed", package="svBreaks")){
   bed <- data.table::fread(intervals)
-  colnames(bed) <- c("chrom", "start", "end", "NA")
+  bed <- bed[,c(1,2,3)]
+  colnames(bed) <- c("chrom", "start", "end")
 
   bed <- bed %>%
-    dplyr::select(chrom:end) %>%
     dplyr::mutate(size = (end-start)+1)  %>%
-    as.data.table() %>%
-    droplevels()
-
+    as.data.table()
+  
   if(is.na(byChrom)){
     # Randomly sample bed file rows, proportional to the length of each range
     simulatedBps <- bed[sample(.N, size=nSites, replace=TRUE, prob=bed$size)]
@@ -534,7 +519,6 @@ bpSim <- function(nSites = 1e3, byChrom = NA, iterations = 10 ){
 
     # Randomly sample bed file rows, proportional to the length of each range
     simulatedBps <- bed[sample(.N, size=nSites, replace=TRUE, prob=bed$size)]
-
     # Randomly sample uniformly within each chosen range
     simulatedBps[, position := sample(start:end, size=1), by=1:dim(simulatedBps)[1]]
   }

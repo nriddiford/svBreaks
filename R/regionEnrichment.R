@@ -5,7 +5,7 @@
 #' @import data.table
 #' @export
 bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE,
-                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10 ){
+                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10){
   if(is.na(breakpoints)){
     breakpoints <- 'svs'
     bps <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
@@ -351,18 +351,19 @@ ggVolcano <- function(..., df){
 # plotMonteCarlo
 #'
 #' Plot the result of a monte carlo simulation (n shuffles of feature y)
+#' Expects dataframe returned from bpRegionEnrichment()
 #' @keywords expected frequency
 #' @import plyr dplyr ggplot2
 #' @import RColorBrewer
 #' @export
 
-plotMonteCarlo <- function(x){
+plotMonteCarlo <- function(x, bindWith = 10){
   
   x <- x %>% 
     mutate(fillCol = ifelse(grepl("shuff", feature), "grey37", "#C72424FE"))
-    
+
   ggplot(x, aes(observed, fill = fillCol)) +
-  geom_histogram(binwidth = 10) +
+  geom_histogram(binwidth = bindWith) +
   cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
@@ -460,7 +461,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
   
   cat(paste(outDir,name, sep='/'), "\n")
   
-  write.table(df, file = paste(outDir,name, sep='/'), row.names=F, col.names=F, sep=" ", quote = FALSE)
+  write.table(df, file = paste(outDir,name, sep='/'), row.names=F, col.names=F, sep="\t", quote = FALSE)
 }
 
 

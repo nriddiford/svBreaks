@@ -1,5 +1,4 @@
 #' Functions related to Notch
-
 #' notchFilt
 #'
 #' Function to filter in/out events affecting a locus (in this case the Drosophila Notch locus)
@@ -10,7 +9,7 @@
 #' @return Dataframe
 #'
 notchFilt <- function(..., keep=FALSE, start=2700000, stop=3400000) {
-  bp_data <- getData(..., genotype=='somatic_tumour')
+  bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"), genotype=='somatic_tumour')
   # bp_data <- filter(bp_data, genotype == 'somatic_tumour')
   if(keep) {
     cat("Selecting for bps in Notch\n")
@@ -22,7 +21,7 @@ notchFilt <- function(..., keep=FALSE, start=2700000, stop=3400000) {
     cat("Excluding bps in Notch\n")
     noNotch <- bp_data %>%
       filter(!(chrom == "X" & bp >= start & bp2 <= stop)) %>%
-      filter(gene != 'N', gene2 != 'N') %>%
+      filter(!gene %in% c('N', 'dnc', 'kirre'), !gene2 %in% c('N', 'dnc', 'kirre'))  %>%
       droplevels()
     return(noNotch)
   }

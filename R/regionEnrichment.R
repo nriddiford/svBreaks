@@ -447,13 +447,13 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
     df <- df %>%
       filter(bp_no=='bp1') %>% 
       mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>%
-      rename(start = bp) %>% 
-      rename(end = bp2) %>% 
+      dplyr::rename(start = bp) %>% 
+      dplyr::rename(end = bp2) %>% 
       select(chrom, start, end, info)
+  } else{
+    colnames(df[,c(1,2,3)]) <- c("chrom", "start", "end")
+    names(df)[1:3] <- c("chrom", "start", "end")
   }
-  
-  colnames(df[,c(1,2,3)]) <- c("chrom", "start", "end")
-  names(df)[1:3] <- c("chrom", "start", "end")
   
   df <- df %>% 
     filter(as.numeric(start) < as.numeric(end)) %>% 

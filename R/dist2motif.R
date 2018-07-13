@@ -10,7 +10,6 @@
 #' @import RColorBrewer
 #' @export
 generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
-  
   if(is.na(breakpoints)){
     real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     # real_data <- notchFilt(keep=0)
@@ -71,12 +70,10 @@ generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
 #' dist2Motif
 #' Calculate the distance from each breakpoint to closest motif
 #' @keywords motif
-#' @import ggplot2
-#' @import dplyr
-#' @import RColorBrewer
+#' @import ggplot2 dplyr tidyr RColorBrewer
 #' @export
 dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA,
-                       print=0, send=0, feature="tss", keep=FALSE) {
+                       print=0, send=0, feature="tss", keep=FALSE, position = 'centre') {
   # df : chrom pos iteration
   bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
 
@@ -89,25 +86,25 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
     feature_locations <- read.table(feature_file, header = F)
     cat("Reading in file:", feature_file, sep = " ", "\n")
   }
-
-  cat("Calculating distances to", feature, sep = " ", "\n")
   
-  # Select midpoint of region
   if(is.null(feature_locations$V3)){
-    feature_locations$V3 <- feature_locations$V2 + 2
+    feature_locations$V3 <- feature_locations$V2 + 1
+    feature_locations$V2 <- feature_locations$V2 - 1
   }
   feature_locations <- feature_locations[,c(1,2,3)]
-  
+  cat("Calculating distances to", position, 'of', feature, sep = " ", "\n")
   colnames(feature_locations) <- c("chrom", "start", "end")
-  
-  feature_locations <- feature_locations %>% 
-    dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
-    dplyr::mutate(pos = as.integer(end-1)) %>%
-    dplyr::select(chrom, pos)
 
-  # feature_locations <- feature_locations[,c(1,2)]
-  # colnames(feature_locations) <- c("chrom", "pos")
-  # feature_locations$pos <- as.integer(feature_locations$pos)
+  if(position == 'centre'){
+    feature_locations <- feature_locations %>% 
+      dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
+      dplyr::mutate(pos = as.integer(end-1)) %>%
+      dplyr::select(chrom, pos)
+  } else if(position == 'edge'){
+    feature_locations <- feature_locations %>% 
+      tidyr::gather(c, pos, start:end, factor_key=TRUE) %>% 
+      dplyr::select(chrom, pos)
+  }
   
   # Will throw error if SVs don't exist on a chrom...
   # Removes chroms with fewer than 10 observations
@@ -206,15 +203,13 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
 #' @import RColorBrewer
 #' @export
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                        feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=FALSE) {
+                        feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=FALSE, position = 'centre') {
   
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
   scaleFactor <- lim*1000
   
-  if(is.na(breakpoints)){
-    real_data <- dist2Motif(..., breakpoints = breakpoints, feature_file = feature_file, send = 1, feature = feature, keep=keep)
-    sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
-  }
+  real_data <- dist2Motif(..., breakpoints = breakpoints, feature_file = feature_file, send = 1, feature = feature, keep=keep, position = position)
+  sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = n, send = 1)
 
   real_data$Source <- "Real"
   sim_data$Source <- "Sim"
@@ -237,7 +232,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
   pVals <- pVals_and_df[[2]]
   
   if(plot==T){
-    print(plotdistanceOverlay(..., d=combined, from=from, byChrom=byChrom, lim=lim, feature=feature, n=n ))
+    print(plotdistanceOverlay(..., d=combined, from=from, facetPlot=FALSE, byChrom=byChrom, lim=lim, feature=feature, n=n ))
   }else{
     return(list(combined, pVals))
   }
@@ -249,7 +244,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
 #' @import dplyr
 #' @import ggplot2
-#' @import RColorBrewer
+#' @import RColorBrewer colorspace
 #' @import plotly
 #' @keywords distance
 #' @export
@@ -390,27 +385,22 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
 #' @keywords sim
 #' @export
 simSig <- function(r, s, test=NA, max_dist=5000){
-
-  simulated <- s %>%
-    group_by(chrom, iteration) %>%
-    dplyr::mutate( count = n(),
-            median = median(min_dist),
-            mean = mean(min_dist),
-            sd = sd(min_dist),
-            Source = factor(Source)) %>%
-    filter(abs(min_dist) <= max_dist ) %>%
-    ungroup()
-
-  real <- r %>%
-    dplyr::group_by(chrom, iteration) %>%
-    dplyr::mutate( count = n(),
-                   median = median(min_dist),
-                   mean = mean(min_dist),
-                   sd = sd(min_dist),
-                   Source = factor(Source)) %>%
-    filter(abs(min_dist) <= max_dist ) %>%
-    ungroup()
-
+  
+  arrange_data <- function(x){
+    x <- x %>% 
+      group_by(chrom, iteration) %>%
+      dplyr::mutate( count = n(),
+                     median = median(min_dist),
+                     mean = mean(min_dist),
+                     sd = sd(min_dist),
+                     Source = factor(Source)) %>%
+      filter(abs(min_dist) <= max_dist ) %>%
+      ungroup()
+    return(x)
+  }
+  simulated <- arrange_data(s)
+  real <- arrange_data(r)
+  
   combined <- suppressWarnings(dplyr::full_join(real, simulated))
   combined$Source <- as.factor(combined$Source)
 

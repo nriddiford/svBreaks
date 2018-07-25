@@ -10,7 +10,6 @@
 #'
 notchFilt <- function(..., keep=FALSE, start=2700000, stop=3400000) {
   bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"), genotype=='somatic_tumour')
-  # bp_data <- filter(bp_data, genotype == 'somatic_tumour')
   if(keep) {
     cat("Selecting for bps in Notch\n")
     notchIn <- bp_data %>%

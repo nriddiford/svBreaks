@@ -137,14 +137,10 @@ distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/'
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr
-#' @import ggplot2
-#' @import RColorBrewer
-#' @import plotly
+#' @import dplyr ggplot2 RColorBrewer scales colorspace cowplot
 #' @keywords distance
 #' @export
-plotdistanceOverlay2 <- function(..., d, from='bps', lim=10, byChrom=NA, n=10, write=TRUE,
-                                 facetPlot=TRUE, plotly=FALSE, position='centre', histo=FALSE, binWidth = 500){
+plotdistanceOverlay2 <- function(..., d, from='bps', lim=10, n=10, position='centre', histo=FALSE, binWidth = 500){
   grDevices::pdf(NULL)
   
   scaleFactor <- lim*1000
@@ -158,49 +154,47 @@ plotdistanceOverlay2 <- function(..., d, from='bps', lim=10, byChrom=NA, n=10, w
   labs <- as.character(brks/1000)
   expnd <- c(0, 0)
   
- 
   new <- d %>% 
     mutate(iteration = as.factor(ifelse(Source=='Real', 0, iteration)))
     
-    real_fill <- '#3D9DEB'
-    iterFill <- rainbow_hcl(n)
-    
-    colours <- c(real_fill, iterFill)
+  real_fill <- '#3D9DEB'
+  iterFill <- colorspace::rainbow_hcl(n)
   
-    plts <- list()
-    for (i in 1:(length(levels(new$feature)))){
-      d <- new %>% 
-        filter(feature == levels(new$feature)[i])
-      
-      p <- ggplot(d)
-      if(histo){
-        p <- p + geom_histogram(data=d[d$Source=="Sim",], aes(min_dist, fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
-        p <- p + geom_histogram(data=d[d$Source=="Real",], aes(min_dist, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
-        p <- p + scale_fill_manual(values=colours)
-        p <- p + scale_y_continuous(paste("Count per", binWidth, "bp bins"))
-      } else{
-        p <- p + geom_line(data=d[d$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
-        p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
-        p <- p + scale_color_manual(values=colours)
-      }
-      
-      p <- p + scale_x_continuous(
-        limits = lims,
-        breaks = brks,
-        expand = expnd,
-        labels = labs
-      )
-      p <- p + 
-        theme(
-          legend.position = "none"
-        )
-      p <- p + labs(title = paste(d$feature, "\n", position))
-      # p <- p + ggtitle(paste(cat(d$feature, position, sep='\n')))
-      plts[[i]] <- p
+  colours <- c(real_fill, iterFill)
+
+  plts <- list()
+  for (i in 1:(length(levels(new$feature)))){
+    d <- new %>% 
+      filter(feature == levels(new$feature)[i])
+    
+    p <- ggplot(d)
+    if(histo){
+      p <- p + geom_histogram(data=d[d$Source=="Sim",], aes(min_dist, fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
+      p <- p + geom_histogram(data=d[d$Source=="Real",], aes(min_dist, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
+      p <- p + scale_fill_manual(values=colours)
+      p <- p + scale_y_continuous(paste("Count per", binWidth, "bp bins"))
+    } else{
+      p <- p + geom_line(data=d[d$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
+      p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
+      p <- p + scale_color_manual(values=colours)
     }
-    cat("Plotting", length(levels(new$feature)), "plots", "\n")
-    grDevices::dev.off()
-    plot_grid(plotlist=plts)
+    
+    p <- p + scale_x_continuous(
+      limits = lims,
+      breaks = brks,
+      expand = expnd,
+      labels = labs
+    )
+    p <- p + 
+      theme(
+        legend.position = "none"
+      )
+    p <- p + labs(title = paste(d$feature, "\n", position))
+    plts[[i]] <- p
+  }
+  cat("Plotting", length(levels(new$feature)), "plots", "\n")
+  grDevices::dev.off()
+  cowplot::plot_grid(plotlist=plts)
 }
 
 
@@ -214,7 +208,7 @@ simSig2 <- function(r, s, test=NA, max_dist=5000){
                      mean = mean(min_dist),
                      sd = sd(min_dist),
                      Source = Source) %>%
-      filter(abs(min_dist) <= max_dist ) %>%
+      dplyr::filter(abs(min_dist) <= max_dist ) %>%
       ungroup()
     return(x)
   }
@@ -227,17 +221,17 @@ simSig2 <- function(r, s, test=NA, max_dist=5000){
   simbyFeat = list()
   for (f in levels(combined$feature)){
     pVals = list()
-    c <- filter(combined, feature==f)
+    c <- dplyr::filter(combined, feature==f)
     for(i in levels(c$iteration)){
-      df <- filter(c, iteration==i)
-      rl <- filter(df, Source == "Real")
-      sm <- filter(df, Source == "Sim")
-      # result1 <- tryCatch(suppressWarnings(ks.test(rl$min_dist, sm$min_dist)), error=function(err) NA)
+      df <- dplyr::filter(c, iteration==i)
+      rl <- dplyr::filter(df, Source == "Real")
+      sm <- dplyr::filter(df, Source == "Sim")
+      result1 <- tryCatch(suppressWarnings(ks.test(rl$min_dist, sm$min_dist)), error=function(err) NA)
       result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
       ksPval <- round(result1$p.value, 4)
       
-      result2 <- leveneTest(df$min_dist, df$Source, center='median')
-      # result3 <- bartlett.test(df$min_dist, df$Source)
+      result2 <- car::leveneTest(df$min_dist, df$Source, center='median')
+      result3 <- stats::bartlett.test(df$min_dist, df$Source)
       bPval <- round(result3$p.value, 4)
       lPval <- round(result2$`Pr(>F)`[1], 4)
       rmed <- round(median(rl$min_dist)/1000, 2)

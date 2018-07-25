@@ -4,7 +4,8 @@
 \alias{bpSim}
 \title{bpSim}
 \usage{
-bpSim(nSites = 1000, byChrom = NA, iterations = 10)
+bpSim(nSites = 1000, byChrom = NA, iterations = 10,
+  intervals = system.file("extdata", "intervals.bed", package = "svBreaks"))
 }
 \arguments{
 \item{intervals}{File containing genomic regions within which to simulate SNVs [Default 'data/intervals.bed]}

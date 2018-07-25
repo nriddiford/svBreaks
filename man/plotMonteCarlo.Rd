@@ -2,12 +2,14 @@
 % Please edit documentation in R/regionEnrichment.R
 \name{plotMonteCarlo}
 \alias{plotMonteCarlo}
-\title{Plot the result of a monte carlo simulation (n shuffles of feature y)}
+\title{Plot the result of a monte carlo simulation (n shuffles of feature y)
+Expects dataframe returned from bpRegionEnrichment()}
 \usage{
-plotMonteCarlo(x)
+plotMonteCarlo(x, bindWith = 10)
 }
 \description{
 Plot the result of a monte carlo simulation (n shuffles of feature y)
+Expects dataframe returned from bpRegionEnrichment()
 }
 \keyword{expected}
 \keyword{frequency}

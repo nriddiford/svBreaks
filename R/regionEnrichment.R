@@ -139,7 +139,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
       dplyr::select(chrom, start, end, feature, i.start, i.end)
     
-    
+    # Replace old write option to now show regions in file that contain breakpoints
     if(!is.na(outDir)){
       cat("Writing bed file of overlaps for :", factor, "\n")
       basename <- factor

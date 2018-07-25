@@ -5,7 +5,7 @@
 #' @import data.table
 #' @export
 bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE,
-                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, write=FALSE, parseName=FALSE, minHits=10){
+                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir=NA, parseName=FALSE, minHits=10){
   if(is.na(breakpoints)){
     breakpoints <- 'svs'
     bps <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
@@ -42,7 +42,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     bps <- bps[,c(1,2,3)]
    
     colnames(bps) <- c("chrom", "start", "end")
-    
+  
     bps <- bps %>% 
       dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
       dplyr::mutate(start = as.integer(end-1)) %>%
@@ -120,12 +120,12 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
         dplyr::rename(chrom=chr)
     }
     
-    if(write){
-      cat("Writing bed file:", f, "\n")
-      basename <- tools::file_path_sans_ext(f)
-      basename <- paste(basename, '_merged_intersected_', slop, '.bed', sep='')
-      writeBed(df=regions, name = basename)
-    }
+    # if(write){
+    #   cat("Writing bed file:", f, "\n")
+    #   basename <- tools::file_path_sans_ext(f)
+    #   basename <- paste(basename, '_merged_intersected_', slop, '.bed', sep='')
+    #   writeBed(df=regions, name = basename)
+    # }
    
     # setkey = d1 for breakpoints, d2 for regions
     r <- data.table(regions)
@@ -138,6 +138,14 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     bpRegions <- annotated %>% 
       dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
       dplyr::select(chrom, start, end, feature, i.start, i.end)
+    
+    
+    if(!is.na(outDir)){
+      cat("Writing bed file of overlaps for :", factor, "\n")
+      basename <- factor
+      basename <- paste(basename, '_containing_', slop, '.bed', sep='')
+      writeBed(df=bpRegions, outDir = outDir, name = basename)
+    }
     
     regionSpace <- regions %>% 
       group_by(chrom) %>% 

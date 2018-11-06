@@ -98,7 +98,7 @@ dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'ra
 #' @import ggpubr
 #' @import RColorBrewer
 #' @export
-distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/', from='bps', lim=10, n=2, plot = TRUE, keep=FALSE, position = 'centre') {
+distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/', from='bps', lim=2.5, n=2, plot = TRUE, keep=FALSE, position = 'centre') {
   scaleFactor <- lim*1000
   real_data <- dist2motif2(..., breakpoints = breakpoints, featureDir = featureDir, keep=keep, position = position)
   sim_data <- dist2motif2(..., featureDir = featureDir, sim = n)
@@ -140,7 +140,7 @@ distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/'
 #' @import dplyr ggplot2 RColorBrewer scales colorspace cowplot
 #' @keywords distance
 #' @export
-plotdistanceOverlay2 <- function(..., d, from='bps', lim=10, n=10, position='centre', histo=FALSE, binWidth = 500){
+plotdistanceOverlay2 <- function(..., d, from='bps', lim=2.5, n=2, position='centre', histo=FALSE, binWidth = 500){
   grDevices::pdf(NULL)
   
   scaleFactor <- lim*1000
@@ -168,12 +168,12 @@ plotdistanceOverlay2 <- function(..., d, from='bps', lim=10, n=10, position='cen
       filter(feature == levels(new$feature)[i])
     
     p <- ggplot(d)
-    if(histo){
+    if(histo) {
       p <- p + geom_histogram(data=d[d$Source=="Sim",], aes(min_dist, fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
       p <- p + geom_histogram(data=d[d$Source=="Real",], aes(min_dist, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
       p <- p + scale_fill_manual(values=colours)
       p <- p + scale_y_continuous(paste("Count per", binWidth, "bp bins"))
-    } else{
+    } else {
       p <- p + geom_line(data=d[d$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
       p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
       p <- p + scale_color_manual(values=colours)

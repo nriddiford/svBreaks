@@ -6,11 +6,11 @@
 #' @keywords enrichment
 #' @import tidyverse
 #' @export
-bpGeneEnrichment <- function(gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
+bpGeneEnrichment <- function(..., gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
   cat("Showing genes hit at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
-  bp_data <- getData()
+  bp_data <- getData(...)
   bp_data <- dplyr::filter(bp_data, gene != "intergenic")
 
   bp_count <- nrow(bp_data)
@@ -130,7 +130,8 @@ bpAllGenes <- function(gene_lengths_in = system.file("extdata", "gene_lengths.tx
   cat("Showing genes affected by a SV at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths_in, header = T)
   allGenes <- read.delim(affected_genes, header = F)
-  colnames(allGenes) <- c("event", "sample", "genotype", "type", "chrom", "gene")
+  colnames(allGenes) <- c("event", "sample", "genotype", "type", "af", "chrom", "gene")
+  
 
   allGenes <- dplyr::filter(allGenes, sample != "A373R1" & sample != "A373R7" & sample != "A512R17", gene != "-", genotype == "somatic_tumour")
 

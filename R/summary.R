@@ -213,7 +213,7 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
   bp_data <- getData(genotype=='somatic_tumour', !sample %in% excludedSamples)
   
   allGenes <- read.delim(affected_genes, header = F)
-  colnames(allGenes) <- c("event", "sample", "genotype", "type", "chrom", "gene")
+  colnames(allGenes) <- c("event", "sample", "genotype", "type", "af", "chrom", "gene")
   
   allGenes <- allGenes %>% 
     dplyr::filter(genotype=='somatic_tumour', !sample %in% excludedSamples) %>% 

@@ -10,8 +10,10 @@
 
 bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
   genome_features <- read.delim(features, header = T)
-  bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-
+  bp_data <- bp_data %>% 
+    dplyr::filter(confidence == 'precise') %>% 
+    droplevels()
+  
   mutCount <- nrow(bp_data)
 
   # To condense exon counts into "exon"
@@ -90,7 +92,6 @@ bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_fe
 #' @export
 #'
 bpFeatureEnrichmentPlot <- function(...) {
-  feature_enrichment <- bpFeatureEnrichment(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
 

@@ -5,7 +5,7 @@
 \title{bpRainfall
 Plot log10 distances between snvs as rainfall plot}
 \usage{
-bpRainfall()
+bpRainfall(...)
 }
 \description{
 bpRainfall

@@ -5,8 +5,8 @@
 \title{Calculate the enrichment of SVs in genomic features}
 \usage{
 bpFeatureEnrichment(..., features = system.file("extdata",
-  "genomic_features.txt", package = "svBreaks"), genome_length = 118274340,
-  print = NA)
+  "genomic_features.txt", package = "svBreaks"),
+  genome_length = 118274340, print = NA)
 }
 \description{
 Calculate the enrichment of SVs in genomic features

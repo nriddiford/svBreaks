@@ -11,7 +11,10 @@ bpGeneEnrichment <- function(..., gene_lengths = system.file("extdata", "gene_le
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
   bp_data <- getData(...)
-  bp_data <- dplyr::filter(bp_data, gene != "intergenic")
+  bp_data <- bp_data %>% 
+    dplyr::filter(gene != "intergenic",
+                  confidence == 'precise')
+  
 
   bp_count <- nrow(bp_data)
 

@@ -5,9 +5,10 @@
 \title{Calculate the enrichment of SVs in genomic regions}
 \usage{
 bpRegionEnrichment(...,
-  bedDir = "/Users/Nick_curie/Desktop/misc_bed/features", breakpoints = NA,
-  keep = FALSE, slop = 0, plot = TRUE, genome_length = 118274340,
-  intersect = FALSE, write = FALSE, parseName = FALSE, minHits = 10)
+  bedDir = "/Users/Nick_curie/Desktop/misc_bed/features",
+  breakpoints = NA, keep = FALSE, slop = 0, plot = TRUE,
+  genome_length = 118274340, intersect = FALSE, outDir = NA,
+  parseName = FALSE, minHits = 10)
 }
 \description{
 Calculate the enrichment of SVs in genomic regions

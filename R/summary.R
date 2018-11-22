@@ -11,9 +11,7 @@
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
 bpStats <- function(..., colSample=NA) {
-  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
-  
-  bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+  bp_data <- getData(...)
   
   sampleSvs <- bp_data %>%
     dplyr::filter(bp_no == "bp1") %>%
@@ -36,7 +34,7 @@ bpStats <- function(..., colSample=NA) {
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 20),
-      axis.text.y = element_text(size = 10),
+      axis.text.y = element_text(size = 20),
       axis.title.x = element_blank()
     )
   p <- p + scale_fill_identity()
@@ -146,9 +144,9 @@ bpFeatures <- function(..., notch=0) {
 #' @import tidyverse
 #' @export
 svsbySample <- function(..., colSample=NA) {
-  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+  # excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
   
-  bp_data <- getData(..., !sample %in% excludedSamples)
+  bp_data <- getData(...)
   
   sample_names <- levels(bp_data$sample)
   

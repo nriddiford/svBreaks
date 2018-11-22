@@ -11,7 +11,7 @@
 #' @export
 generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
   if(is.na(breakpoints)){
-    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     # real_data <- notchFilt(keep=0)
     real_data <- real_data %>%
       dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
@@ -35,7 +35,7 @@ generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
     byIteration <- list()
     #run each iteration
     for (i in 1:sim){
-      cat("Running simulation", i, "\n")
+      cat("Running simulation", i, "of", sim, "\n")
       simByChrom <- list()
 
       for (c in levels(real_data$chrom)){

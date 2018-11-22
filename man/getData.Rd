@@ -5,8 +5,8 @@
 \title{getData}
 \usage{
 getData(..., infile = "inst/extdata/all_bps_filtered.txt",
-  gene_lengths_file = system.file("extdata", "gene_lengths.txt", package =
-  "svBreaks"), expression_data = system.file("extdata",
+  gene_lengths_file = system.file("extdata", "gene_lengths.txt", package
+  = "svBreaks"), expression_data = system.file("extdata",
   "isc_genes_rnaSeq.csv", package = "svBreaks"))
 }
 \arguments{

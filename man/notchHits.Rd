@@ -5,7 +5,7 @@
 \title{notchHits
 Plot the breakpint density over Notch}
 \usage{
-notchHits(infile = "data/Notch_hits.txt")
+notchHits(infile = "inst/extdata/Notch_hits.txt")
 }
 \description{
 notchHits

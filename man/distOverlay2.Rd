@@ -6,7 +6,7 @@
 Overlay the same number of random simulated breakpoints}
 \usage{
 distOverlay2(..., breakpoints = NA, featureDir = "rawdata/features/",
-  from = "bps", lim = 10, n = 2, plot = TRUE, keep = FALSE,
+  from = "bps", lim = 2.5, n = 2, plot = TRUE, keep = FALSE,
   position = "centre")
 }
 \description{

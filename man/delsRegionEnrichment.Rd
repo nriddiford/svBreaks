@@ -4,8 +4,8 @@
 \alias{delsRegionEnrichment}
 \title{asdas}
 \usage{
-delsRegionEnrichment(bedFiles = "bed", region = TRUE, breakpoints = NA,
-  genome_length = 118274340)
+delsRegionEnrichment(bedFiles = "bed", region = TRUE,
+  breakpoints = NA, genome_length = 118274340)
 }
 \description{
 asdas

@@ -5,7 +5,7 @@
 #' @export
 dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'rawdata/features/', sim=NA, keep=FALSE, position = 'centre') {
   
-  bp_data <- generateData(breakpoints=breakpoints, sim=sim, keep=keep)
+  bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
   
   cat("Calculating distances to", position, 'of regions', sep = " ", "\n")
   
@@ -101,7 +101,7 @@ dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'ra
 distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/', from='bps', lim=2.5, n=2, plot = TRUE, keep=FALSE, position = 'centre') {
   scaleFactor <- lim*1000
   real_data <- dist2motif2(..., breakpoints = breakpoints, featureDir = featureDir, keep=keep, position = position)
-  sim_data <- dist2motif2(..., featureDir = featureDir, sim = n)
+  sim_data <- dist2motif2(..., featureDir = featureDir, sim = n, position = position)
   
   real_data$Source <- as.factor("Real")
   sim_data$Source <- as.factor("Sim")

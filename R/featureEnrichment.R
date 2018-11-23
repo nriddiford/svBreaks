@@ -10,9 +10,7 @@
 
 bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
   genome_features <- read.delim(features, header = T)
-  bp_data <- bp_data %>% 
-    dplyr::filter(confidence == 'precise') %>% 
-    droplevels()
+  bp_data <- getData(..., gene != "intergenic", confidence == 'precise')
   
   mutCount <- nrow(bp_data)
 

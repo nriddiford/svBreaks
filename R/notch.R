@@ -8,20 +8,22 @@
 #' @export
 #' @return Dataframe
 #'
-notchFilt <- function(..., keep=FALSE, start=2700000, stop=3400000) {
+notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
   excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   
   bp_data <- getData(..., !sample %in% excluded_samples)
-  if(keep){
+  if(!missing(keep)){
     cat("Selecting for bps in Notch\n")
     notchIn <- bp_data %>%
-      dplyr::filter(chrom == "X" & bp >= start & bp2 <= stop) %>%
+      dplyr::filter(chrom == "X" & chrom2 == "X") %>%
+      dplyr::filter(bp >= start && bp < stop) %>% 
+      dplyr::filter(bp2 < stop) %>% 
       droplevels()
     return(notchIn)
   } else{
     cat("Excluding bps in Notch\n")
     noNotch <- bp_data %>%
-      filter(!(chrom == "X" & bp >= start & bp2 <= stop)) %>%
+      filter(!(chrom == "X" & bp >= start & bp < stop & bp2 <= stop)) %>%
       filter(!gene %in% c('N', 'dnc', 'kirre'), !gene2 %in% c('N', 'dnc', 'kirre'))  %>%
       droplevels()
     return(noNotch)

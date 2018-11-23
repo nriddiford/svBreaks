@@ -9,10 +9,13 @@
 #' @import colorspace
 #' @import RColorBrewer
 #' @export
-generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
+generateData <- function(..., breakpoints=NA, sim=NA, keep=NULL){
   if(is.na(breakpoints)){
-    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-    # real_data <- notchFilt(keep=0)
+    # if(!missing(keep)){
+    #   real_data <- notchFilt(..., keep=keep)
+    # } else {
+    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    # }
     real_data <- real_data %>%
       dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
       dplyr::mutate(pos = bp) %>%
@@ -73,10 +76,10 @@ generateData <- function(..., breakpoints=NA, sim=NA, keep=FALSE){
 #' @import ggplot2 dplyr tidyr RColorBrewer
 #' @export
 dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA,
-                       print=0, send=0, feature="tss", keep=FALSE, position = 'centre') {
+                       print=0, send=0, feature="tss", keep=NULL, position = 'centre') {
   # df : chrom pos iteration
   bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
-
+  
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
 
   if (feature == "Promoter") {
@@ -203,7 +206,7 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
 #' @import RColorBrewer
 #' @export
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                        feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=FALSE, position = 'centre') {
+                        feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=NULL, position = 'centre') {
   
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
   scaleFactor <- lim*1000

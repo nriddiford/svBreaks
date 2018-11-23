@@ -4,11 +4,13 @@
 #' @import dplyr
 #' @import data.table
 #' @export
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE,
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=NULL,
                                slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir=NA, parseName=FALSE, minHits=10){
   if(is.na(breakpoints)){
     breakpoints <- 'svs'
-    bps <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    bps <- getData(...,
+                   genotype=='somatic_tumour',
+                   confidence == 'precise')
     bps <- bps %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
@@ -18,7 +20,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       Nstart <- 3134870 - 500000
       Nstop <- 3172221 + 500000
       N_window <- Nstop - Nstart
-      if(keep){
+      if(!missing(keep)){
         genome_length <- N_window
       } else {
         genome_length <- genome_length - N_window
@@ -26,7 +28,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       
       cat("X:", Nstart, "-", Nstop, sep='', "\n")
       
-      N_filtered <- notchFilt(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"), keep=keep)
+      N_filtered <- notchFilt(..., genotype=='somatic_tumour', keep=keep)
       
       bps <- N_filtered %>% 
         dplyr::rename(start = bp) %>% 
@@ -95,7 +97,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       droplevels()
     
     if(breakpoints=='notch'){
-      if(keep){
+      if(!missing(keep)){
         regions <- regions %>% 
           filter(chrom == "X", start >= Nstart, end <= Nstop) %>% 
           droplevels()

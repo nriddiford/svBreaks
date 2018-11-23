@@ -10,12 +10,8 @@ bpGeneEnrichment <- function(..., gene_lengths = system.file("extdata", "gene_le
   cat("Showing genes hit at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
-  bp_data <- getData(...)
-  bp_data <- bp_data %>% 
-    dplyr::filter(gene != "intergenic",
-                  confidence == 'precise')
-  
-
+  bp_data <- getData(..., gene != "intergenic", confidence == 'precise')
+ 
   bp_count <- nrow(bp_data)
 
   hit_genes <- table(bp_data$gene)
@@ -129,16 +125,22 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt") {
 #' @export
 bpAllGenes <- function(..., gene_lengths_in = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                        affected_genes = system.file("extdata", "all_genes_filtered.txt", package="svBreaks"),
-                       n=3, genome_length=118274340) {
+                       n=3, genome_length=118274340, outfile=NULL) {
   cat("Showing genes affected by a SV at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths_in, header = T)
-  allGenes <- read.delim(affected_genes, header = F)
-  colnames(allGenes) <- c("event", "sample", "genotype", "type", "af", "chrom", "gene")
+  allGenes <- read.delim(affected_genes, header = T)
+  colnames(allGenes) <- c("event", "sample", "genotype", "type", "allele_frequency", "chromosome", "gene")
+  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   
-  allGenes <- allGenes %>%
-    dplyr::filter(...) %>%
+  allGenes <- allGenes %>% 
+    dplyr::filter(genotype=='somatic_tumour', !sample %in% excluded_samples) %>%
+    dplyr::mutate(cell_fraction = ifelse(chromosome %in% c('X', 'Y'), allele_frequency,
+                                         ifelse(allele_frequency*2>1, 1, allele_frequency*2))) %>% 
+    dplyr::filter(...) %>% 
+    dplyr::group_by(sample) %>% 
+    dplyr::distinct(gene) %>% 
     droplevels()
-
+  
   geneCount <- nrow(allGenes)
   hit_genes <- table(allGenes$gene)
 
@@ -162,8 +164,7 @@ bpAllGenes <- function(..., gene_lengths_in = system.file("extdata", "gene_lengt
     log2FC <- log2(fc)
 
     gene_expect <- round(gene_expect, digits = 3)
-    
-    
+  
     list(gene = g, length = genes[[g]], chromosome = as.character(chroms[[g]]), observed = hit_genes[g], expected = gene_expect, fc = fc, log2FC = log2FC)
   }
 
@@ -171,12 +172,21 @@ bpAllGenes <- function(..., gene_lengths_in = system.file("extdata", "gene_lengt
   enriched <- do.call(rbind, enriched)
   genesFC <- as.data.frame(enriched)
   # Filter for genes with few observations
-  genesFC <- dplyr::filter(genesFC, observed >= n)
-  # Sort by FC value
-  genesFC <- dplyr::arrange(genesFC, desc(as.integer(observed)))
-  genesFC$expected <- round(as.numeric(genesFC$expected), digits = 2)
-  genesFC$log2FC <- round(as.numeric(genesFC$log2FC), digits = 1)
+  genesFC <- genesFC %>% 
+    dplyr::filter(observed >= n) %>% 
+    dplyr::mutate(expected = round(as.numeric(expected), digits = 2)) %>%
+    dplyr::mutate(log2FC = round(as.numeric(log2FC), digits = 1)) %>% 
+    dplyr::arrange(-as.integer(observed),
+                   -log2FC) %>% 
+    droplevels()
 
+  geneEnrich <- unnest(genesFC)
+  geneEnrich <- geneEnrich %>% 
+    dplyr::select(gene, length, chromosome, observed, expected, fc, log2FC)
+  
+  if(!missing(outfile)){
+    write.table(geneEnrich, outfile, sep="\t", row.names=FALSE)
+  }
 
-  return(genesFC)
+  return(geneEnrich)
 }

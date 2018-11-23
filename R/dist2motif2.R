@@ -3,9 +3,9 @@
 #' @keywords motif
 #' @import ggplot2 dplyr tidyr RColorBrewer
 #' @export
-dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'rawdata/features/', sim=NA, keep=FALSE, position = 'centre') {
+dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'rawdata/features/', sim=NA, keep=NULL, position = 'centre') {
   
-  bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
+  bp_data <- generateData(..., confidence=='precise', breakpoints=breakpoints, sim=sim, keep=keep)
   
   cat("Calculating distances to", position, 'of regions', sep = " ", "\n")
   
@@ -98,7 +98,7 @@ dist2motif2 <- function(..., breakpoints=NA, feature_file = NA, featureDir = 'ra
 #' @import ggpubr
 #' @import RColorBrewer
 #' @export
-distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/', from='bps', lim=2.5, n=2, plot = TRUE, keep=FALSE, position = 'centre') {
+distOverlay2 <- function(..., breakpoints = NA, featureDir = 'rawdata/features/', from='bps', lim=2.5, n=2, plot = TRUE, keep=NULL, position = 'centre') {
   scaleFactor <- lim*1000
   real_data <- dist2motif2(..., breakpoints = breakpoints, featureDir = featureDir, keep=keep, position = position)
   sim_data <- dist2motif2(..., featureDir = featureDir, sim = n, position = position)
@@ -187,7 +187,13 @@ plotdistanceOverlay2 <- function(..., d, from='bps', lim=2.5, n=2, position='cen
     )
     p <- p + 
       theme(
-        legend.position = "none"
+        legend.position = "none",
+        panel.background = element_blank(),
+        plot.background = element_rect(fill = "transparent", colour = NA),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(size = 16),
+        axis.line.y = element_line(color = "black", size = 0.5),
+        plot.title = element_text(size=22, hjust = 0.5)
       )
     p <- p + labs(title = paste(d$feature, "\n", position))
     plts[[i]] <- p

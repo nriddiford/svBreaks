@@ -101,7 +101,7 @@ bpFeatures <- function(..., notch=0) {
     ext <- "_excl.N.pdf"
   }
   else {
-    bp_data <- getData(..., !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    bp_data <- getData(..., !sample %in% c("A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
     ext <- ".pdf"
   }
 
@@ -154,8 +154,8 @@ svsbySample <- function(..., colSample=NA) {
     dplyr::filter(bp_no != "bp2") %>% 
     dplyr::filter(genotype == 'somatic_tumour') %>% 
     droplevels() %>% 
-    group_by(sample) %>%
-    tally()
+    dplyr::group_by(sample) %>%
+    dplyr::tally()
   
   missing_samples = list()
   
@@ -176,10 +176,11 @@ svsbySample <- function(..., colSample=NA) {
     dat$colour <- "grey37"
   }
   
+  
   p <- ggplot(dat)
   p <- p + geom_bar(aes(fct_reorder(sample, -count), count, fill = colour), stat = "identity")
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, 10), breaks = seq(0,10,by=2))
+  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, max(dat$count)), breaks = seq(0,max(dat$count),by=5))
   p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
@@ -192,10 +193,10 @@ svsbySample <- function(..., colSample=NA) {
   # cat("Writing file", svsSample, "\n")
   # ggsave(paste("plots/", svsSample, sep = ""), width = 10, height = 10)
   
-  # p
+  print(p)
   dat <- dat %>%
     dplyr::select(-colour) %>% 
-    arrange(-count)
+    dplyr::arrange(-count)
   
   return(dat)
 }
@@ -206,33 +207,37 @@ svsbySample <- function(..., colSample=NA) {
 #' @import plyr dplyr forcats
 #' @export
 genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered.txt", genome_length=118274340) {
-  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
+  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   
-  bp_data <- getData(genotype=='somatic_tumour', !sample %in% excludedSamples)
+  # bp_data <- getData(..., genotype=='somatic_tumour', !sample %in% excluded_samples)
   
-  allGenes <- read.delim(affected_genes, header = F)
+  allGenes <- read.delim(affected_genes, header = T)
   colnames(allGenes) <- c("event", "sample", "genotype", "type", "af", "chrom", "gene")
   
   allGenes <- allGenes %>% 
-    dplyr::filter(genotype=='somatic_tumour', !sample %in% excludedSamples) %>% 
-    dplyr::filter(!(sample=='A373R3' & event== 578)) %>% 
-    dplyr::filter(!(sample=='A373R3' & event== 465)) %>% 
-    dplyr::filter(!(sample=='B241R37' & event== 994)) # germline_recurrent
-
-  allGenes <- allGenes %>% 
+    dplyr::filter(genotype=='somatic_tumour',
+                  !sample %in% excluded_samples) %>%
+    dplyr::mutate(cell_fraction = ifelse(chrom %in% c('X', 'Y'), af,
+                                         ifelse(af*2>1, 1, af*2))) %>% 
+    dplyr::filter(...) %>% 
     group_by(sample) %>% 
-    dplyr::summarise(affected_genes = n())
+    dplyr::summarise(affected_genes = n()) %>% 
+    dplyr::arrange(-affected_genes) %>% 
+    droplevels()
   
-  p <- ggplot(allGenes, aes(fct_reorder(sample, -affected_genes), affected_genes)) +
-    geom_bar(stat='identity') +
+  p <- ggplot(allGenes, aes(fct_reorder(sample, -affected_genes), affected_genes))
+  p <- p + geom_bar(stat='identity')
+  p <- p + scale_y_continuous("Number of genes", expand = c(0.01, 0.01))
+  p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
+      
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
     )
+
+  print(p)
   
   return(allGenes)
-
-  
 }
   

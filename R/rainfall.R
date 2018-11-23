@@ -25,7 +25,7 @@ bpRainfall <- function(...) {
   distances <- dplyr::filter(distances, chrom %in% c("2L", "2R", "3L", "3R", "X"))
 
   p <- ggplot(distances)
-  p <- p + geom_point(aes(bp / 1000000, logdist, colour = sample))
+  p <- p + geom_point(aes(bp / 1000000, logdist, colour = -cell_fraction))
   p <- p + cleanTheme() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),

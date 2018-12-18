@@ -35,6 +35,7 @@ bpStats <- function(..., colSample=NA) {
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 20),
       axis.text.y = element_text(size = 20),
+      axis.title.y = element_text(size = 30),
       axis.title.x = element_blank()
     )
   p <- p + scale_fill_identity()
@@ -231,6 +232,7 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
   p <- p + slideTheme() +
     theme(
       axis.title.x = element_blank(),
+      axis.title.y = element_text(size=40),
       
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
@@ -239,5 +241,38 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
   print(p)
   
   return(allGenes)
+}
+
+complexEvents <- function(all_samples = '/Users/Nick/iCloud/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt'){
+  all_data <- read.delim(all_samples, header = T)
+  excluded_samples <- c("A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+  
+  geneIn <- function(gene, gene_list) {
+    sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE)
+  }
+  
+  complex_count <- all_data %>% 
+    dplyr::filter(!sample %in% excluded_samples,
+                  is.na(status)) %>% 
+    dplyr::rename(length = length.Kb.,
+                  cn     = log2.cnv.) %>% 
+    group_by(sample, event) %>% 
+    dplyr::mutate(newCol = as.character(ifelse(any(geneIn('N', affected_genes)),'Notch', 'Other'))) %>% 
+    dplyr::mutate(cell_fraction = ifelse(chromosome1 == "X", allele_frequency,
+                                   ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>% 
+    group_by(sample, event) %>% 
+    dplyr::mutate(complex_count = ifelse(any(type %in% c("COMPLEX_DEL", "COMPLEX_BND", "COMPLEX_DUP")), count(type), 0)) %>% 
+    dplyr::filter(complex_count >= 2) %>% 
+    dplyr::tally() %>% 
+    dplyr::filter(n>=2) %>% 
+    dplyr::ungroup() %>% 
+    # dplyr::select(sample, newCol, allele_frequency, cell_fraction, affected_genes, complex_count, n) %>% 
+    droplevels()
+    
+    
+   p <- ggplot(complex_count)
+   p <- p + geom_bar(aes(fct_reorder(sample, -n), complex_count), alpha = 0.7, stat = "identity")
+   p
+    
 }
   

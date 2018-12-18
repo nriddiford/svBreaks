@@ -8,9 +8,10 @@
 #' @return Dataframe
 
 getData <- function(...,
-                    infile = 'inst/extdata/all_bps_filtered.txt',
+                    infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_filtered.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
-                    expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks")
+                    expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks"),
+                    exclude = TRUE
                     ) {
   bp_data <- read.delim(infile, header = F)
 
@@ -36,8 +37,10 @@ getData <- function(...,
   #     type == 'BND' & chrom != chrom2 ~ 'TRA',
   #     TRUE  ~ as.character(type))))
 
-  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  
+  excluded_samples <- c()
+  if(exclude){
+    excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+  }  
   bp_data <- bp_data %>%
     dplyr::filter(!sample %in% excluded_samples) %>%
     dplyr::mutate(fpkm = ifelse(is.na(fpkm), 0, round(fpkm, 1))) %>%

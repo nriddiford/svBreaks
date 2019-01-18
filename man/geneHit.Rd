@@ -6,7 +6,6 @@
 \usage{
 geneHit(...,
   all_samples = "/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt",
-  keep = FALSE, start = 2700000, stop = 3400000, chrom = "X",
   filter_gene = "N")
 }
 \arguments{

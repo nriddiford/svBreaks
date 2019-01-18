@@ -6,7 +6,7 @@
 Calculate the distance from each breakpoint to closest motif in a directory of files}
 \usage{
 dist2motif2(..., breakpoints = NA, feature_file = NA,
-  featureDir = "rawdata/features/", sim = NA, keep = FALSE,
+  featureDir = "rawdata/features/", sim = NA, keep = NULL,
   position = "centre")
 }
 \description{

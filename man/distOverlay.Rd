@@ -8,7 +8,7 @@ Overlay the same number of random simulated breakpoints}
 distOverlay(..., breakpoints = NA,
   feature_file = system.file("extdata", "tss_locations.txt", package =
   "svBreaks"), feature = "tss", from = "bps", lim = 10,
-  byChrom = NA, n = 5, plot = TRUE, keep = FALSE,
+  byChrom = NA, n = 5, plot = TRUE, keep = NULL,
   position = "centre")
 }
 \description{

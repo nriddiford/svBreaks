@@ -6,7 +6,7 @@
 \usage{
 bpRegionEnrichment(...,
   bedDir = "/Users/Nick_curie/Desktop/misc_bed/features",
-  breakpoints = NA, keep = FALSE, slop = 0, plot = TRUE,
+  breakpoints = NA, keep = NULL, slop = 0, plot = TRUE,
   genome_length = 118274340, intersect = FALSE, outDir = NA,
   parseName = FALSE, minHits = 10)
 }

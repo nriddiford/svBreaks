@@ -219,7 +219,6 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
                   genotype=='somatic_tumour') %>%
     dplyr::mutate(cell_fraction = ifelse(chrom %in% c('X', 'Y'), af,
                                          ifelse(af*2>1, 1, af*2))) %>% 
-    dplyr::filter(...) %>% 
     group_by(sample) %>% 
     dplyr::summarise(affected_genes = n()) %>% 
     dplyr::arrange(-affected_genes) %>% 

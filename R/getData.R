@@ -56,3 +56,19 @@ getData <- function(...,
   dir.create(file.path("plots"), showWarnings = FALSE)
   return(bp_data)
 }
+
+
+#' showSamples
+#'
+#' A helper function to print the sample names
+#' @param infile File to process [Required]
+#' @keywords samples
+#' @import dplyr
+#' @export
+showSamples <- function(..., bp_data = NULL){
+  if(missing(bp_data)){
+    bp_data <- getData(..., exclude = F)
+  }
+  # print(levels(bp_data$sample))
+  dput(as.character(levels(bp_data$sample)))
+}

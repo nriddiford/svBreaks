@@ -144,10 +144,11 @@ bpFeatures <- function(..., notch=0) {
 #' @keywords samples
 #' @import tidyverse
 #' @export
-svsbySample <- function(..., colSample=NA) {
+svsbySample <- function(..., bp_data=NULL, colSample=NA) {
   # excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
-  
-  bp_data <- getData(...)
+  if(missing(bp_data)){
+    bp_data <- getData(...)
+  }
   
   sample_names <- levels(bp_data$sample)
   
@@ -241,16 +242,15 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
   return(allGenes)
 }
 
-complexEvents <- function(all_samples = '/Users/Nick/iCloud/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt'){
+complexEvents <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt'){
   all_data <- read.delim(all_samples, header = T)
-  excluded_samples <- c("A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  
+
   geneIn <- function(gene, gene_list) {
     sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE)
   }
   
   complex_count <- all_data %>% 
-    dplyr::filter(!sample %in% excluded_samples,
+    dplyr::filter(
                   is.na(status)) %>% 
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>% 
@@ -273,4 +273,45 @@ complexEvents <- function(all_samples = '/Users/Nick/iCloud/Desktop/parserTest/f
    p
     
 }
+
+length_by_sample <- function(..., bp_data=NULL){
+  if(missing(bp_data)){
+    bp_data <- getData(...)
+  }
+  
+  data_summary <- function(x) {
+    m <- mean(x)
+    ymin <- m-sd(x)
+    ymax <- m+sd(x)
+    return(c(y=m,ymin=ymin,ymax=ymax))
+  }
+  
+  df <- bp_data %>% 
+    dplyr::filter(!str_detect(type, 'TRA')) %>% 
+    dplyr::mutate(sex = ifelse(str_detect(sample, 'D'), "XX", "XY")) %>% 
+    dplyr::mutate(type = as.character(ifelse(str_detect(type, 'COMPLEX'), "COMPLEX", as.character(type)))) %>% 
+    dplyr::distinct(sample, event, type, .keep_all=TRUE) %>% 
+    dplyr::group_by(sex) %>% 
+    # dplyr::filter(n()>=2) %>% 
+    dplyr::mutate(av_length = sum(length)/n())
+    # dplyr::summarise(av_length = count(event))
+  
+  p <- ggplot(df, aes(fct_reorder(sex, -av_length), length+1))
+  p <- p + geom_violin(aes(fill=sex), alpha=.8)
+  p <- p + geom_jitter(position=position_jitter(0.2), size = .8)
+  p <- p + scale_y_log10("SV length (Kb)")
+  p <- p + cleanTheme() +
+    theme(panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted"),
+          # axis.text.x = element_text(angle = 90, hjust=1, vjust = 0.5),
+          axis.text = element_text(size=20), axis.title = element_text(size=20),
+          axis.title.x = element_blank()
+    )
+  p <- p + stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,
+               geom = "crossbar", width = 0.5)
+  
+  p <- p + facet_wrap(~type)
+  p
+  
+}
+
   

@@ -8,10 +8,12 @@
 #' @import tidyverse
 #' @export
 
-bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
+bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
   genome_features <- read.delim(features, header = T)
-  bp_data <- getData(..., gene != "intergenic", confidence == 'precise')
-  
+  if(missing(bp_data)){
+    bp_data<-getData(..., gene != "intergenic", confidence == 'precise')
+  }
+
   mutCount <- nrow(bp_data)
 
   # To condense exon counts into "exon"
@@ -90,6 +92,7 @@ bpFeatureEnrichment <- function(..., features=system.file("extdata", "genomic_fe
 #' @export
 #'
 bpFeatureEnrichmentPlot <- function(...) {
+  feature_enrichment <- bpFeatureEnrichment(...)
   feature_enrichment$feature <- as.character(feature_enrichment$feature)
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
 

@@ -4,11 +4,13 @@
 #' @import dplyr
 #' @import data.table
 #' @export
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=FALSE,
+bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=NULL,
                                slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir=NA, parseName=FALSE, minHits=10){
   if(is.na(breakpoints)){
     breakpoints <- 'svs'
-    bps <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
+    bps <- getData(...,
+                   genotype=='somatic_tumour',
+                   confidence == 'precise')
     bps <- bps %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
@@ -18,7 +20,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       Nstart <- 3134870 - 500000
       Nstop <- 3172221 + 500000
       N_window <- Nstop - Nstart
-      if(keep){
+      if(!missing(keep)){
         genome_length <- N_window
       } else {
         genome_length <- genome_length - N_window
@@ -26,7 +28,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       
       cat("X:", Nstart, "-", Nstop, sep='', "\n")
       
-      N_filtered <- notchFilt(..., genotype=='somatic_tumour', !sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"), keep=keep)
+      N_filtered <- notchFilt(..., genotype=='somatic_tumour', keep=keep)
       
       bps <- N_filtered %>% 
         dplyr::rename(start = bp) %>% 
@@ -95,7 +97,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       droplevels()
     
     if(breakpoints=='notch'){
-      if(keep){
+      if(!missing(keep)){
         regions <- regions %>% 
           filter(chrom == "X", start >= Nstart, end <= Nstop) %>% 
           droplevels()
@@ -453,18 +455,18 @@ subtractUnmappable <- function(f, u='~/Documents/Curie/Data/Genomes/Dmel_v6.12/M
 writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
   if(svBreaks){
     df <- df %>%
-      filter(bp_no=='bp1') %>% 
-      mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>%
+      dplyr::filter(bp_no=='bp1') %>% 
+      dplyr::mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>%
       dplyr::rename(start = bp) %>% 
       dplyr::rename(end = bp2) %>% 
-      select(chrom, start, end, info)
+      dplyr::select(chrom, start, end, info)
   } else{
     colnames(df[,c(1,2,3)]) <- c("chrom", "start", "end")
     names(df)[1:3] <- c("chrom", "start", "end")
   }
   
   df <- df %>% 
-    filter(as.numeric(start) < as.numeric(end)) %>% 
+    dplyr::filter(as.numeric(start) < as.numeric(end)) %>% 
     droplevels()
   
   cat(paste(outDir,name, sep='/'), "\n")
@@ -496,8 +498,8 @@ bpRegionEnrichmentPlot <- function(...) {
   
   
   feature_enrichment <- feature_enrichment %>% 
-    mutate(feature = as.character(feature)) %>% 
-    mutate(sig = ifelse(sig=='-', '',sig)) %>% 
+    dplyr::mutate(feature = as.character(feature)) %>% 
+    dplyr::mutate(sig = ifelse(sig=='-', '',sig)) %>% 
     transform(feature = reorder(feature, -Log2FC))
   
   
@@ -532,19 +534,17 @@ bpRegionEnrichmentPlot <- function(...) {
 #' @keywords regions overlap
 #' @import data.table
 #' @export
-
-
 delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  genome_length=118274340 ){
   if(is.na(breakpoints)){
     breakpoints <- getData(genotype=='somatic_tumour', type=='DEL')
     bps <- breakpoints %>% 
-      filter(bp_no == 'bp1') %>% 
+      dplyr::filter(bp_no == 'bp1') %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::rename(end = bp2) %>%
-      mutate(width = (end - start)) %>%
-      mutate(end = ifelse(width <= 0, start+1, end)) %>% 
+      dplyr::mutate(width = (end - start)) %>%
+      dplyr::mutate(end = ifelse(width <= 0, start+1, end)) %>% 
       # mutate(width2 = (end - start)) %>%
-      select(chrom, start, end)
+      dplyr::select(chrom, start, end)
   } else{
     bps <- read.delim(breakpoints, header = F)
     colnames(bps) <- c("chrom", "start", "end")
@@ -563,7 +563,7 @@ delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  g
     myChroms <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
     
     regions <- regions %>% 
-      filter(chrom %in% myChroms) %>% 
+      dplyr::filter(chrom %in% myChroms) %>% 
       droplevels()
     
     # setkey = r for breakpoints, b for regions
@@ -575,21 +575,21 @@ delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  g
     annotated <- as.data.frame(foverlaps(b, r, by.x = names(b), type = "any", mult = "all", nomatch = NA))
     
     bpRegions <- annotated %>% 
-      mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
-      select(chrom, start, end, feature, i.start, i.end)
+      dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
+      dplyr::select(chrom, start, end, feature, i.start, i.end)
     
     # Fraction of genome that is region
     regionSpace <- regions %>% 
-      group_by(chrom) %>% 
-      summarise(chromSpace = sum(end-start))
+      dplyr::group_by(chrom) %>% 
+      dplyr::summarise(chromSpace = sum(end-start))
     
     regionWidth <- sum(regionSpace$chromSpace)
     regionFraction <- regionWidth / genome_length
     
     # Fraction of genome that is mutated
     mutSpace <- bps %>% 
-      group_by(chrom) %>% 
-      summarise(chromSpace = sum(end-start))
+      dplyr::group_by(chrom) %>% 
+      dplyr::summarise(chromSpace = sum(end-start))
     
     mutWidth <- sum(mutSpace$chromSpace)
     mutFraction <- mutWidth / genome_length
@@ -642,54 +642,10 @@ delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  g
   # final <- dplyr::bind_rows(byIteration)
   final <- as.data.frame(do.call(rbind, scores))
   final <- final %>% 
-    filter(expected >= 5) %>% 
+    dplyr::filter(expected >= 5) %>% 
     droplevels()
   
   # print(final)
   
   # return(regionsTested)
-  
-  
 }
-
-
-#   install_github("favorov/GenometriCorr")
-
-# genoCorr <- function(){
-#   library('GenometriCorr')
-#   library("rtracklayer")
-#   
-#   dmel.chrom.length <- c(23513712, 25286936, 28110227, 32079331, 23542271, 3667352, 1348131)
-#                          
-#   names(dmel.chrom.length) <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
-#  
-#   my_chr <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
-#   
-#   pn.area <- 100
-#   pn.dist <- 100
-#   pn.jacc <- 100
-#   a <- as(import(bedFile),"RangedData")
-# 
-#   bps <- breakpoints %>% 
-#     filter(bp_no == 'bp1') %>% 
-#     filter(chrom == chrom2) %>% 
-#     mutate(width = (bp2 - bp)) %>% 
-#     select(chrom, bp, bp2, width)
-#   
-#   b <- GRanges(seqnames = Rle(bps$chrom), IRanges(bps$bp,
-#                                                   bps$bp2))
-#   a_vs_b <- GenometriCorrelation(a, b, chromosomes.length = dmel.chrom.length,
-#                                  chromosomes.to.proceed = my_chr,
-#                                  ecdf.area.permut.number = pn.area,
-#                                  mean.distance.permut.number = pn.dist,
-#                                  jaccard.measure.permut.number = pn.jacc,
-#                                  keep.distributions = TRUE, showProgressBar = TRUE)
-#   
-#   
-#   
-#   
-#   
-#   
-#   
-# }
-#   

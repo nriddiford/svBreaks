@@ -4,8 +4,7 @@
 \alias{showSamples}
 \title{showSamples}
 \usage{
-
-  showSamples(infile = "/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_filtered.txt")
+showSamples(..., bp_data = NULL)
 }
 \arguments{
 \item{infile}{File to process [Required]}

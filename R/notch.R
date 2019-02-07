@@ -1,65 +1,33 @@
-#' Functions related to Notch
-#' notchFilt
-#'
-#' Function to filter in/out events affecting a locus (in this case the Drosophila Notch locus)
-#' @param infile File to process [Required]
-#' @keywords parse
-#' @import tidyverse
-#' @export
-#' @return Dataframe
-#'
-notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
-  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  
-  bp_data <- getData(..., !sample %in% excluded_samples)
-  if(!missing(keep)){
-    cat("Selecting for bps in Notch\n")
-    notchIn <- bp_data %>%
-      dplyr::filter(chrom == "X" & chrom2 == "X") %>%
-      dplyr::filter(bp >= start && bp < stop) %>% 
-      dplyr::filter(bp2 < stop) %>% 
-      droplevels()
-    return(notchIn)
-  } else{
-    cat("Excluding bps in Notch\n")
-    noNotch <- bp_data %>%
-      filter(!(chrom == "X" & bp >= start & bp < stop & bp2 <= stop)) %>%
-      filter(!gene %in% c('N', 'dnc', 'kirre'), !gene2 %in% c('N', 'dnc', 'kirre'))  %>%
-      droplevels()
-    return(noNotch)
-  }
-}
-
 #' Print barplot showing samples with SVs affecting specified gene
 #' @param infile File to process [Required]
 #' @param filter_gene The gene of interest [Default: N]
 #' @param plot Show barplot [Default: TRUE]
-#' @import stringr
 #' @export
-geneHit <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt', filter_gene = "N", plot = TRUE) {
+geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
+  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
+  
   all_data <- read.delim(all_samples, header = T)
-  # excluded_samples <- c("A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  # excluded_samples <- c("D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  # excluded_samples <- c()
+ 
     geneIn <- function(gene, gene_list) {
     sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE)
   }
   
   gene_hits <- all_data %>% 
     dplyr::filter(...,
-                  !type %in% c('COMPLEX_TRA'),
-                  is.na(status)) %>% 
+                  is.na(status),
+                  !type %in% c('COMPLEX_TRA')
+                  ) %>% 
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>% 
     dplyr::group_by(sample, event) %>% 
     dplyr::filter(any(geneIn(filter_gene, affected_genes))) %>% 
     # dplyr::distinct(type, .keep_all = TRUE) %>% 
     # group_by(type) %>%  
-    dplyr::mutate(start = as.integer(ifelse(type %in% c("COMPLEX_DEL", "COMPLEX_BND", "COMPLEX_TANDUP", "COMPLEX_DUP") && chromosome1 == "X", min(bp1), bp1))) %>% 
-    dplyr::mutate(end = as.integer(ifelse(type %in% c("COMPLEX_DEL", "COMPLEX_BND", "COMPLEX_TANDUP", "COMPLEX_DUP") && chromosome2 == "X", max(bp2), bp2))) %>% 
+    dplyr::mutate(start = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome1 == "X", min(bp1), bp1))) %>% 
+    dplyr::mutate(end = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome2 == "X", max(bp2), bp2))) %>% 
     dplyr::mutate(length = ifelse(type %in% c('TRA', 'COMPLEX_TRA'), 2, (end-start)/1e3),
                   event_length = sum(length)) %>% 
-    dplyr::mutate(type2 = as.character(ifelse(type %in% c("COMPLEX_DEL", "COMPLEX_BND", "COMPLEX_TRA", "COMPLEX_DUP", "COMPLEX_TANDUP"), 'COMPLEX', as.character(type)))) %>% 
+    dplyr::mutate(type2 = as.character(ifelse(stringr::str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>% 
     dplyr::mutate(event_count = n_distinct(event)) %>% 
     dplyr::ungroup() %>% 
     dplyr::group_by(sample) %>% 
@@ -95,10 +63,6 @@ geneHit <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/fil
   
   all_samples <- plyr::join(gene_hits, dat, type='full')
   
-  # dat <- data.frame(sample = c(levels(as.factor(gene_hits$sample_mod)), paste(missing_samples)),
-  #                   length = c(gene_hits$length, rep(0, length(missing_samples)))
-  # )
-  
   if(plot){
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
     
@@ -125,13 +89,18 @@ geneHit <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/fil
 }
 
 
-
 #' Tally type of sv events in specified gene
 #' @param infile File to process [Required]
 #' @param filter_gene The gene of interest [Default: N]
 #' @export
-tally_hits <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt', filter_gene = "N", plot=FALSE, freq=FALSE) {
-  nhits <- geneHit(..., plot=F)
+tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE, freq=FALSE) {
+  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
+  
+  if(missing(bp_data)){
+    nhits <- geneHit(..., all_samples=all_samples, plot=F)
+  } else {
+    nhits <- bp_data
+  }
   tally <- nhits %>% 
     dplyr::mutate(class = type2) %>% 
     dplyr::group_by(sample) %>% 
@@ -169,42 +138,19 @@ tally_hits <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTest/
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(infile = "inst/extdata/Notch_hits.txt") {
-  # notch_data <- read.delim(infile, header = T)
-  # excluded_samples <- c("A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE) {
+  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
-  notch_data <- geneHit(..., plot=F)
+  notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, filter_gene=filter_gene)
   notch_data <- notch_data %>% 
     dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-2),
-                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+2)) %>% 
+                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+2),
+                  type2 = factor(type2)) %>% 
     dplyr::mutate(sampleax = as.numeric(sample),
                   bp1 = bp1 / 1e6,
-                  bp2 = bp2 / 1e6)
+                  bp2 = bp2 / 1e6) %>% 
+    dplyr::arrange(-length)
    
-  # refGene<-read.delim(refgene_file, header=F)
-  # colnames(refGene)<-c('Tno',	'id',	'chrom',	'strand',	'Tstart',	'Tstop',	'cdsstart',	'cdsStop',	'exonNo',	'Estart',	'Estop',	'score',	'altname',	'CDSstartStat',	'CDSEndStat',	'exonFrames')
-  # # Tid	id	chrom	strand	Tstart	Tstop	cdsstart	cdsStop	exon#	Estart	Estop	score	altname	CDSstartStat	CDSEndStat	exonFrames
-  # gene='N'
-  # refGene<-dplyr::filter(refGene, altname == gene)
-  # refGene<-droplevels(refGene)
-  #
-  # wStart<-refGene$Tstart - 1000
-  # wEnd<-refGene$stop + 1000
-
-  # bp_data<-getData()
-
-  # bp_data<-reshape(bp_data, idvar=c("event", "sample"), timevar="bp_no", direction="wide")
-  # #bp_data<-dplyr::filter(bp_data, chrom == "X" & bp >= 2750000 & bp <= 3500000)
-  # bp_data<-dplyr::select(bp_data, sample, chrom.bp1, bp.bp1, gene.bp1, bp.bp2,gene.bp2, type.bp1)
-  # colnames(bp_data)<-c("sample", "chrom1", "bp1", "gene1", "bp2", "gene2", "type")
-  
-  # cols<-setCols(bp_data, "type", set="Set1")
-
-  # if (bp_data$type == "TRA") {
-  #   bp_data$bp1 <- bp_data$bp2 - 100
-  # }
-
-
   p <- ggplot(notch_data)
   p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill=type2), color="black", alpha=0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp1, xmax = bp1 + 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
@@ -212,85 +158,63 @@ notchHits <- function(infile = "inst/extdata/Notch_hits.txt") {
 
   p <- p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type2 = FALSE)
 
-  p <- p + scale_y_continuous("Sample", expand = c(0.01, 0), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
+  p <- p + scale_y_continuous("Sample", expand = c(0.01, 0.01), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
   p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   
-
   p <- p + slideTheme() +
     theme(
       axis.title.y = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
       legend.position = "top",
-      axis.text.y = element_blank()
+      axis.text.y = element_blank(),
+      axis.title.x=element_blank()
     )
-
-  # p <- p + scale_fill_identity()
+  if(show_samples){
+    p <- p + theme(axis.text.y = element_text(size=20))
+  }
   
-  dummy = data.frame(x = (seq(2.7,3.4,by=0.2)))
-  dummy$y <- 0
-  p2 <- ggplot(dummy, aes(x,y))
-  p2 <- p2 + scale_y_discrete(expand = c(0, 0))
-  p2 <- p2 + annotate("rect", xmin = 2.740000, xmax = 3.134532, ymin = -1.5, ymax = 0, alpha = .4, fill="#CFAEAEFE")
-  p2 <- p2 + annotate("rect", xmin = 3.134870, xmax = 3.172221, ymin = -1.5, ymax = 0, alpha = .4, fill="#8FBD80FE")
-  p2 <- p2 + annotate("rect", xmin = 3.176440, xmax = 3.334000, ymin = -1.5, ymax = 0, alpha = .4, fill="#A9D0DEFE")
-  p2 <- p2 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
-  p2 <- p2 + slideTheme()+
-    theme(axis.text = element_blank(),
-          axis.line.x = element_blank(),
-          axis.line.y = element_blank(),
-          axis.ticks.x = element_blank(),
-          axis.ticks.y = element_blank(),
-          axis.title = element_blank())
-          # p<-p + cols
+  long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
+    dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
 
-  # Nhits <- paste("Notch_hits.pdf")
-  # cat("Writing file", Nhits, "\n")
-  # ggsave(paste("plots/", Nhits, sep=""), width = 10, height = 10)
-  #
-
-  # Density plot
-  # cols2<-setCols(bp_data, "type", fill='Y', set="Set1")
-
-  long_notch <- gather(notch_data, bp, bp1,bp2)
-
-  p3 <- ggplot(notch_data)
-  p3 <- p3 + geom_density(aes(bp / 1000000, fill = "royalblue4"), alpha = 0.6)
+  blueBar <- '#3B8FC7'
+  
+  p3 <- ggplot(long_notch_hits)
+  p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
   p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
   p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
   p3 <- p3 + guides(colour = FALSE)
-  p3 <- p3 + geom_rug(data = notch_data, aes(bp / 1000000))
+  p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
   p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
 
   p3 <- p3 + slideTheme() +
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
       legend.position = "top",
-      axis.title.y = element_blank()
-      # strip.text = element_text(size=10)
-    )
+      axis.title.y = element_blank(),
+      axis.text.y = element_blank()
+      )
 
-  # p2 <- p2 + cols2
   p3 <- p3 + scale_fill_identity()
 
-  # p2 <- p2 + facet_wrap(~type, nrow = 3)
-
   combined_plots <- ggpubr::ggarrange(
-    p, p2, p3,
-    labels = c("A", "B", "C"),
-    ncol = 1, nrow = 3,
-    heights = c(5,1,5),
-    align = 'v'
+  p, p3,
+  labels = c("A", "B"),
+  ncol = 1, nrow = 2,
+  heights = c(7,3.5),
+  align = 'v'
   )
-
-  NhitsDen <- paste("Notch_hits_density.png")
-  cat("Writing file", NhitsDen, "\n")
-  ggsave(paste("plots/", NhitsDen, sep = ""), width = 30, height = 20)
-
+  
   combined_plots
 }
 
+
+
+
+
+
+# ######
 
 #' notchDels
 #' Plot the size of deletions affecting Notch
@@ -352,4 +276,37 @@ notchDels <- function(infile = "inst/extdata/Notch_hits.txt") {
   ggsave(paste("plots/", dels_out, sep = ""), width = 30, height = 15)
 
   p
+}
+
+
+#' Functions related to Notch
+#' notchFilt
+#'
+#' Function to filter in/out events affecting a locus (in this case the Drosophila Notch locus)
+#' @param infile File to process [Required]
+#' @keywords parse
+#' @import tidyverse
+#' @export
+#' @return Dataframe
+#'
+notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
+  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+  
+  bp_data <- getData(..., !sample %in% excluded_samples)
+  if(!missing(keep)){
+    cat("Selecting for bps in Notch\n")
+    notchIn <- bp_data %>%
+      dplyr::filter(chrom == "X" & chrom2 == "X") %>%
+      dplyr::filter(bp >= start && bp < stop) %>% 
+      dplyr::filter(bp2 < stop) %>% 
+      droplevels()
+    return(notchIn)
+  } else{
+    cat("Excluding bps in Notch\n")
+    noNotch <- bp_data %>%
+      dplyr::filter(!(chrom == "X" & bp >= start & bp < stop & bp2 <= stop)) %>%
+      dplyr::filter(!gene %in% c('N', 'dnc', 'kirre'), !gene2 %in% c('N', 'dnc', 'kirre'))  %>%
+      droplevels()
+    return(noNotch)
+  }
 }

@@ -9,10 +9,10 @@
 sizeDist <- function(...) {
   bp_data <- bp_data %>%
     dplyr::filter(type != "TRA", type != "BND", bp_no != "bp2") %>%
-    dplyr:mutate(length = ifelse(length == 0, 0.01, length)) %>%
-    dplyr:mutate(type = ifelse(type == "TANDUP", "DUP", as.character(type))) %>%
-    dplyr:add_count(genotype) %>%
-    dplyr:mutate(genotype_short  = fct_recode(genotype, G_r = "germline_recurrent", G_p = "germline_private", S_n = "somatic_normal", S_t = "somatic_tumour"))
+    dplyr::mutate(length = ifelse(length == 0, 0.01, length)) %>%
+    dplyr::mutate(type = ifelse(type == "TANDUP", "DUP", as.character(type))) %>%
+    dplyr::add_count(genotype) %>%
+    dplyr::mutate(genotype_short  = fct_recode(genotype, G_r = "germline_recurrent", G_p = "germline_private", S_n = "somatic_normal", S_t = "somatic_tumour"))
   
   p <- ggplot(bp_data, aes(fct_reorder(genotype_short, -n), length))
   p <- p + geom_violin(aes(fill = genotype), alpha=0.6)

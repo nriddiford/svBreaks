@@ -10,8 +10,12 @@
 #' @export
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
-bpStats <- function(..., colSample=NA) {
-  bp_data <- getData(...)
+bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
+  if(missing(bp_data)){
+    bp_data <- getData(...)
+  }
+  
+  blueBar <- '#3B8FC7'
   
   sampleSvs <- bp_data %>%
     dplyr::filter(bp_no == "bp1") %>%
@@ -22,7 +26,7 @@ bpStats <- function(..., colSample=NA) {
   if (!is.na(colSample)) {
     sampleSvs$colour <- ifelse(sampleSvs$sample %in% exclude_samples, "#C72424FE", "grey37")
   } else {
-    sampleSvs$colour <- "grey37"
+    sampleSvs$colour <- blueBar
   }
 
   p <- ggplot(sampleSvs)
@@ -39,13 +43,14 @@ bpStats <- function(..., colSample=NA) {
       axis.title.x = element_blank()
     )
   p <- p + scale_fill_identity()
-  p <- p + facet_wrap(~genotype, ncol = 1, scales = "free_y")
+  # p <- p + facet_wrap(~genotype, ncol = 1, scales = "free_y")
 
-
-  sampleSVs <- paste("SVs_sample.png")
-  cat("Writing file", sampleSVs, "\n")
-  ggsave(paste("plots/", sampleSVs, sep = ""), width = 20, height = 10)
-
+  if(write){
+    sampleSVs <- paste("SVs_sample.png")
+    cat("Writing file", sampleSVs, "\n")
+    ggsave(paste("plots/", sampleSVs, sep = ""), width = 20, height = 10)
+  }
+  
   cat("sample", "SVs", sep = "\t", "\n")
   bp_data <- dplyr::filter(bp_data, genotype == 'somatic_tumour', bp_no == "bp1")
   rank <- sort(table(bp_data$sample), decreasing = TRUE)

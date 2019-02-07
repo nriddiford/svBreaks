@@ -36,6 +36,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
         select(chrom, start, end)
       
   } else {
+    cat("Reading breakpoints from: ", breakpoints, "\n")
     bps <- read.table(breakpoints, header = F)
     
     if(ncol(bps)<3){

@@ -4,9 +4,8 @@
 \alias{tally_hits}
 \title{Tally type of sv events in specified gene}
 \usage{
-tally_hits(...,
-  all_samples = "/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_samples.txt",
-  filter_gene = "N", plot = FALSE, freq = FALSE)
+tally_hits(..., all_samples, bp_data, filter_gene = "N", plot = FALSE,
+  freq = FALSE)
 }
 \arguments{
 \item{filter_gene}{The gene of interest [Default: N]}

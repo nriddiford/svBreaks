@@ -5,8 +5,9 @@
 \title{dist2Motif2
 Calculate the distance from each breakpoint to closest motif in a directory of files}
 \usage{
-dist2motif2(..., breakpoints = NA, feature_file = NA,
-  featureDir = "rawdata/features/", sim = NA, keep = NULL,
+dist2motif2(..., df, breakpoints, feature_file,
+  featureDir = system.file("extdata", "features", package = "svBreaks"),
+  chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"), sim = FALSE,
   position = "centre")
 }
 \description{

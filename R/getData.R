@@ -3,12 +3,12 @@
 #' Function to clean cnv files
 #' @param infile File to process [Required]
 #' @keywords parse breakpoints data
-#' @import plyr dplyr stringr
+#' @import plyr dplyr
 #' @export
 #' @return Dataframe
 
 getData <- function(...,
-                    infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_filtered.txt',
+                    infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks"),
                     exclude = TRUE
@@ -20,7 +20,12 @@ getData <- function(...,
   lapply(X=input_list, function(x) {str(x);summary(x)})
   
   colnames(bp_data) <- c("event", "bp_no", "sample", "genotype", "chrom", "bp", "gene", "feature", "chrom2",  "bp2", "gene2", "feature2", "type", "length", "af", "confidence")
-
+  if(ncol(bp_data) == 18){
+    cat("Breakpoints are annotated with mechansims\n")
+    colnames(bp_data)[c(17,18)] <- c("microhomology", "mechanism")
+  }
+  
+  
   gene_lengths <- read.delim(gene_lengths_file, header = T)
   gene_lengths <- gene_lengths[, c("gene", "id")]
 
@@ -42,6 +47,8 @@ getData <- function(...,
     excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05",
                           "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   }  
+  
+  
   bp_data <- bp_data %>%
     dplyr::filter(!sample %in% excluded_samples) %>%
     dplyr::mutate(fpkm = ifelse(is.na(fpkm), 0, round(fpkm, 1))) %>%
@@ -63,7 +70,6 @@ getData <- function(...,
 #' A helper function to print the sample names
 #' @param infile File to process [Required]
 #' @keywords samples
-#' @import dplyr
 #' @export
 showSamples <- function(..., bp_data = NULL){
   if(missing(bp_data)){

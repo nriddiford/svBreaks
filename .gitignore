@@ -13,3 +13,4 @@ inst/extdata/*
 .Rbuildignore
 packrat/lib*/
 packrat/src/
+svs_by_sample.png

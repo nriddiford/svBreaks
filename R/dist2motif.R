@@ -9,19 +9,16 @@
 #' @import colorspace
 #' @import RColorBrewer
 #' @export
-generateData <- function(..., breakpoints=NA, sim=NA, keep=NULL){
-  if(is.na(breakpoints)){
-    # if(!missing(keep)){
-    #   real_data <- notchFilt(..., keep=keep)
-    # } else {
-    real_data <- getData(..., genotype=='somatic_tumour', !sample %in% c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
-    # }
-    real_data <- real_data %>%
+generateData <- function(..., breakpoints=NULL, sim=NA, keep=NULL){
+  if(missing(breakpoints)){
+    cat("Using data from svBreaks::getData()\n")
+    real_data <- getData(...) %>%
       dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
       dplyr::mutate(pos = bp) %>%
       dplyr::select(chrom, pos) %>%
       droplevels()
   } else{
+    cat("Using data from ", breakpoints, "\n")
     real_data <- read.table(breakpoints, header = F)
     if(is.null(real_data$V3)){
       real_data$V3 <- real_data$V2 + 2

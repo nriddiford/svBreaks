@@ -5,7 +5,7 @@
 \title{generateData
 Prepare data for dist2motif}
 \usage{
-generateData(..., breakpoints = NA, sim = NA, keep = NULL)
+generateData(..., breakpoints = NULL, sim = NA, keep = NULL)
 }
 \description{
 generateData

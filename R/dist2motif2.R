@@ -106,7 +106,7 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
   }
   if(length(grep(list.files(featureDir), pattern = '.bed', value=T)) == 0) stop("\n[!] Must provide a directory containing bed files! Exiting.") else print(grep(list.files(featureDir), pattern = '.bed', value=T))
   
-  bp_data <- svBreaks::generateData2(..., df=df, breakpoints=breakpoints, sim=sim, chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'))
+  bp_data <- svBreaks::generateData2(..., df=df, breakpoints=breakpoints, sim=sim, chroms=chroms)
 
   cat("Calculating distances to", position, 'of regions', sep = " ", "\n")
  
@@ -167,12 +167,12 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
 
     if(position == 'centre'){
       feature_locations <- feature_locations %>%
-        dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
-        dplyr::mutate(pos = as.integer(end-1)) %>%
+        dplyr::mutate(middle = as.integer(((end+start)/2)+1)) %>%
+        dplyr::mutate(pos = as.integer(middle-1)) %>%
         dplyr::select(chrom, pos)
     } else if(position == 'edge'){
       feature_locations <- feature_locations %>%
-        tidyr::gather(c, pos, start:end, factor_key=TRUE) %>%
+        tidyr::gather(c, pos, start:end, factor_key=TRUE) %>% 
         dplyr::select(chrom, pos)
     }
     byIteration <- list()
@@ -243,7 +243,10 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
       dplyr::filter(feature %in% levels(bps_within_range$feature)) %>% 
       droplevels()
   }
-  cat("There are ", paste0(nrow(real_data[abs(real_data$min_dist)<=scaleFactor,]), "/", nrow(real_data)), "breakpoints within specified range", paste0("(lim=", lim,"Kb) "),"\n")
+  bps_in_window <- real_data[abs(real_data$min_dist)<=scaleFactor,]
+  perc_in_window <- plyr::round_any((nrow(bps_in_window)/nrow(real_data))*100, 1)
+  cat("There are ", paste0(nrow(bps_in_window), "/", nrow(real_data), " [", perc_in_window, "%", "]"), "breakpoints within specified range", paste0("(lim=", lim,"Kb) "),"\n")
+  
   
   real_data <- bps_within_range
   real_data$Source <- as.factor("Real")
@@ -271,16 +274,26 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
       stop("Must specify an existing directory to write data to. Exiting")
     }
 
+    bps_in_window <- bps_in_window %>% 
+      dplyr::mutate(start = as.numeric(as.character(bp))-1,
+                    end = as.numeric(as.character(bp))+1,
+                    min_dist = paste0(feature, ":", min_dist)) %>%
+      dplyr::filter(iteration == 1) %>% 
+      dplyr::select(chrom, bp, end, min_dist, feature) %>% 
+      droplevels()
+    svBreaks::writeBed(df = bps_in_window, name = paste0("Bps_", lim, "kb_", bps_in_window$feature, ".bed")[1], outDir = out_dir)
+    
     for(i in 1:(length(levels(combined$iteration)))){
       df_by_iter <- combined %>% dplyr::filter(iteration == i) %>% droplevels()
       for(s in levels(combined$Source)){
         df_by_source <- df_by_iter %>% 
           dplyr::filter(Source == s) %>% 
-          dplyr::mutate(end = as.integer(bp)+2,
+          dplyr::mutate(start = as.numeric(as.character(bp))-1,
+                        end = as.numeric(as.character(bp))+1,
                         min_dist = paste0(feature, ":", min_dist)) %>% 
-          dplyr::select(chrom, bp, end, min_dist, Source, iteration) %>% 
+          dplyr::select(chrom, start, end, min_dist, Source, iteration, feature) %>% 
           droplevels()
-        svBreaks::writeBed(df= df_by_source, name = paste0(df_by_source$Source, "_", df_by_source$iteration, ".bed")[1], outDir = out_dir)
+        svBreaks::writeBed(df = df_by_source, name = paste0(df_by_source$Source, "_", df_by_source$feature, "_", df_by_source$iteration, ".bed")[1], outDir = out_dir)
       }
     }
     
@@ -337,16 +350,25 @@ plotdistanceOverlay2 <- function(..., distances, from='bps', lim=2.5, n=2, posit
     p <- ggplot(distances)
     if(histo) {
       
-      p <- p + geom_histogram(data=distances[distances$Source=="Sim",], aes(min_dist, fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
-      p <- p + geom_histogram(data=distances[distances$Source=="Real",], aes(min_dist, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
+      # distances <- distances %>% 
+      #   dplyr::group_by_(feature, iteration) %>% 
+      #   dplyr::mutate(newCount = )
+      #   
+      
+      p <- p + geom_histogram(data=distances[distances$Source=="Sim",], aes(min_dist, y=(..count..), fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
+      p <- p + geom_histogram(data=distances[distances$Source=="Real",], aes(min_dist, y=..count.., fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
+      
+      # ggplot(data=distances[distances$Source=="Real",]) + geom_bar(mapping = aes(min_dist, y=..count.., fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth, stat = "bin")
+      # ggplot(data=distances[distances$Source=="Sim",]) + geom_bar(mapping = aes(min_dist, y=..count../1e3, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, stat = "bin")
+      # 
       
       p <- p + scale_fill_manual(values=colours)
       p <- p + scale_y_continuous(paste("Count per", binWidth, "bp bins"))
     } else {
       p <- p + geom_line(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
       # p <- p + geom_density(data=d[d$Source=="Real",], aes(min_dist, y=..scaled..), fill = real_fill, alpha=0.2, adjust=3)
-      
       p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
+      
       p <- p + geom_rug(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), sides = "b")
       p <- p + geom_rug(data=distances[distances$Source=="Sim",], aes(min_dist, colour = iteration), sides = "t")
       

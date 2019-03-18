@@ -14,6 +14,7 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
   
   gene_hits <- all_data %>% 
     dplyr::filter(...,
+                  type != "-",
                   is.na(status),
                   !type %in% c('COMPLEX_TRA')
                   ) %>% 
@@ -43,7 +44,7 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
     droplevels()
   
   sample_names <- all_data %>% 
-    dplyr::filter(...) %>% 
+    dplyr::filter(...) %>%
     dplyr::group_by(sample) %>% 
     dplyr::distinct(sample) %>% 
     droplevels()
@@ -67,7 +68,7 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
     
     p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = fct_reorder(type2, -length), label = star))
-    p <- p + geom_bar(alpha = 0.7, stat = "identity")
+    p <- p + geom_bar(alpha = 0.8, stat = "identity")
     p <- p + scale_y_continuous("Length (Kb)", expand = c(0, 0.5))
     p <- p + cleanTheme() +
       theme(
@@ -94,7 +95,7 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
 #' @param filter_gene The gene of interest [Default: N]
 #' @export
 tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE, freq=FALSE) {
-  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
+  if(missing(all_samples)) stop("\n[!] Must specify a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
   if(missing(bp_data)){
     nhits <- geneHit(..., all_samples=all_samples, plot=F)
@@ -105,7 +106,7 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
     dplyr::mutate(class = type2) %>% 
     dplyr::group_by(sample) %>% 
     dplyr::arrange(sample, -allele_frequency) %>% 
-    dplyr::distinct(sample, .keep_all = TRUE) %>% 
+    dplyr::distinct(sample, event, .keep_all = TRUE) %>% # added event 7.3.19
     dplyr::group_by(class) %>%
     dplyr::summarise(count = n())
   

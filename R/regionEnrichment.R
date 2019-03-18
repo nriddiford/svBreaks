@@ -4,40 +4,22 @@
 #' @import dplyr
 #' @import data.table
 #' @export
-bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/features', breakpoints=NA, keep=NULL,
-                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir=NA, parseName=FALSE, minHits=10){
-  if(is.na(breakpoints)){
-    breakpoints <- 'svs'
-    bps <- getData(...,
-                   genotype=='somatic_tumour',
-                   confidence == 'precise')
-    bps <- bps %>% 
+bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'),
+                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10){
+  
+  if(missing(bp_data) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
+  
+  if(!missing(bp_data)){
+    # breakpoints <- 'svs'
+    bps <- bp_data %>% 
+      dplyr::filter(...) %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
-      select(chrom, start, end)
+      dplyr::select(chrom, start, end)
     
-  } else if(breakpoints=='notch'){
-      Nstart <- 3134870 - 500000
-      Nstop <- 3172221 + 500000
-      N_window <- Nstop - Nstart
-      if(!missing(keep)){
-        genome_length <- N_window
-      } else {
-        genome_length <- genome_length - N_window
-      }
-      
-      cat("X:", Nstart, "-", Nstop, sep='', "\n")
-      
-      N_filtered <- notchFilt(..., genotype=='somatic_tumour', keep=keep)
-      
-      bps <- N_filtered %>% 
-        dplyr::rename(start = bp) %>% 
-        dplyr::mutate(end = start+1) %>%
-        select(chrom, start, end)
-      
-  } else {
-    cat("Reading breakpoints from: ", breakpoints, "\n")
-    bps <- read.table(breakpoints, header = F)
+  } else if(!missing(bed_file)){
+    cat("Reading breakpoints from: ", bed_file, "\n")
+    bps <- read.table(bed_file, header = F)
     
     if(ncol(bps)<3){
       bps$V3 <- bps$V2 + 2
@@ -45,6 +27,10 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     bps <- bps[,c(1,2,3)]
    
     colnames(bps) <- c("chrom", "start", "end")
+    
+    if(median(bps$end-bps$start) > 20){
+      cat(paste0("The median distance between breakpoints is large: [", median(bps$end-bps$start), " bps].", "This file is not suitable for this analysis\n"))
+    }
   
     bps <- bps %>% 
       dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
@@ -53,16 +39,13 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   }
   
   cat("Specified genome size:", genome_length, "\n")
-  cat("Expanding regions by", slop, "\n\n")
+  cat("Expanding regions by", slop, "bps\n\n")
   
   scores <- list()
   regionFC <- list()
   
   fileNames <- dir(bedDir, pattern = ".bed")
-  # cat("Analysing all files in directory:", bedFiles, "\n")
   for (f in fileNames){
-    # cat("Analysing file:", f, "\n")
-    
     if(parseName){
       filename <- basename(tools::file_path_sans_ext(f))
       parts <- unlist(strsplit(filename, split = '_'))
@@ -72,7 +55,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       element <- parts[4]
       replicate <- parts[5]
       id <- unlist(strsplit(parts[7], split= "[.]"))[1]
-    }else{
+    } else{
       filename <- tools::file_path_sans_ext(f)
       factor <- unlist(strsplit(basename(tools::file_path_sans_ext(f)), split = "\\."))[1]
       genotype <- 'wt'
@@ -86,73 +69,53 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     regions <- regions[,c(1,2,3)]
     colnames(regions) <- c("chrom", "start", "end")
     
-    myChroms <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
-    
     # This slop wont handle cases where the adjusted regions overlap (they will be counted twice...)
     regions <- regions %>% 
-      filter(chrom %in% myChroms) %>% 
-      filter(start < end) %>% 
-      mutate(start = start - slop) %>% 
-      mutate(end = end + slop) %>% 
-      arrange(chrom) %>% 
+      dplyr::filter(chrom %in% chroms,
+                    start < end) %>% 
+      dplyr::mutate(start = start - slop,
+                    end = end + slop) %>% 
+      dplyr::arrange(chrom) %>% 
       droplevels()
-    
-    if(breakpoints=='notch'){
-      if(!missing(keep)){
-        regions <- regions %>% 
-          filter(chrom == "X", start >= Nstart, end <= Nstop) %>% 
-          droplevels()
-      } else {
-        regions <- regions %>% 
-          filter(!(chrom == "X" & start >= Nstart & end <= Nstop) ) %>% 
-          droplevels()
-      }
-    }
     
     if (!nrow(regions)) next
 
     if(intersect){
       cat("Analysing file:", f, "\n")
-      merged_regions <- mergeOverlaps(regions, dataframe = T)
+      merged_regions <- svBreaks::mergeOverlaps(regions, dataframe = T)
       cat("Merged file:", f, "\n")
       
-      intersected_regions <- subtractUnmappable(merged_regions, dataframe=T)
+      intersected_regions <- svBreaks::subtractUnmappable(merged_regions, dataframe=T)
       cat("Intersected file:", f, "\n")
       intersected_regions$chr <- as.factor(intersected_regions$chr)
       regions <- intersected_regions %>% 
         dplyr::rename(chrom=chr)
     }
     
-    # if(write){
-    #   cat("Writing bed file:", f, "\n")
-    #   basename <- tools::file_path_sans_ext(f)
-    #   basename <- paste(basename, '_merged_intersected_', slop, '.bed', sep='')
-    #   writeBed(df=regions, name = basename)
-    # }
-   
     # setkey = d1 for breakpoints, d2 for regions
     r <- data.table(regions)
     b <- data.table(bps)
     setkey(r)
     
     # search for bp overlaps with regions (d2, d1) for breakpoints, d1, d2 for regions
-    annotated <- as.data.frame(foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
+    annotated <- as.data.frame(data.table::foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
     
     bpRegions <- annotated %>% 
       dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
       dplyr::select(chrom, start, end, feature, i.start, i.end)
     
     # Replace old write option to now show regions in file that contain breakpoints
-    if(!is.na(outDir)){
+    if(!missing(outDir)){
       cat("Writing bed file of overlaps for :", factor, "\n")
+      if(slop == 0) slop = '' else slop = paste0("_", slop)
       basename <- factor
-      basename <- paste(basename, '_containing_', slop, '.bed', sep='')
-      writeBed(df=bpRegions, outDir = outDir, name = basename)
+      basename <- paste0(basename, '_containing', slop, '.bed')
+      svBreaks::writeBed(df=bpRegions, outDir = outDir, name = basename)
     }
     
     regionSpace <- regions %>% 
-      group_by(chrom) %>% 
-      summarise(chromSpace = sum(end-start)) 
+      dplyr::group_by(chrom) %>% 
+      dplyr::summarise(chromSpace = sum(end-start)) 
     
     regionWidth <- sum(regionSpace$chromSpace)
     
@@ -165,6 +128,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
       regionFraction = 0.999
     }
     
+    # Shouldn't this be multiplying breakpoint count by 2? ** 12.2.19 ** -> NO
     expectedHits <- (mutCount * regionFraction)
     
     inRegion <- sum(ifelse(bpRegions$feature == 'inside', 1, 0))
@@ -205,15 +169,25 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
     regionsTested <- do.call(rbind, biNomialTest)
     regionsTested <- as.data.frame(regionsTested)
     
-    # regionsTested$Log2FC <- round(as.numeric(regionsTested$Log2FC), 1)
-    regionsTested$Log2FC <- as.numeric(regionsTested$Log2FC)
+    df <- data.frame(matrix(unlist(regionsTested), nrow=nrow(regionsTested), byrow=T), stringsAsFactors = F)
+    colnames(df) <- colnames(regionsTested)
     
-    regionsTested$feature <- as.character(regionsTested$feature)
-    regionsTested$observed <- as.numeric(regionsTested$observed)
-    regionsTested$test <- as.character(regionsTested$test)
-    regionsTested$sig <- as.character(regionsTested$sig)
-    regionsTested$p_val <- as.numeric(regionsTested$p_val)
-    regionsTested$expected <- round(as.numeric(regionsTested$expected), 2)
+    
+    regionsTested <- df %>% 
+      dplyr::mutate(Log2FC = round(as.numeric(Log2FC), 2),
+                    observed = as.numeric(observed),
+                    p_val = as.numeric(p_val),
+                    expected = round(as.numeric(expected), 2))
+  
+    # regionsTested$Log2FC <- round(as.numeric(regionsTested$Log2FC), 1)
+    # regionsTested$Log2FC <- as.numeric(regionsTested$Log2FC)
+    
+    # regionsTested$feature <- as.character(regionsTested$feature)
+    # regionsTested$observed <- as.numeric(regionsTested$observed)
+    # regionsTested$test <- as.character(regionsTested$test)
+    # regionsTested$sig <- as.character(regionsTested$sig)
+    # regionsTested$p_val <- as.numeric(regionsTested$p_val)
+    # regionsTested$expected <- round(as.numeric(regionsTested$expected), 2)
     scores[[f]] <- regionsTested
     
   }
@@ -221,7 +195,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   #combine each iteration into one data frame
   final <- as.data.frame(do.call(rbind, scores))
   
-  final$count <- as.numeric(final$observed) + as.numeric(final$expected)
+  # final$count <- as.numeric(final$observed) + as.numeric(final$expected)
   
 
   minPval <- min(final$p_val[final$p_val>0])
@@ -231,6 +205,7 @@ bpRegionEnrichment <- function(..., bedDir='/Users/Nick_curie/Desktop/misc_bed/f
   # final$p_val <- ifelse(final$p_val==0, minPval, final$p_val)
 
   final <- final %>%
+    dplyr::mutate(count = observed + expected) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval/abs(Log2FC), p_val)) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval, p_val)) %>%
     dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
@@ -529,124 +504,124 @@ bpRegionEnrichmentPlot <- function(...) {
   p
 }
 
-# delsRegionEnrichment
-#'
-#' asdas
-#' @keywords regions overlap
-#' @import data.table
-#' @export
-delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  genome_length=118274340 ){
-  if(is.na(breakpoints)){
-    breakpoints <- getData(genotype=='somatic_tumour', type=='DEL')
-    bps <- breakpoints %>% 
-      dplyr::filter(bp_no == 'bp1') %>% 
-      dplyr::rename(start = bp) %>% 
-      dplyr::rename(end = bp2) %>%
-      dplyr::mutate(width = (end - start)) %>%
-      dplyr::mutate(end = ifelse(width <= 0, start+1, end)) %>% 
-      # mutate(width2 = (end - start)) %>%
-      dplyr::select(chrom, start, end)
-  } else{
-    bps <- read.delim(breakpoints, header = F)
-    colnames(bps) <- c("chrom", "start", "end")
-  }
-  
-  scores <- list()
-  regionFC <- list()
-  
-  fileNames <- dir(bedFiles, pattern = ".bed")
-  for (f in fileNames){
-    cat(f, "\n")
-    regions <- read.delim(paste(bedFiles,f, sep='/'), header = F)
-    regions <- regions[,c(1,2,3)]
-    colnames(regions) <- c("chrom", "start", "end")
-    
-    myChroms <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
-    
-    regions <- regions %>% 
-      dplyr::filter(chrom %in% myChroms) %>% 
-      droplevels()
-    
-    # setkey = r for breakpoints, b for regions
-    r <- data.table(regions)
-    b <- data.table(bps)
-    setkey(r, chrom, start, end)
-    
-    # search for bp overlaps with regions (b, r) for breakpoints, r, b for regions
-    annotated <- as.data.frame(foverlaps(b, r, by.x = names(b), type = "any", mult = "all", nomatch = NA))
-    
-    bpRegions <- annotated %>% 
-      dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
-      dplyr::select(chrom, start, end, feature, i.start, i.end)
-    
-    # Fraction of genome that is region
-    regionSpace <- regions %>% 
-      dplyr::group_by(chrom) %>% 
-      dplyr::summarise(chromSpace = sum(end-start))
-    
-    regionWidth <- sum(regionSpace$chromSpace)
-    regionFraction <- regionWidth / genome_length
-    
-    # Fraction of genome that is mutated
-    mutSpace <- bps %>% 
-      dplyr::group_by(chrom) %>% 
-      dplyr::summarise(chromSpace = sum(end-start))
-    
-    mutWidth <- sum(mutSpace$chromSpace)
-    mutFraction <- mutWidth / genome_length
-    
-    mutCount <- nrow(bps)
-    
-    expectedHits <- (mutCount * regionFraction)
-    
-    inRegion <- sum(ifelse(bpRegions$feature == 'inside', 1, 0))
-    outRegion <- sum(ifelse(bpRegions$feature == 'outside', 1, 0))
-    
-    fc <- inRegion / expectedHits
-    fc <- round(fc, digits = 1)
-    expectedHits <- round(expectedHits, digits = 1)
-    
-    
-    # f = 'uce'
-    biTest <- function(f){
-      # Binomial test
-      if (inRegion >= expectedHits) {
-        stat <- binom.test(x = inRegion, n = mutCount, p = regionFraction, alternative = "greater")
-        test <- "enrichment"
-      } else {
-        stat <- binom.test(x = inRegion, n = mutCount, p = regionFraction, alternative = "less")
-        test <- "depletion"
-      }
-      
-      sig_val <- ifelse(stat$p.value <= 0.001, "***",
-                        ifelse(stat$p.value <= 0.01, "**",
-                               ifelse(stat$p.value <= 0.05, "*", "")))
-      
-      sig_val <- ifelse(stat$p.value > 0.05, "-", sig_val)
-      
-      p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
-      Log2FC <- log2(fc)
-      list(feature = f, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = p_val)
-    }
-    
-    biNomialTest <- lapply(f, biTest)
-    regionsTested <- do.call(rbind, biNomialTest)
-    regionsTested <- as.data.frame(regionsTested)
-    
-    regionsTested$Log2FC <- round(as.numeric(regionsTested$Log2FC), 1)
-    regionsTested$expected <- round(as.numeric(regionsTested$expected), 1)
-    scores[[f]] <- regionsTested
-    
-  }
-  
-  #combine each iteration into one data frame
-  # final <- dplyr::bind_rows(byIteration)
-  final <- as.data.frame(do.call(rbind, scores))
-  final <- final %>% 
-    dplyr::filter(expected >= 5) %>% 
-    droplevels()
-  
-  # print(final)
-  
-  # return(regionsTested)
-}
+#' # delsRegionEnrichment
+#' #'
+#' #' asdas
+#' #' @keywords regions overlap
+#' #' @import data.table
+#' #' @export
+#' delsRegionEnrichment <- function(bedFiles='bed', region=TRUE, breakpoints=NA,  genome_length=118274340 ){
+#'   if(is.na(breakpoints)){
+#'     breakpoints <- getData(genotype=='somatic_tumour', type=='DEL')
+#'     bps <- breakpoints %>% 
+#'       dplyr::filter(bp_no == 'bp1') %>% 
+#'       dplyr::rename(start = bp) %>% 
+#'       dplyr::rename(end = bp2) %>%
+#'       dplyr::mutate(width = (end - start)) %>%
+#'       dplyr::mutate(end = ifelse(width <= 0, start+1, end)) %>% 
+#'       # mutate(width2 = (end - start)) %>%
+#'       dplyr::select(chrom, start, end)
+#'   } else{
+#'     bps <- read.delim(breakpoints, header = F)
+#'     colnames(bps) <- c("chrom", "start", "end")
+#'   }
+#'   
+#'   scores <- list()
+#'   regionFC <- list()
+#'   
+#'   fileNames <- dir(bedFiles, pattern = ".bed")
+#'   for (f in fileNames){
+#'     cat(f, "\n")
+#'     regions <- read.delim(paste(bedFiles,f, sep='/'), header = F)
+#'     regions <- regions[,c(1,2,3)]
+#'     colnames(regions) <- c("chrom", "start", "end")
+#'     
+#'     myChroms <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
+#'     
+#'     regions <- regions %>% 
+#'       dplyr::filter(chrom %in% myChroms) %>% 
+#'       droplevels()
+#'     
+#'     # setkey = r for breakpoints, b for regions
+#'     r <- data.table(regions)
+#'     b <- data.table(bps)
+#'     setkey(r, chrom, start, end)
+#'     
+#'     # search for bp overlaps with regions (b, r) for breakpoints, r, b for regions
+#'     annotated <- as.data.frame(foverlaps(b, r, by.x = names(b), type = "any", mult = "all", nomatch = NA))
+#'     
+#'     bpRegions <- annotated %>% 
+#'       dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 
+#'       dplyr::select(chrom, start, end, feature, i.start, i.end)
+#'     
+#'     # Fraction of genome that is region
+#'     regionSpace <- regions %>% 
+#'       dplyr::group_by(chrom) %>% 
+#'       dplyr::summarise(chromSpace = sum(end-start))
+#'     
+#'     regionWidth <- sum(regionSpace$chromSpace)
+#'     regionFraction <- regionWidth / genome_length
+#'     
+#'     # Fraction of genome that is mutated
+#'     mutSpace <- bps %>% 
+#'       dplyr::group_by(chrom) %>% 
+#'       dplyr::summarise(chromSpace = sum(end-start))
+#'     
+#'     mutWidth <- sum(mutSpace$chromSpace)
+#'     mutFraction <- mutWidth / genome_length
+#'     
+#'     mutCount <- nrow(bps)
+#'     
+#'     expectedHits <- (mutCount * regionFraction)
+#'     
+#'     inRegion <- sum(ifelse(bpRegions$feature == 'inside', 1, 0))
+#'     outRegion <- sum(ifelse(bpRegions$feature == 'outside', 1, 0))
+#'     
+#'     fc <- inRegion / expectedHits
+#'     fc <- round(fc, digits = 1)
+#'     expectedHits <- round(expectedHits, digits = 1)
+#'     
+#'     
+#'     # f = 'uce'
+#'     biTest <- function(f){
+#'       # Binomial test
+#'       if (inRegion >= expectedHits) {
+#'         stat <- binom.test(x = inRegion, n = mutCount, p = regionFraction, alternative = "greater")
+#'         test <- "enrichment"
+#'       } else {
+#'         stat <- binom.test(x = inRegion, n = mutCount, p = regionFraction, alternative = "less")
+#'         test <- "depletion"
+#'       }
+#'       
+#'       sig_val <- ifelse(stat$p.value <= 0.001, "***",
+#'                         ifelse(stat$p.value <= 0.01, "**",
+#'                                ifelse(stat$p.value <= 0.05, "*", "")))
+#'       
+#'       sig_val <- ifelse(stat$p.value > 0.05, "-", sig_val)
+#'       
+#'       p_val <- format.pval(stat$p.value, digits = 3, eps = 0.0001)
+#'       Log2FC <- log2(fc)
+#'       list(feature = f, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = p_val)
+#'     }
+#'     
+#'     biNomialTest <- lapply(f, biTest)
+#'     regionsTested <- do.call(rbind, biNomialTest)
+#'     regionsTested <- as.data.frame(regionsTested)
+#'     
+#'     regionsTested$Log2FC <- round(as.numeric(regionsTested$Log2FC), 1)
+#'     regionsTested$expected <- round(as.numeric(regionsTested$expected), 1)
+#'     scores[[f]] <- regionsTested
+#'     
+#'   }
+#'   
+#'   #combine each iteration into one data frame
+#'   # final <- dplyr::bind_rows(byIteration)
+#'   final <- as.data.frame(do.call(rbind, scores))
+#'   final <- final %>% 
+#'     dplyr::filter(expected >= 5) %>% 
+#'     droplevels()
+#'   
+#'   # print(final)
+#'   
+#'   # return(regionsTested)
+#' }

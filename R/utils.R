@@ -1,8 +1,5 @@
-# A collection of theme-related functions
-
 #' Set theme for clean plotting with ggplot2
 #' @keywords theme
-#' @import ggplot2
 #' @export
 #'
 cleanTheme <- function(base_size = 12) {
@@ -17,17 +14,15 @@ cleanTheme <- function(base_size = 12) {
     axis.line.y = element_line(color = "black", size = 0.5),
     axis.text = element_text(size = 20),
     axis.title = element_text(size = 30),
+    strip.text = element_text(size = 20),
     plot.margin = unit(1:4, "line")
   )
 }
 
-## @knitr slideTheme
-#'
+
 #' Set theme for slide plotting with ggplot2
 #' @keywords theme
-#' @import ggplot2
 #' @export
-#'
 slideTheme <- function(base_size = 25) {
   theme(
     plot.title = element_text(hjust = 0.5, size = 50),
@@ -45,6 +40,31 @@ slideTheme <- function(base_size = 25) {
   )
 }
 
+# Modified for black background
+#' @keywords theme
+#' @export
+blackTheme <- function(base_size = 12){
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 20, colour = 'white'),
+    panel.background = element_blank(),
+    plot.background = element_rect(colour = "black", fill = "black"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    axis.line.x = element_line(color="white", size = 0.5),
+    axis.line.y = element_line(color="white", size = 0.5),
+    axis.text = element_text(size=20, colour = 'white'),
+    # axis.title = element_text(size=20, colour = 'white'),
+    axis.ticks = element_line(color = "white"),
+    axis.title = element_text(size = 20, color = "white"),
+    legend.background = element_rect(color = NA, fill = "black"),
+    legend.key = element_rect(color = "white",  fill = "black"),
+    legend.text = element_text(size = base_size*0.8, color = "white"),
+    legend.title = element_text(size = base_size*0.8, face = "bold", hjust = 0, color = "white"),
+    strip.text = element_text(color = "white", size = 25),
+    strip.background = element_rect(fill= "#383F4C")
+    
+  )
+}
 
 ## setCols
 #'
@@ -54,7 +74,7 @@ slideTheme <- function(base_size = 25) {
 #' @export
 #' @return colourscale object
 #'
-setCols <- function(df, col, fill="Y", set="Pastel2") {
+setCols <- function(df, col, fill="Y", set="Blues") {
   names <- levels(as.factor(df[[col]]))
   names <- sort(names)
   cat("Setting colour levels:", names, "\n")

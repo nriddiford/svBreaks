@@ -18,10 +18,11 @@ bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
   blueBar <- '#3B8FC7'
   
   sampleSvs <- bp_data %>%
-    dplyr::filter(bp_no == "bp1") %>%
-    group_by(sample, genotype) %>%
-    tally() %>%
-    mutate(som_count = ifelse(genotype=='somatic_tumour', n/2, 0))
+    dplyr::filter(...,
+                  bp_no == "bp1") %>%
+    dplyr::group_by(sample, genotype) %>%
+    dplyr::tally() %>%
+    dplyr::mutate(som_count = ifelse(genotype=='somatic_tumour', n/2, 0))
   
   if (!is.na(colSample)) {
     sampleSvs$colour <- ifelse(sampleSvs$sample %in% exclude_samples, "#C72424FE", "grey37")

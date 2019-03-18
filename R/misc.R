@@ -57,12 +57,13 @@ svTypes <- function(notch=FALSE, object='type', keep=FALSE) {
 featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.txt", package="svBreaks"), feature1 = 'G4',
                            feature_file2 = NA, feature2 = NA,
                            feature_file3 = NA, feature3 = NA,
-                           write=TRUE, chrom=NA) {
+                           write=TRUE, chroms = c("2L", "2R", "3L", "3R", "X")) {
   n = 1
 
   file_list = list()
 
   f1 <- read.delim(feature_file1, header = F)
+  f1 <- f1[,c(1,2,3)]
   if(is.null(f1$V3)){
     f1$V3 <- f1$V2 + 2
   }
@@ -79,6 +80,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   if (!is.na(feature_file2)){
     n = n + 1
     f2 <- read.delim(feature_file2, header = F)
+    f2 <- f2[,c(1,2,3)]
     if(is.null(f2$V3)){
       f2$V3 <- f2$V2 + 2
     }
@@ -111,27 +113,24 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
 
   files <- do.call(rbind, file_list)
   rownames(files) <- NULL
-  
-  chroms = c("2L", "2R", "3L", "3R", "X")
-  if(!is.na(chrom))
-    chroms = chrom
 
+  
   # chromosomes <- data.frame(chroms = c("2L", "2R", "3L", "3R", "X"), lengths = c(23513712, 25286936, 28110227, 32079331, 23542271))
                        
   locations <- files %>%
-    mutate(type = as.factor(type)) %>%
-    mutate(pos = as.numeric(mid/1000000)) %>%
-    filter(chrom %in% chroms) %>%
-    arrange(chrom, mid) %>%
+    dplyr::mutate(type = as.factor(type)) %>%
+    dplyr::mutate(pos = as.numeric(mid/1000000)) %>%
+    dplyr::filter(chrom %in% chroms) %>%
+    dplyr::arrange(chrom, mid) %>%
     droplevels()
 
   p <- ggplot(locations)
-  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.2)
+  p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.07)
   # p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
-  p <- p + facet_wrap(~chrom, scales = "free_x", nrow=length(levels(locations$chrom)))
+  p <- p + facet_wrap(~chrom, scales = "free_x", ncol=2)
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 5))
-  p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
-  p <- p + slideTheme() +
+  p <- p + geom_rug(data=locations, aes(pos, colour = type), sides = "b")
+  p <- p + cleanTheme() +
     theme(axis.text.y = element_blank())
 
   if(write){

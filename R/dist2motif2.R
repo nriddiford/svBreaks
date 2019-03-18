@@ -69,7 +69,7 @@ generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms=c('2L', '2R', 
 
       for (c in levels(real_data$chrom)){
         hitCount <- nrow(real_data[real_data$chrom== c,])
-        hitCount <- (hitCount*10)
+        hitCount <- (hitCount)
         if (i == 1){
           cat(paste("Simulating", hitCount, "breakpoints on chromosome", c), "\n")
         }
@@ -154,24 +154,24 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
     # bp_data <- subset(bp_data, chrom %in% names(svCount[svCount >= 5])) %>% droplevels()
     #
 
-    feature_locations <- feature_locations %>%
+    flocs <- feature_locations %>%
       dplyr::filter(chrom %in% levels(bp_data$chrom)) %>% 
       droplevels()
 
-    if(length(levels(feature_locations$chrom)) < length(levels(bp_data$chrom))){
-      cat("Feature:", feature, "not found on all chroms. Trimming real data to match chroms in ", filename, paste0("[",levels(feature_locations$chrom), "]"), "\n")
+    if(length(levels(flocs$chrom)) < length(levels(bp_data$chrom))){
+      cat("Feature:", feature, "not found on all chroms. Trimming real data to match chroms in ", filename, paste0("[",levels(flocs$chrom), "]"), "\n")
       bp_data <- bp_data %>% 
-        dplyr::filter(chrom %in% levels(feature_locations$chrom)) %>% 
+        dplyr::filter(chrom %in% levels(flocs$chrom)) %>% 
         droplevels()
     }
 
     if(position == 'centre'){
-      feature_locations <- feature_locations %>%
+      flocs <- flocs %>%
         dplyr::mutate(middle = as.integer(((end+start)/2)+1)) %>%
         dplyr::mutate(pos = as.integer(middle-1)) %>%
         dplyr::select(chrom, pos)
     } else if(position == 'edge'){
-      feature_locations <- feature_locations %>%
+      flocs <- flocs %>%
         tidyr::gather(c, pos, start:end, factor_key=TRUE) %>% 
         dplyr::select(chrom, pos)
     }
@@ -181,7 +181,7 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
       df1 <- dplyr::filter(bp_data, iteration == j)
       for (c in levels(bp_data$chrom)) {
         df <- dplyr::filter(df1, chrom == c)
-        tss_df <- dplyr::filter(feature_locations, chrom == c)
+        tss_df <- dplyr::filter(flocs, chrom == c)
         dist2tss <- lapply(df$pos, minDist)
         dist2tss <- do.call(rbind, dist2tss)
         new <- data.frame(matrix(unlist(dist2tss), nrow=nrow(df)))
@@ -207,6 +207,67 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
 }
 
 
+inRange <- function(r, s, w, p){
+  # r = real
+  # s = sim
+  # w = window
+  # p = percentage required in w
+  in_range <- plyr::round_any(p*nrow(r), 1)
+  
+  bps_within_range <- r %>% 
+    dplyr::group_by(feature, iteration) %>% 
+    dplyr::mutate(min_count = sum(abs(min_dist) <= w)) %>% 
+    dplyr::filter(min_count >= in_range) %>% 
+    dplyr::ungroup() %>% 
+    droplevels()
+  
+  sim_within_range <- s %>% 
+    dplyr::group_by(feature, iteration) %>% 
+    dplyr::mutate(min_count = sum(abs(min_dist) <= w)) %>% 
+    dplyr::filter(min_count >= in_range) %>% 
+    dplyr::ungroup() %>% 
+    droplevels()
+  
+  
+  removed_features <- r %>% dplyr::filter(!feature %in% levels(bps_within_range$feature)) %>% droplevels()
+  removed_features <- levels(removed_features$feature)
+  if(length(removed_features) > 0){
+    cat("Dropping features:", paste0("'", removed_features, "'"), "with fewer than 10 hits wihin +/-", lim, "Kb\n")
+    if(length(levels(bps_within_range$feature))==0){
+      stop("There are no feaures in dir that have >= ", in_window, "breakpoints within specified range ",paste0("(lim=", lim,"Kb) "), "Exiting.")
+    }
+  }
+
+  s <- s %>% 
+    dplyr::filter(feature %in% levels(bps_within_range$feature)) %>% 
+    droplevels()
+  
+  printCloseHits <- function(x){
+    for(f in levels(x$feature)){
+      r <- dplyr::filter(x, feature == f)
+      bps_in_window <- r[abs(r$min_dist)<=w,]
+      perc_in_window <- plyr::round_any((nrow(bps_in_window)/nrow(r))*100, 1)
+      cat("There are ", paste0(nrow(bps_in_window), "/", nrow(bps_within_range), " [", perc_in_window, "%", "]"), "breakpoints within specified range", paste0("(lim=", lim,"Kb) "), "of feature:", f, "\n")
+    }
+  }
+  
+  printCloseHits <- function(x){
+    x %>% 
+      dplyr::group_by(iteration, feature) %>% 
+      dplyr::filter(abs(min_dist)<=w) %>% 
+      dplyr::summarise(perc = plyr::round_any(n()/nrow(x)*100,1),
+                       count = n(),
+                       total = nrow(x))
+  }
+
+  printCloseHits(s)
+ 
+  
+  
+  
+}
+
+
 # distOverlay
 #'
 #' Calculate the distance from each breakpoint to closest motif
@@ -216,19 +277,31 @@ dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.
 #' @export
 distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"),
                          from='bps', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'),
-                         lim=2.5, n=2, plot = TRUE, position = 'centre', in_window=5, write=FALSE, out_dir) {
+                         lim=10, n=5, plot = TRUE, histo=FALSE, position = 'edge', threshold=0.05, write=FALSE, out_dir) {
   
-  scaleFactor <- lim*1e3
+  window_bps <- lim*1e3
+  window <- window_bps/5
+
+  bp_count <- nrow(df)
 
   real_data <- svBreaks::dist2motif2(..., df=df, breakpoints=breakpoints, feature_file=feature_file, featureDir=featureDir, position=position, chroms=chroms)
   sim_data <- svBreaks::dist2motif2(..., df=df, breakpoints=breakpoints, feature_file=feature_file, featureDir=featureDir, sim=n, position=position, chroms=chroms)
   
-  in_range <- plyr::round_any(in_window/100*nrow(real_data), 10)
+  in_range <- plyr::round_any(threshold*nrow(real_data), 1)
   
   bps_within_range <- real_data %>% 
-    dplyr::group_by(feature) %>% 
-    dplyr::mutate(min_count = sum(abs(min_dist)<=scaleFactor)) %>% 
-    dplyr::filter(min_count >= in_range) %>% 
+    dplyr::group_by(feature, iteration) %>% 
+    dplyr::mutate(within_threshold = sum(abs(min_dist)<=window),
+                  required_hits = plyr::round_any(threshold*bp_count, 1)) %>% 
+    dplyr::filter(within_threshold >= required_hits) %>% 
+    dplyr::ungroup() %>% 
+    droplevels()
+  
+  sim_within_range <- sim_data %>% 
+    dplyr::group_by(feature, iteration) %>% 
+    dplyr::mutate(within_threshold = sum(abs(min_dist)<=window),
+                  required_hits = plyr::round_any(threshold*bp_count, 1)) %>% 
+    dplyr::filter(within_threshold >= required_hits) %>% 
     dplyr::ungroup() %>% 
     droplevels()
   
@@ -237,26 +310,47 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
   if(length(removed_features) > 0){
     cat("Dropping features:", paste0("'", removed_features, "'"), "with fewer than 10 hits wihin +/-", lim, "Kb\n")
     if(length(levels(bps_within_range$feature))==0){
-      stop("There are no feaures in dir that have >= ", in_window, "breakpoints within specified range ",paste0("(lim=", lim,"Kb) "), "Exiting.")
+      stop("There are no feaures in dir that have >= ", in_range, "breakpoints within specified range ",paste0("(lim=", lim,"Kb) "), "Exiting.")
     }
     sim_data <- sim_data %>% 
       dplyr::filter(feature %in% levels(bps_within_range$feature)) %>% 
       droplevels()
   }
-  bps_in_window <- real_data[abs(real_data$min_dist)<=scaleFactor,]
-  perc_in_window <- plyr::round_any((nrow(bps_in_window)/nrow(real_data))*100, 1)
-  cat("There are ", paste0(nrow(bps_in_window), "/", nrow(real_data), " [", perc_in_window, "%", "]"), "breakpoints within specified range", paste0("(lim=", lim,"Kb) "),"\n")
   
+  # for(f in levels(bps_within_range$feature)){
+  #   x <- dplyr::filter(bps_within_range, feature == f)
+  #   perc_in_window <- plyr::round_any((nrow(bps_in_window)/nrow(x))*100, 1)
+  #   cat("There are ", paste0(nrow(bps_in_window), "/", nrow(bps_within_range), " [", perc_in_window, "%", "]"), "breakpoints within specified range", paste0("(lim=", lim,"Kb) "), "of feature:", f, "\n")
+  # }
   
+  printCloseHits <- function(x){
+    total <- plyr::round_any(nrow(x)/length(levels(x$feature)), 1)
+    x <- x %>% 
+      dplyr::group_by(iteration, feature) %>% 
+      dplyr::filter(abs(min_dist)<=w) %>% 
+      dplyr::summarise(perc = plyr::round_any((n()/total)*100,1),
+                       count = n(),
+                       total = total) %>% 
+      dplyr::ungroup()
+    return(x)
+  }
+  
+  bp_c <- (printCloseHits(real_data))
+  cat(paste0("There are ", bp_c$count, "/", bp_c$total, " [", bp_c$perc, "%", "]", " breakpoints within specified range", " (lim=", w/1e3,"Kb) ", "of feature: ", bp_c$feature, "\n"))
+  
+  print(printCloseHits(sim_data))
+
   real_data <- bps_within_range
   real_data$Source <- as.factor("Real")
   sim_data$Source <- as.factor("Sim")
 
   dummy_iterations <- list()
+  
   for (i in levels(sim_data$iteration)){
     real_data$iteration <- as.factor(i)
     dummy_iterations[[i]] <- real_data
   }
+  
   real_data <- do.call(rbind, dummy_iterations)
   rownames(real_data) <- NULL
 
@@ -264,7 +358,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
   sim_data$iteration <- factor(sim_data$iteration, levels = 1:n)
 
   # Perform significance testing
-  pVals_and_df <- svBreaks::simSig2(r = real_data, s = sim_data, max_dist = scaleFactor)
+  pVals_and_df <- svBreaks::simSig2(r = real_data, s = sim_data, max_dist = w)
 
   combined <- pVals_and_df[[1]] %>% ungroup()
   pVals <- pVals_and_df[[2]] %>% ungroup()
@@ -273,7 +367,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
     if(missing(out_dir) || !dir.exists(out_dir)){
       stop("Must specify an existing directory to write data to. Exiting")
     }
-
+    
     bps_in_window <- bps_in_window %>% 
       dplyr::mutate(start = as.numeric(as.character(bp))-1,
                     end = as.numeric(as.character(bp))+1,
@@ -305,7 +399,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
   }
 
   if(plot){
-    print(plotdistanceOverlay2(..., distances=combined, from=from, facetPlot=FALSE, byChrom=byChrom, lim=lim, n=n, position=position ))
+    print(plotdistanceOverlay2(..., distances=combined, from=from, histo=histo, facetPlot=FALSE, byChrom=byChrom, lim=lim, n=n, position=position ))
     print(pVals)
   }else{
     print(pVals)
@@ -321,22 +415,27 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
 #' @import dplyr ggplot2 RColorBrewer scales colorspace cowplot
 #' @keywords distance
 #' @export
-plotdistanceOverlay2 <- function(..., distances, from='bps', lim=2.5, n=2, position='centre', histo=FALSE, binWidth = 500){
+plotdistanceOverlay2 <- function(..., distances, from='bps', lim=5, n, position='centre', histo=FALSE, binWidth){
   grDevices::pdf(NULL)
-  
-  scaleFactor <- lim*1e3
+  threshold <- lim*1e3
   scale <- "(Kb)"
-  
-  lims <- c(as.numeric(paste0("-", scaleFactor)), scaleFactor)
-  brks <- c(as.numeric(paste0("-", scaleFactor)),
+  if(missing(n)){
+    n <- length(levels(distances$iteration))
+  }
+  if(histo & missing(binWidth)) binWidth = threshold/10
+    
+  lims <- c(as.numeric(paste0("-", threshold)), threshold)
+  brks <- c(as.numeric(paste0("-", threshold)),
             0,
-            scaleFactor)
+            threshold)
   labs <- as.character(brks/1e3)
   expnd <- c(0, 0)
   
   new <- distances %>% 
+    dplyr::filter(!(Source == "Real" &  as.character(as.numeric(iteration)) > 1)) %>% 
     dplyr::mutate(iteration = as.factor(ifelse(Source=='Real', 0, iteration))) %>% 
-    dplyr::filter(abs(min_dist)<=scaleFactor)
+    dplyr::filter(abs(min_dist)<=threshold) %>% 
+    droplevels()
     
   real_fill <- '#3D9DEB'
   iterFill <- colorspace::rainbow_hcl(n)
@@ -349,28 +448,28 @@ plotdistanceOverlay2 <- function(..., distances, from='bps', lim=2.5, n=2, posit
       dplyr::filter(feature == levels(new$feature)[i])
     p <- ggplot(distances)
     if(histo) {
-      
-      # distances <- distances %>% 
-      #   dplyr::group_by_(feature, iteration) %>% 
-      #   dplyr::mutate(newCount = )
-      #   
-      
-      p <- p + geom_histogram(data=distances[distances$Source=="Sim",], aes(min_dist, y=(..count..), fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth,  position="identity")
-      p <- p + geom_histogram(data=distances[distances$Source=="Real",], aes(min_dist, y=..count.., fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, position="identity")
-      
-      # ggplot(data=distances[distances$Source=="Real",]) + geom_bar(mapping = aes(min_dist, y=..count.., fill = Source, group = iteration), alpha = 0.1, binwidth = binWidth, stat = "bin")
-      # ggplot(data=distances[distances$Source=="Sim",]) + geom_bar(mapping = aes(min_dist, y=..count../1e3, fill = Source, group = iteration), alpha = 0.5, binwidth = binWidth, stat = "bin")
-      # 
-      
+      p <- p + geom_histogram(data=distances[distances$Source=="Sim",], aes(min_dist, y=(..count..), fill = Source, group = iteration), alpha = 0.3, binwidth = binWidth,  position="identity")
+      p <- p + geom_histogram(data=distances[distances$Source=="Real",], aes(min_dist, y=..count.., fill = Source, group = iteration), alpha = 0.7, binwidth = binWidth, position="identity")
       p <- p + scale_fill_manual(values=colours)
       p <- p + scale_y_continuous(paste("Count per", binWidth, "bp bins"))
     } else {
-      p <- p + geom_line(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
-      # p <- p + geom_density(data=d[d$Source=="Real",], aes(min_dist, y=..scaled..), fill = real_fill, alpha=0.2, adjust=3)
-      p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
+      
+      p <- ggplot(distances)
+      p <- p + stat_density(data=distances[distances$Source=="Sim",], aes(x=min_dist, y=..count.., group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=0.5, position="identity", geom="line")
+      p <- p + stat_density(data=distances[distances$Source=="Real",], aes(x=min_dist, y=..count.., group = interaction(iteration, Source), colour = iteration), size=2, position="identity", geom="line")
+      
+      
+      # p <- p + geom_line(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
+      # # p <- p + geom_density(data=d[d$Source=="Real",], aes(min_dist, y=..scaled..), fill = real_fill, alpha=0.2, adjust=3)
+      # p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
+      
+      sim_rep1 <- distances %>% 
+        dplyr::filter(Source == "Sim",
+                      iteration == 1) %>% 
+        droplevels()
       
       p <- p + geom_rug(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), sides = "b")
-      p <- p + geom_rug(data=distances[distances$Source=="Sim",], aes(min_dist, colour = iteration), sides = "t")
+      p <- p + geom_rug(data=sim_rep1, aes(min_dist, colour = iteration), sides = "t")
       
       p <- p + scale_color_manual(values=colours)
     }

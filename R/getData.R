@@ -9,7 +9,7 @@
 
 getData <- function(...,
                     infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt',
-                    attach_info='../mutationProfiles/data/samples_names_conversion.txt',
+                    attach_info = '../mutationProfiles/data/samples_names_conversion.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks"),
                     exclude = TRUE

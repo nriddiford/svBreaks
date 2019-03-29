@@ -9,6 +9,7 @@
 
 getData <- function(...,
                     infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt',
+                    attach_info='../mutationProfiles/data/samples_names_conversion.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.csv", package="svBreaks"),
                     exclude = TRUE
@@ -25,6 +26,12 @@ getData <- function(...,
     colnames(bp_data)[c(17,18)] <- c("microhomology", "mechanism")
   }
   
+  if(file.exists(attach_info)){
+    name_conversion <- read.delim(attach_info, header=F)
+    cat("Attaching assay information to data")
+    colnames(name_conversion) <- c("sample", "sample_short", "sex", "assay")
+    bp_data <- plyr::join(bp_data, name_conversion, "sample", type = 'left')
+  }
   
   gene_lengths <- read.delim(gene_lengths_file, header = T)
   gene_lengths <- gene_lengths[, c("gene", "id")]
@@ -47,7 +54,6 @@ getData <- function(...,
     excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05",
                           "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   }  
-  
   
   bp_data <- bp_data %>%
     dplyr::filter(!sample %in% excluded_samples) %>%

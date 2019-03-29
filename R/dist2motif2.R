@@ -327,7 +327,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
     total <- plyr::round_any(nrow(x)/length(levels(x$feature)), 1)
     x <- x %>% 
       dplyr::group_by(iteration, feature) %>% 
-      dplyr::filter(abs(min_dist)<=w) %>% 
+      dplyr::filter(abs(min_dist)<=window) %>% 
       dplyr::summarise(perc = plyr::round_any((n()/total)*100,1),
                        count = n(),
                        total = total) %>% 
@@ -336,7 +336,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
   }
   
   bp_c <- (printCloseHits(real_data))
-  cat(paste0("There are ", bp_c$count, "/", bp_c$total, " [", bp_c$perc, "%", "]", " breakpoints within specified range", " (lim=", w/1e3,"Kb) ", "of feature: ", bp_c$feature, "\n"))
+  cat(paste0("There are ", bp_c$count, "/", bp_c$total, " [", bp_c$perc, "%", "]", " breakpoints within specified range", " (lim=", window/1e3,"Kb) ", "of feature: ", bp_c$feature, "\n"))
   
   print(printCloseHits(sim_data))
 

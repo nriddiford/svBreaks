@@ -7,7 +7,7 @@
 bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'),
                                slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10){
   
-  if(missing(bp_data) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
+  if(missing(bp_data) && missing(bed_file)) stop("\n[!] Must provide either a df or bed file! Exiting.")
   
   if(!missing(bp_data)){
     # breakpoints <- 'svs'

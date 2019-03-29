@@ -6,12 +6,16 @@
 #' @keywords enrichment
 #' @import tidyverse
 #' @export
-bpGeneEnrichment <- function(..., gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
+bpGeneEnrichment <- function(..., bp_data, gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
   cat("Showing genes hit at least", n, "times", "\n")
   gene_lengths <- read.delim(gene_lengths, header = T)
   # bp_data<-read.delim('data/all_samples.txt',header=T)
-  bp_data <- getData(..., gene != "intergenic", confidence == 'precise')
- 
+  if(missing(bp_data)){
+    bp_data <- svBreaks::getData(..., gene != "intergenic", confidence == 'precise')
+  } else {
+    bp_data <- bp_data %>% dplyr::filter(gene != "intergenic", confidence == 'precise')
+  }
+
   bp_count <- nrow(bp_data)
 
   hit_genes <- table(bp_data$gene)

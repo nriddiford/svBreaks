@@ -294,14 +294,13 @@ length_by_sample <- function(..., bp_data=NULL){
   
   df <- bp_data %>% 
     dplyr::filter(!str_detect(type, 'TRA')) %>% 
-    dplyr::mutate(sex = ifelse(str_detect(sample, 'D'), "XX", "XY")) %>% 
-    dplyr::mutate(type = as.character(ifelse(str_detect(type, 'COMPLEX'), "COMPLEX", as.character(type)))) %>% 
+    dplyr::filter(type %in% c('DUP', 'DEL'),
+                  sample != 'D106R25') %>% 
     dplyr::distinct(sample, event, type, .keep_all=TRUE) %>% 
     dplyr::group_by(sex) %>% 
     # dplyr::filter(n()>=2) %>% 
     dplyr::mutate(av_length = sum(length)/n())
-    # dplyr::summarise(av_length = count(event))
-  
+
   p <- ggplot(df, aes(fct_reorder(sex, -av_length), length+1))
   p <- p + geom_violin(aes(fill=sex), alpha=.8)
   p <- p + geom_jitter(position=position_jitter(0.2), size = .8)

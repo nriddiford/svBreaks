@@ -15,7 +15,7 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
   gene_hits <- all_data %>% 
     dplyr::filter(...,
                   type != "-",
-                  is.na(status),
+                  !status %in% c('F', 'aF'),
                   !type %in% c('COMPLEX_TRA')
                   ) %>% 
     dplyr::rename(length = length.Kb.,
@@ -181,33 +181,34 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE) {
 
   blueBar <- '#3B8FC7'
   
-  p3 <- ggplot(long_notch_hits)
-  p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
-  p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
-  p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
-  p3 <- p3 + guides(colour = FALSE)
-  p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
-  p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
-
-  p3 <- p3 + slideTheme() +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
-      legend.position = "top",
-      axis.title.y = element_blank(),
-      axis.text.y = element_blank()
-      )
-
-  p3 <- p3 + scale_fill_identity()
-
-  combined_plots <- ggpubr::ggarrange(
-  p, p3,
-  labels = c("A", "B"),
-  ncol = 1, nrow = 2,
-  heights = c(7,3.5),
-  align = 'v'
-  )
+  # p3 <- ggplot(long_notch_hits)
+  # p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
+  # p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
+  # p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
+  # p3 <- p3 + guides(colour = FALSE)
+  # p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
+  # p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
+  # 
+  # p3 <- p3 + slideTheme() +
+  #   theme(
+  #     axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
+  #     legend.position = "top",
+  #     axis.title.y = element_blank(),
+  #     axis.text.y = element_blank()
+  #     )
+  # 
+  # p3 <- p3 + scale_fill_identity()
+  # 
+  # combined_plots <- ggpubr::ggarrange(
+  # p, p3,
+  # labels = c("A", "B"),
+  # ncol = 1, nrow = 2,
+  # heights = c(7,3.5),
+  # align = 'v'
+  # )
   
-  combined_plots
+  # combined_plots
+  p
 }
 
 

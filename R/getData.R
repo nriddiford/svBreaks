@@ -21,7 +21,7 @@ getData <- function(...,
   lapply(X=input_list, function(x) {str(x);summary(x)})
   
   colnames(bp_data) <- c("event", "bp_no", "sample", "genotype", "chrom", "bp", "gene", "feature", "chrom2",  "bp2", "gene2", "feature2", "type", "length", "af", "confidence")
-  if(ncol(bp_data) == 18){
+  if(ncol(bp_data) >= 18){
     cat("Breakpoints are annotated with mechansims\n")
     colnames(bp_data)[c(17,18)] <- c("microhomology", "mechanism")
   }

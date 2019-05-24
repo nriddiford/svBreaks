@@ -9,7 +9,7 @@
 #' @import colorspace
 #' @import RColorBrewer
 #' @export
-generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y')){
+generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms){
   if(missing(df) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
 
   if(!missing(df)) {
@@ -38,28 +38,7 @@ generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms=c('2L', '2R', 
   real_data <- real_data %>% 
     dplyr::filter(chrom %in% chroms) %>% 
     droplevels()
-  
-  # if(missing(breakpoints)){
-  #   cat("Using data from svBreaks::getData()\n")
-  #   real_data <- getData(...) %>%
-  #     dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
-  #     dplyr::mutate(pos = bp) %>%
-  #     dplyr::select(chrom, pos) %>%
-  #     droplevels()
-  # } else{
-  #   cat("Using data from ", breakpoints, "\n")
-  #   real_data <- read.table(breakpoints, header = F)
-  #   if(is.null(real_data$V3)){
-  #     real_data$V3 <- real_data$V2 + 2
-  #   }
-  #   colnames(real_data) <- c("chrom", "start", "end")
-  #   real_data <- real_data %>% 
-  #     dplyr::filter(chrom == "2L" | chrom == "2R" | chrom == "3L" | chrom == "3R" | chrom == "X" ) %>%
-  #     dplyr::mutate(pos = (end+start)/2) %>%
-  #     dplyr::select(chrom, pos) %>% 
-  #     droplevels()
-  # }
-  
+
   if(sim) {
     byIteration <- list()
     #run each iteration
@@ -101,10 +80,9 @@ generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms=c('2L', '2R', 
 #' @export
 dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"), chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), sim=FALSE, position = 'centre') {
   if(missing(df) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
-  if(!dir.exists(featureDir)){
-    cat("Not a dir")
-  }
-  if(length(grep(list.files(featureDir), pattern = '.bed', value=T)) == 0) stop("\n[!] Must provide a directory containing bed files! Exiting.") else print(grep(list.files(featureDir), pattern = '.bed', value=T))
+  if(!dir.exists(featureDir)) stop("Not a dir")
+  if(length(grep(list.files(featureDir), pattern = '.bed', value=T)) == 0) stop("\n[!] Must provide a directory containing bed files! Exiting.")
+  print(grep(list.files(featureDir), pattern = '.bed', value=T))
   
   bp_data <- svBreaks::generateData2(..., df=df, breakpoints=breakpoints, sim=sim, chroms=chroms)
 

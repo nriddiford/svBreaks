@@ -15,8 +15,10 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
       dplyr::filter(...) %>% 
       dplyr::rename(start = bp) %>% 
       dplyr::mutate(end = start+1) %>%
+      dplyr::select(chrom, start, end) %>% 
+      dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
+      dplyr::mutate(start = as.integer(end-1)) %>%
       dplyr::select(chrom, start, end)
-    
   } else if(!missing(bed_file)){
     cat("Reading breakpoints from: ", bed_file, "\n")
     bps <- read.table(bed_file, header = F)
@@ -27,15 +29,15 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     bps <- bps[,c(1,2,3)]
    
     colnames(bps) <- c("chrom", "start", "end")
+    bps <- bps %>% 
+    dplyr::mutate(length = end - start) %>% 
+      dplyr::filter(...) %>%
+      dplyr::select(-length) %>% 
+      droplevels()
     
     if(median(bps$end-bps$start) > 20){
       cat(paste0("The median distance between breakpoints is large: [", median(bps$end-bps$start), " bps].", "This file is not suitable for this analysis\n"))
-    }
-  
-    bps <- bps %>% 
-      dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
-      dplyr::mutate(start = as.integer(end-1)) %>%
-      dplyr::select(chrom, start, end)
+    } 
   }
   
   cat("Specified genome size:", genome_length, "\n")
@@ -93,9 +95,16 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     }
     
     # setkey = d1 for breakpoints, d2 for regions
-    r <- data.table(regions)
-    b <- data.table(bps)
+    if(missing(bed_file)){
+      r <- data.table(regions)
+      b <- data.table(bps)
+    } else {
+      r <- data.table(bps)
+      b <- data.table(regions)
+    }
+  
     setkey(r)
+   
     
     # search for bp overlaps with regions (d2, d1) for breakpoints, d1, d2 for regions
     annotated <- as.data.frame(data.table::foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
@@ -120,6 +129,8 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     regionWidth <- sum(regionSpace$chromSpace)
     
     mutCount <- nrow(bps)
+    
+    cat("Mutcount:", mutCount)
     
     regionFraction <- regionWidth / genome_length
     

@@ -8,7 +8,8 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
-Imports: dplyr,
+Imports: 
+    dplyr,
     ggplot2,
     plyr,
     bedr,
@@ -23,5 +24,6 @@ Imports: dplyr,
     forcats,
     ggsci,
     cowplot,
-    colorspace
+    colorspace,
+    regioneR
 Suggests: testthat

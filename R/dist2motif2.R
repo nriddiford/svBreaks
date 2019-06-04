@@ -259,8 +259,13 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
   
   window_bps <- lim*1e3
   window <- window_bps/5
-
-  bp_count <- nrow(df)
+  if(!missing(df)){
+    bp_count <- nrow(df)
+  } else {
+    b <- read.delim(breakpoints)
+    bp_count <- nrow(b)
+  }
+  
 
   real_data <- svBreaks::dist2motif2(..., df=df, breakpoints=breakpoints, feature_file=feature_file, featureDir=featureDir, position=position, chroms=chroms)
   sim_data <- svBreaks::dist2motif2(..., df=df, breakpoints=breakpoints, feature_file=feature_file, featureDir=featureDir, sim=n, position=position, chroms=chroms)

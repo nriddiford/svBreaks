@@ -2,14 +2,35 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
                        regionB = '~/GitHub/BardinLab/meme/out/notch_CFS/fimo_out/motif2_merged.bed',
                        mappable_regions = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_mappable.bed',
                        chrom_lengths = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/chrom.sizes.txt',
-                       slop, limit2chrom=TRUE, n = 100){
+                       slop, limit2chrom=TRUE, from, to, n = 100){
 
+  
+  genome = read.delim(chrom_lengths, header=F)
+  mappable = read.delim(mappable_regions, header=F)
+  
+  mappable <- mappable %>%
+    dplyr::select(-V4) %>%
+    dplyr::filter(V1 %in% levels(genome$V1)) %>% 
+    droplevels()
+  
+  if(limit2chrom && (!missing(from) || !missing(to)) ){
+    mappable <- mappable %>%
+      dplyr::filter(V2 >= (from - 5000),
+                    V3 <= (to + 5000)
+      ) %>%
+      droplevels()
+    # genome$V2 = from
+    # genome$V3 = to
+    cat("Genome starts at", from, "and ends ", to, "\n")
+  }
+  
   test <- read.delim(regionA, header =F)
   test <- test[,c(1,2,3)]
   
   test <- test %>% 
     dplyr::mutate(length = V3 - V2) %>% 
-    dplyr::filter(...) %>%
+    dplyr::filter(...,
+                  V1 %in% levels(genome$V1)) %>%
     dplyr::select(-length)
   
   cat("looking for enrichment in", nrow(test), "regions\n")
@@ -23,23 +44,11 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
   
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
-
-  genome = read.delim(chrom_lengths, header=F)
-  mappable = read.delim(mappable_regions, header=F)
-  
-  mappable <- mappable %>%
-    dplyr::select(-V4) %>%
-    dplyr::filter(V1 %in% levels(genome$V1)) %>% 
-    droplevels()
-
-  genome <- genome %>% 
-    dplyr::mutate(V3 = V2,
-                  V2 = 0)
   
   # mappable_genome <- getGenomeAndMask("dm6", mask=exclude)$genome
   # mappable_genome <- getGenomeAndMask(genome=genome, mask=exclude)
-  mappable_genome <- regioneR::overlapRegions(A = genome, B = mappable, type="BinA") %>% 
-    dplyr::select(chr, startB, endB)
+  # mappable_genome <- regioneR::overlapRegions(A = genome, B = mappable, type="BinA") %>% 
+  #   dplyr::select(chr, startB, endB)
   
   # pt <- regioneR::overlapPermTest(A=test, B=feature, ntimes=n, genome=mappable_genome,  per.chromosome=TRUE)
   # plot(pt)

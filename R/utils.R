@@ -74,8 +74,11 @@ blackTheme <- function(base_size = 12){
 #' @export
 #' @return colourscale object
 #'
-setCols <- function(df, col, fill="Y", set="Blues") {
+setCols <- function(df, col, fill="Y", set="Blues", customVals) {
   names <- levels(as.factor(df[[col]]))
+  
+  # levels(as.factor(df[with(df, order(length)),][[col]]))
+  
   names <- sort(names)
   cat("Setting colour levels:", names, "\n")
   level_number <- length(names)
@@ -87,3 +90,4 @@ setCols <- function(df, col, fill="Y", set="Blues") {
   if (fill == "Y") return(fillScale)
   if (fill == "N") return(colScale)
 }
+

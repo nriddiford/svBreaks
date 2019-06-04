@@ -66,6 +66,20 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
   
   if(plot){
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
+  
+    # cols <- svBreaks::setCols(all_samples, col = 'type2', set = "Blues")
+    # all_samples <- all_samples %>% 
+    #   dplyr::mutate(colour = ifelse(type2 == "DEL", primary, 
+    #                                 ifelse(type2 == "COMPLEX", secondary,
+    #                                        ifelse(type2 == "BND", tertiary, 
+    #                                               ifelse(type2 == "TRA", quaternary, 'red')
+    #                                               )
+    #                                        )
+    #                                 )
+    #                 )
+    
+    colours = sv_colours()
+    
     
     p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = fct_reorder(type2, -length), label = star))
     p <- p + geom_bar(alpha = 0.8, stat = "identity")
@@ -76,15 +90,13 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
         axis.title.x = element_blank()
       )
-    # p <- p + scale_alpha_continuous(range = c(0.1, 1))
     p <- p + ggtitle(paste("Samples with SVs affecting", filter_gene))
-    p <- p + scale_fill_jco()
+    p <- p + scale_fill_manual("SV type\n", values = colours)
     p <- p + geom_text(vjust=-5)
     # p <- p + geom_text(data = dat, aes(x=sample_mod, y=50),  label = "X")
     
     # p <- p + coord_flip()
     # p <- p + scale_y_reverse()
-    
     p
   } else return(gene_hits)
 }
@@ -139,19 +151,25 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE) {
+notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4) {
   if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
   notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, filter_gene=filter_gene)
   notch_data <- notch_data %>% 
-    dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-2),
-                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+2),
+    dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-100),
+                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+100),
                   type2 = factor(type2)) %>% 
     dplyr::mutate(sampleax = as.numeric(sample),
                   bp1 = bp1 / 1e6,
                   bp2 = bp2 / 1e6) %>% 
+    dplyr::mutate(bp1 = ifelse(bp1 <= from, from, bp1),
+                  bp2 = ifelse(bp2 >= to, to, bp2)
+                  ) %>% 
     dplyr::arrange(-length)
-   
+  
+  
+  colours = sv_colours()
+  
   p <- ggplot(notch_data)
   p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill=type2), color="black", alpha=0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp1, xmax = bp1 + 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
@@ -160,13 +178,15 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE) {
   p <- p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type2 = FALSE)
 
   p <- p + scale_y_continuous("Sample", expand = c(0.01, 0.01), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
-  p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
+  p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(from, to, by = 0.005), limits = c(from, to))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   
   p <- p + slideTheme() +
     theme(
       axis.title.y = element_blank(),
-      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      # panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
       legend.position = "top",
       axis.text.y = element_blank(),
@@ -176,39 +196,44 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE) {
     p <- p + theme(axis.text.y = element_text(size=20))
   }
   
-  long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
-    dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
+  p <- p + scale_fill_manual("SV type\n", values = colours)
+  
+  
+  if(bp_density){
 
-  blueBar <- '#3B8FC7'
+    long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
+      dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
   
-  # p3 <- ggplot(long_notch_hits)
-  # p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
-  # p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
-  # p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
-  # p3 <- p3 + guides(colour = FALSE)
-  # p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
-  # p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
-  # 
-  # p3 <- p3 + slideTheme() +
-  #   theme(
-  #     axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
-  #     legend.position = "top",
-  #     axis.title.y = element_blank(),
-  #     axis.text.y = element_blank()
-  #     )
-  # 
-  # p3 <- p3 + scale_fill_identity()
-  # 
-  # combined_plots <- ggpubr::ggarrange(
-  # p, p3,
-  # labels = c("A", "B"),
-  # ncol = 1, nrow = 2,
-  # heights = c(7,3.5),
-  # align = 'v'
-  # )
+    blueBar <- '#3B8FC7'
+    
+    p3 <- ggplot(long_notch_hits)
+    p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
+    p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
+    p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
+    p3 <- p3 + guides(colour = FALSE)
+    p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
+    p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
+
+    p3 <- p3 + slideTheme() +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
+        legend.position = "top",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank()
+        )
+
+    p3 <- p3 + scale_fill_identity("SV type\n")
+
+    combined_plots <- ggpubr::ggarrange(
+    p, p3,
+    labels = c("A", "B"),
+    ncol = 1, nrow = 2,
+    heights = c(7,3.5),
+    align = 'v'
+    )
+    combined_plots
+  } else p
   
-  # combined_plots
-  p
 }
 
 
@@ -311,4 +336,16 @@ notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
       droplevels()
     return(noNotch)
   }
+}
+
+
+#' SV colours
+#' 
+sv_colours <- function(){
+  return(c("DEL" = '#0073C299',
+           "COMPLEX" = '#EFC00099',
+           "BND" = '#86868699',
+           "TRA" = '#CD534C99',
+           "NA" = "grey")
+         )
 }

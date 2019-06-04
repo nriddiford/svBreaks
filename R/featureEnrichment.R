@@ -11,8 +11,11 @@
 bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
   genome_features <- read.delim(features, header = T)
   if(missing(bp_data)){
-    bp_data<-getData(..., gene != "intergenic", confidence == 'precise')
+    bp_data<-getData(gene != "intergenic", confidence == 'precise')
   }
+  
+  bp_data <- bp_data %>% 
+    dplyr::filter(...)
 
   mutCount <- nrow(bp_data)
 
@@ -91,14 +94,16 @@ bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata
 #' @import tidyverse
 #' @export
 #'
-bpFeatureEnrichmentPlot <- function(...) {
-  feature_enrichment <- bpFeatureEnrichment(...)
-  feature_enrichment$feature <- as.character(feature_enrichment$feature)
+bpFeatureEnrichmentPlot <- function(..., feature_enrichment=NULL, expected_hits=5) {
+  if(missing(feature_enrichment)) feature_enrichment <- bpFeatureEnrichment(...)
+
+  feature_enrichment <- feature_enrichment %>% 
+    dplyr::mutate(feature = as.character(feature)) %>% 
+    dplyr::filter(expected >= expected_hits) %>% 
+    droplevels()
+  
   feature_enrichment <- transform(feature_enrichment, feature = reorder(feature, -Log2FC))
-
-  feature_enrichment <- dplyr::filter(feature_enrichment, expected >= 5)
-  feature_enrichment <- droplevels(feature_enrichment)
-
+  
   p <- ggplot(feature_enrichment)
   p <- p + geom_bar(aes(feature, Log2FC, fill = as.character(test)), stat = "identity")
   p <- p + guides(fill = FALSE)

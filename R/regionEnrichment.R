@@ -4,7 +4,7 @@
 #' @import dplyr
 #' @import data.table
 #' @export
-bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'),
+bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), restrict=TRUE,
                                slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10){
   
   if(missing(bp_data) && missing(bed_file)) stop("\n[!] Must provide either a df or bed file! Exiting.")
@@ -31,7 +31,8 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     colnames(bps) <- c("chrom", "start", "end")
     bps <- bps %>% 
     dplyr::mutate(length = end - start) %>% 
-      dplyr::filter(...) %>%
+      dplyr::filter(...,
+                    chrom %in% chroms) %>%
       dplyr::select(-length) %>% 
       droplevels()
     
@@ -47,6 +48,15 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
   regionFC <- list()
   
   fileNames <- dir(bedDir, pattern = ".bed")
+  
+  if(restrict && length(chroms) == 1){
+    genome_start <- min(bps$start[bps$chrom %in% chroms]) - 5000
+    genome_start<- ifelse(genome_start < 0, 0, genome_start)
+    genome_end <- max(bps$end[bps$chrom %in% chroms]) + 5000
+    cat("Restricting regions to chroms:", chroms, "\n")
+    cat("Restricting regions to locus: ", genome_start, "-", genome_end, "\n", sep="")
+  }
+  
   for (f in fileNames){
     if(parseName){
       filename <- basename(tools::file_path_sans_ext(f))
@@ -80,6 +90,25 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
       dplyr::arrange(chrom) %>% 
       droplevels()
     
+    if(restrict && length(chroms) == 1){
+      regions <- regions %>% 
+        dplyr::filter(start >= genome_start,
+                      end <= genome_end) %>% 
+        dplyr::arrange(chrom) %>% 
+        droplevels()
+      
+      total_length <- bps %>% 
+        dplyr::group_by(chrom) %>% 
+        dplyr::summarise(total = max(end) - min(start)) %>% 
+        dplyr::summarise(sum(total))
+      
+      # TODO This doesn't account for unmappable (i.e. the functional genome can be larger than the mappable genome)
+      
+      genome_length <- as.numeric(genome_end - genome_start)
+      
+    }
+    cat("Functional genome length: ", genome_length, "\n")
+    
     if (!nrow(regions)) next
 
     if(intersect){
@@ -104,8 +133,7 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     }
   
     setkey(r)
-   
-    
+
     # search for bp overlaps with regions (d2, d1) for breakpoints, d1, d2 for regions
     annotated <- as.data.frame(data.table::foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
     
@@ -130,7 +158,7 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     
     mutCount <- nrow(bps)
     
-    cat("Mutcount:", mutCount)
+    # cat("Mutcount:", mutCount, "\n")
     
     regionFraction <- regionWidth / genome_length
     
@@ -470,8 +498,8 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
 #' @import dplyr ggplot2
 #' @export
 
-bpRegionEnrichmentPlot <- function(...) {
-  feature_enrichment <- bpRegionEnrichment(..., plot=F)
+bpRegionEnrichmentPlot <- function(..., bp_data, bedDir) {
+  feature_enrichment <- bpRegionEnrichment(..., bp_data=bp_data, bedDir=bedDir, plot=F)
   arguments <- list(...)
   
   if(!is.null(arguments$slop)){

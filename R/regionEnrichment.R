@@ -5,7 +5,7 @@
 #' @import data.table
 #' @export
 bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), restrict=TRUE,
-                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10){
+                               slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10, multiple=TRUE){
   
   if(missing(bp_data) && missing(bed_file)) stop("\n[!] Must provide either a df or bed file! Exiting.")
   
@@ -133,9 +133,11 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     }
   
     setkey(r)
-
+    
+    overlap_parm <- ifelse(multiple, "all", "first")
+    
     # search for bp overlaps with regions (d2, d1) for breakpoints, d1, d2 for regions
-    annotated <- as.data.frame(data.table::foverlaps(b, r, by.x = names(b), type = "any", mult = "first", nomatch = NA))
+    annotated <- as.data.frame(data.table::foverlaps(b, r, by.x = names(b), type = "any", mult = overlap_parm, nomatch = NA))
     
     bpRegions <- annotated %>% 
       dplyr::mutate(feature = ifelse(is.na(start), 'outside', 'inside')) %>% 

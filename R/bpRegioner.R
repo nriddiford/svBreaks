@@ -52,9 +52,13 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
   
   # pt <- regioneR::overlapPermTest(A=test, B=feature, ntimes=n, genome=mappable_genome,  per.chromosome=TRUE)
   # plot(pt)
+  
+  # genome <- getGenomeAndMask(genome = 'dm6', mask = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_unmappable_100.bed')
   pt <- regioneR::permTest(A=test, B=feature, ntimes=n, randomize.function=regioneR::randomizeRegions,
                            genome=mappable, evaluate.function=regioneR::numOverlaps, per.chromosome=limit2chrom)
   plot(pt)
+  
+  return(pt)
   # lz <- localZScore(pt=pt, A=test, B=feature)
   # plot(lz)
 }

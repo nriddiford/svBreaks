@@ -151,7 +151,7 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4) {
+notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4, ticks = 50) {
   if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
   notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, filter_gene=filter_gene)
@@ -178,7 +178,7 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
   p <- p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type2 = FALSE)
 
   p <- p + scale_y_continuous("Sample", expand = c(0.01, 0.01), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
-  p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(from, to, by = 0.005), limits = c(from, to))
+  p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(from, to, by = ticks/1e3), limits = c(from, to))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   
   p <- p + slideTheme() +

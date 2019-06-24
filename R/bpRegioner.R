@@ -2,22 +2,25 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
                        regionB = '~/GitHub/BardinLab/meme/out/notch_CFS/fimo_out/motif2_merged.bed',
                        mappable_regions = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_mappable.bed',
                        chrom_lengths = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/chrom.sizes.txt',
-                       slop, limit2chrom=TRUE, from, to, n = 100){
+                       slop, limit2chrom=TRUE, chrom='X', from, to, n = 100, plot = TRUE, region=NULL, feature=NULL){
 
-  
+  if(missing(feature) && missing(region)){
+    region_name <- tools::file_path_sans_ext(basename(regionA))
+    feature_name <- tools::file_path_sans_ext(basename(regionB))
+  }
   genome = read.delim(chrom_lengths, header=F)
   mappable = read.delim(mappable_regions, header=F)
   
   mappable <- mappable %>%
-    dplyr::select(-V4) %>%
     dplyr::filter(V1 %in% levels(genome$V1)) %>% 
+    dplyr::select(-V4) %>%
     droplevels()
   
-  if(limit2chrom && (!missing(from) || !missing(to)) ){
+  if(limit2chrom && ( !missing(from) || !missing(to) ) ){
     mappable <- mappable %>%
-      dplyr::filter(V2 >= (from - 5000),
-                    V3 <= (to + 5000)
-      ) %>%
+      dplyr::filter(V1 == chrom,
+                    V2 >= (from - 5000),
+                    V3 <= (to + 5000)) %>%
       droplevels()
     # genome$V2 = from
     # genome$V3 = to
@@ -54,11 +57,33 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
   # plot(pt)
   
   # genome <- getGenomeAndMask(genome = 'dm6', mask = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_unmappable_100.bed')
-  pt <- regioneR::permTest(A=test, B=feature, ntimes=n, randomize.function=regioneR::randomizeRegions,
+  res <- regioneR::permTest(A=test, B=feature, ntimes=n, randomize.function=regioneR::randomizeRegions,
                            genome=mappable, evaluate.function=regioneR::numOverlaps, per.chromosome=limit2chrom)
-  plot(pt)
   
-  return(pt)
+  if(plot){
+    
+    d <- data.frame(feature = c('real', rep('shuffled', length(res$`regioneR::numOverlaps`$permuted))),
+                    overlaps = c(res$`regioneR::numOverlaps`$observed, res$`regioneR::numOverlaps`$permuted)
+    )
+    
+    title_string <- paste0("Region: ", region_name, "\n",
+                           "Feature: ", feature_name, "\n",
+                           "shuffles: ", res$`regioneR::numOverlaps`$ntimes, "\n",
+                           "observed: ", res$`regioneR::numOverlaps`$observed, "\n",
+                           "p-val: ", format.pval(res$`regioneR::numOverlaps`$pval) ,"\n")
+    # library(ggpubr)
+    
+    gghistogram(d, x = "overlaps",
+                add = "mean", rug = TRUE,
+                color = "feature", fill = "feature",
+                palette = c("#00AFBB", "#E7B800"),
+                title = title_string)
+    
+  } else{
+    return(res)
+  }
+  
+  
   # lz <- localZScore(pt=pt, A=test, B=feature)
   # plot(lz)
 }

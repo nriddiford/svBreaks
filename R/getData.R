@@ -11,7 +11,7 @@ getData <- function(...,
                     infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt',
                     attach_info = '../mutationProfiles/data/samples_names_conversion.txt',
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
-                    expression_data = system.file("extdata", "isc_genes_rnaSeq.txt", package="svBreaks"),
+                    expression_source = 'flygut', expression_data = system.file("extdata", "isc_genes_rnaSeq.txt", package="svBreaks"),
                     exclude = TRUE
                     ) {
   bp_data <- read.delim(infile, header = F)
@@ -37,10 +37,21 @@ getData <- function(...,
   gene_lengths <- gene_lengths[, c("gene", "id")]
 
   bp_data <- plyr::join(bp_data, gene_lengths, "gene", type = "left")
-
-  # Read in tissue specific expression data
-  seq_data <- read.table(header = F, expression_data)
-  colnames(seq_data) <- c("id", "fpkm")
+  
+  if(expression_source == 'flygut'){
+    cat("Reading expression data from source: 'flygut [Buchon]'")
+    expression_data = read.delim('/Users/Nick_curie/Documents/Curie/Data/RNA-Seq_data/Buchon_summary_ISCs.txt')
+    colnames(expression_data) <- c('id', 'symbol', 'name', 'isc', 'eb', 'ec', 'ee', 'vm')
+    seq_data <- expression_data %>% 
+      dplyr::mutate(fpkm = isc) %>% 
+      dplyr::select(id, fpkm)
+  } else{
+    cat("Reading expression data from source: 'Dutta'")
+    expression_data = system.file("extdata", "isc_genes_rnaSeq.txt")
+    seq_data <- read.table(header = F, expression_data)
+    colnames(seq_data) <- c("id", "fpkm")
+  }
+  
   bp_data <- plyr::join(bp_data, seq_data, "id", type = "left")
   
   # bp_data <- bp_data %>%

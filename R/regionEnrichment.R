@@ -500,8 +500,8 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
 #' @import dplyr ggplot2
 #' @export
 
-bpRegionEnrichmentPlot <- function(..., bp_data, bedDir) {
-  feature_enrichment <- bpRegionEnrichment(..., bp_data=bp_data, bedDir=bedDir, plot=F)
+bpRegionEnrichmentPlot <- function(..., feature_enrichment=NULL, bedDir=NULL, bp_data=NULL) {
+  if(!missing(bedDir) && !missing(bp_data)) feature_enrichment <- bpRegionEnrichment(..., bp_data=bp_data, bedDir=bedDir, plot=F)
   arguments <- list(...)
   
   if(!is.null(arguments$slop)){

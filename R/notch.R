@@ -59,30 +59,17 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
   }
    
   missing_samples <- plyr::compact(missing_samples)
-  
   dat <- data.frame(sample_mod = unlist(missing_samples), length = 0, type2 = "NA")
-  
   all_samples <- plyr::join(gene_hits, dat, type='full')
   
   if(plot){
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
-  
-    # cols <- svBreaks::setCols(all_samples, col = 'type2', set = "Blues")
-    # all_samples <- all_samples %>% 
-    #   dplyr::mutate(colour = ifelse(type2 == "DEL", primary, 
-    #                                 ifelse(type2 == "COMPLEX", secondary,
-    #                                        ifelse(type2 == "BND", tertiary, 
-    #                                               ifelse(type2 == "TRA", quaternary, 'red')
-    #                                               )
-    #                                        )
-    #                                 )
-    #                 )
-    
+
     colours = sv_colours()
-    
-    
-    p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = fct_reorder(type2, -length), label = star))
-    p <- p + geom_bar(alpha = 0.8, stat = "identity")
+
+    p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = type2, colour = type2, label = star))
+    p <- p + geom_bar(alpha = 0.7, stat = "identity")
+    p <- p + guides(colour = FALSE)
     p <- p + scale_y_continuous("Length (Kb)", expand = c(0, 0.5))
     p <- p + cleanTheme() +
       theme(
@@ -92,6 +79,9 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
       )
     p <- p + ggtitle(paste("Samples with SVs affecting", filter_gene))
     p <- p + scale_fill_manual("SV type\n", values = colours)
+    p <- p + scale_colour_manual(values = colours)
+    
+    
     p <- p + geom_text(vjust=-5)
     # p <- p + geom_text(data = dat, aes(x=sample_mod, y=50),  label = "X")
     
@@ -171,7 +161,7 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
   colours = sv_colours()
   
   p <- ggplot(notch_data)
-  p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill=type2), color="black", alpha=0.6)
+  p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill=type2, color=type2), alpha=0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp1, xmax = bp1 + 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp2, xmax = bp2 - 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
 
@@ -197,6 +187,8 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
   }
   
   p <- p + scale_fill_manual("SV type\n", values = colours)
+  p <- p + scale_colour_manual(values = colours)
+  
   
   
   if(bp_density){
@@ -204,10 +196,10 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
     long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
       dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
   
-    blueBar <- '#3B8FC7'
+    # blueBar <- '#3B8FC7'
     
     p3 <- ggplot(long_notch_hits)
-    p3 <- p3 + geom_density(aes(breakpoint, fill = blueBar), alpha = 0.6)
+    p3 <- p3 + stat_density(aes(breakpoint, fill = type2, colour = type2), alpha = 0.6, adjust = 0.3)
     p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
     p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
     p3 <- p3 + guides(colour = FALSE)
@@ -221,8 +213,12 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
         axis.title.y = element_blank(),
         axis.text.y = element_blank()
         )
-
-    p3 <- p3 + scale_fill_identity("SV type\n")
+  
+    p3 <- p3 + scale_fill_manual("SV type\n", values = colours)
+    p3 <- p3 + scale_colour_manual(values = colours)
+    # 
+    # p3 <- p3 + scale_fill_identity("SV type\n")
+    # p3 <- p3 + scale_colour_identity()
 
     combined_plots <- ggpubr::ggarrange(
     p, p3,
@@ -236,12 +232,6 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
   
 }
 
-
-
-
-
-
-# ######
 
 #' notchDels
 #' Plot the size of deletions affecting Notch
@@ -315,9 +305,8 @@ notchDels <- function(infile = "inst/extdata/Notch_hits.txt") {
 #' @import tidyverse
 #' @export
 #' @return Dataframe
-#'
 notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
-  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01","D050R03", "D050R05", "D050R07-1", "D050R07-2","D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
   
   bp_data <- getData(..., !sample %in% excluded_samples)
   if(!missing(keep)){
@@ -340,7 +329,6 @@ notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
 
 
 #' SV colours
-#' 
 sv_colours <- function(){
   return(c("DEL" = '#0073C299',
            "COMPLEX" = '#EFC00099',

@@ -114,7 +114,6 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   files <- do.call(rbind, file_list)
   rownames(files) <- NULL
 
-  
   # chromosomes <- data.frame(chroms = c("2L", "2R", "3L", "3R", "X"), lengths = c(23513712, 25286936, 28110227, 32079331, 23542271))
                        
   locations <- files %>%
@@ -127,7 +126,7 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   p <- ggplot(locations)
   p <- p + geom_density(aes(pos, fill = type), alpha = 0.4, adjust=0.07)
   # p <- p + geom_rug(aes(pos, colour = type), sides = "tb", alpha = 0.05)
-  p <- p + facet_wrap(~chrom, scales = "free_x", ncol=2)
+  p <- p + facet_wrap(~chrom~type, scales = "free_y", ncol=1)
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(locations$pos), by = 5))
   p <- p + geom_rug(data=locations, aes(pos, colour = type), sides = "b")
   p <- p + cleanTheme() +

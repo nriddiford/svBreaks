@@ -35,7 +35,9 @@ mechansimSize <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filter
       )
     p <- p + facet_wrap(~type2, nrow = 3)
     p
-  } else return(mechanism_count)
+  } else {
+    return(mechanism_count)
+  }
 }
 
 
@@ -48,7 +50,7 @@ mechansimSize <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filter
 #' @import dplyr
 #' @export
 micromologyPlot <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt'){
-  mech_data <- svBreaks::mechansimSize(..., bp_data=bp_data, plot=F)
+  mech_data <- svBreaks::mechansimSize(..., bp_data=bp_data, infile=infile, plot=F)
   
   mh_sizes <- mech_data %>% 
     dplyr::mutate(mh_length = ifelse(microhomology==0, 0, nchar(as.character(microhomology))))
@@ -62,6 +64,6 @@ micromologyPlot <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filt
     theme(
       panel.grid.major.y = element_line(color="grey80", size = 0.5, linetype = "dotted")
     )
-  # p <- p + facet_wrap(~type2, nrow = 2)
+  p <- p + facet_wrap(~type2, nrow = 2)
   p
 }

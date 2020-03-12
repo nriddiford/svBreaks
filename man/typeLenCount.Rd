@@ -4,7 +4,7 @@
 \alias{typeLenCount}
 \title{typeLenCount}
 \usage{
-typeLenCount(size_threshold = 1, notch = 0)
+typeLenCount(..., bp_data = NULL, size_threshold = 1, notch = 0)
 }
 \description{
 Plot the length of different sv types as counts

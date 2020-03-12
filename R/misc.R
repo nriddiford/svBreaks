@@ -1,51 +1,138 @@
 
 #' Misc functions
 
+#' transform_types
+#'
+#' Convert short types into plottable names
+#' @export
+transform_types <- function(x){
+  x <- x %>% 
+    dplyr::mutate(type2 = ifelse(type2 == "TRA", "Translocation",
+                                 ifelse(type2 == "DEL", "Deletion",
+                                        ifelse(type2 == "DUP", "Duplication",
+                                               ifelse(type2 == "COMPLEX", "Complex",
+                                                      ifelse(type2 == "TANDUP", "Tandem\nDuplication",
+                                                             ifelse(type2 == "BND", "Inversion", type2)))))))
+  return(x)
+}
+
+
+#' SV colours
+#' 
+#' @export
+sv_colours <- function(){
+  return(
+    # c("DEL" = '#0073C299',
+    #        "COMPLEX" = '#EFC00099',
+    #        "DUP" = '#232323',
+    #        "BND" = '#868686',
+    #        "TRA" = '#CD534C99',
+    #        "NA" = "grey")
+         # c("DEL" = "#269FBF",
+         #   "COMPLEX" = '#85C27C',
+         #   "DUP" = '#E4E57E',
+         #   "BND" = '#E68B4C',
+         #   "TRA" = '#BC5D8F',
+         #   "TANDUP" = '#A68BD1',
+         #   "NA" = "grey"
+         # )
+         # 
+         c("DEL" = "#269FBF",
+           "COMPLEX" = '#85C27C',
+           "DUP" = '#A68BD1',
+           "BND" = '#E68B4C',
+           "TRA" = '#BC5D8F',
+           "TANDUP" = '#E4E57E',
+           "NA" = "grey"
+         )
+         
+  )
+}
+
+
+#' get sample names
+#' 
+#' @export
+getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/samples_names_conversion.txt'){
+  all_samples_info <- read.delim(all_samples_info, header = F, stringsAsFactors = T)
+  colnames(all_samples_info) <- c("sample", "marius", "sex", "assay")
+  
+  names <- all_samples_info %>% 
+    dplyr::filter(...) %>% 
+    droplevels()
+  
+  names <- as.list(levels(names$sample))
+  missing_samples = list()
+  
+  r <- 0
+  for(i in 1:length(names)){
+    if(!(names[[i]] %in% as.list(levels(df$sample)))){
+      r <- r + 1
+      missing_samples[r] <- names[[i]]
+    }
+  }
+  # print("samples missing from dataframe levels: %s", unlist(missing_samples))
+  return(missing_samples) 
+}
+
+
 #' svTypes
 #'
 #' Plot counts of different svTypes
 #' @import tidyverse ggsci
 #' @export
-svTypes <- function(notch=FALSE, object='type', keep=FALSE) {
-  excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
-
-  if(notch) {
-    bp_data <- notchFilt(!sample %in% excludedSamples, keep=keep)
-    ext <- "_Notch.png"
-    if(!keep) ext <- "_not_Notch.png"
-  } else {
-    bp_data <- getData(genotype=='somatic_tumour', !sample %in% excludedSamples)
-    ext <- ".png"
-  }
+svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per sample (" ~italic("Notch")~ "excluded )"), object='type', keep=FALSE, plot=T) {
+  if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
+  ext <- ".png"
   
-  dat <- bp_data %>% 
-    dplyr::filter(bp_no != "bp2") %>% 
-    group_by(sample, type) %>% 
-    dplyr::summarise(type_count = n()) %>%
-    mutate(sv_count = sum(type_count)) %>% 
-    arrange(-sv_count) %>% 
-    droplevels()
+  bp_data <- bp_data %>% 
+    dplyr::filter(...,
+                  bp_no != "bp2") %>% 
+    dplyr::group_by(sample, type2) %>% 
+    dplyr::summarise(type_count = log10(n()+1)) %>%
+    dplyr::mutate(sv_count = sum(type_count)) %>% 
+    dplyr::arrange(-sv_count) %>% 
+    droplevels() %>% 
+    as.data.frame()
   
   # cols <- setCols(df=dat, col=object, set='Pastel1')
-
-  p <- ggplot(dat)
-  p <- p + geom_bar(aes(fct_reorder(sample, -sv_count), type_count, fill = type), stat = 'identity', alpha = 0.7)
-  p <- p + scale_x_discrete(expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, 10), breaks = seq(0,10,by=2))
+  
+  missing_samples <- getMissingSamples(..., df = non_notch)
+  
+  
+  missing_samples <- plyr::compact(missing_samples)
+  dat <- data.frame(sample = unlist(missing_samples), sv_count = 0, type_count =0, type2 = "NA")
+  bp_data <- plyr::join(bp_data, dat, type='full')
+  
+  order <- levels(fct_reorder(bp_data$sample, bp_data$sv_count))
+  colours <- sv_colours()
+  
+  p <- ggplot(bp_data)
+  p <- p + geom_bar(aes(fct_reorder(sample, -sv_count), type_count, colour = type2, fill = type2), alpha=0.6, stat = 'identity')
+  p <- p + scale_fill_manual("SV type\n", values = colours)
+  p <- p + scale_colour_manual(values = colours)
+  p <- p + guides(color = FALSE)
   p <- p + slideTheme() +
     theme(
-      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=18)
+      # panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
+      legend.position = "top",
+      axis.text.y = element_text(size=15),
+      axis.title.x=element_blank()
     )
-  p <- p + scale_fill_jco()
-  
-  types_outfile <- paste("sv_types_by_", object, ext, sep = "")
-  cat("Writing file", types_outfile, "\n")
-  ggsave(paste("plots/", types_outfile, sep = ""), width = 10, height = 10)
-  
-  p
+
+  if(plot){
+    p
+  } else {
+    return(list(bp_data, p))
+  }
 }
+
+
+
+
 
 #' featureDensity
 #'
@@ -193,15 +280,20 @@ typeLen <- function(size_threshold = 1, notch=0) {
 #' @import tidyverse
 #' @export
 
-typeLenCount <- function(size_threshold = 1, notch=0) {
-  if (notch) {
-    bp_data <- notchFilt()
-    ext <- "_excl.N.pdf"
+typeLenCount <- function(..., bp_data=NULL, size_threshold = 1, notch=0) {
+  
+  if(missing(bp_data)){
+    if (notch) {
+      bp_data <- notchFilt()
+      ext <- "_excl.N.pdf"
+    }
+    else {
+      bp_data <- getData(...)
+      ext <- ".pdf"
+    }
   }
-  else {
-    bp_data <- getData()
-    ext <- ".pdf"
-  }
+  
+  
 
   cols <- setCols(bp_data, "type")
 

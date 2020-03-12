@@ -6,7 +6,9 @@
 #' @import ggsci
 #' @export
 
-sizeDist <- function(...) {
+sizeDist <- function(..., bp_data) {
+  if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
+  
   bp_data <- bp_data %>%
     dplyr::filter(type != "TRA", type != "BND", bp_no != "bp2") %>%
     dplyr::mutate(length = ifelse(length == 0, 0.01, length)) %>%

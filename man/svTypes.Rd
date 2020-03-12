@@ -2,10 +2,11 @@
 % Please edit documentation in R/misc.R
 \name{svTypes}
 \alias{svTypes}
-\title{Misc functions
-svTypes}
+\title{svTypes}
 \usage{
-svTypes(notch = FALSE, object = "type", keep = FALSE)
+svTypes(..., bp_data = NULL,
+  title = expression("Structural variants per sample (" ~ italic("Notch")
+  ~ "excluded )"), object = "type", keep = FALSE, plot = T)
 }
 \description{
 Plot counts of different svTypes

@@ -4,7 +4,7 @@
 \alias{plotdistanceOverlay2}
 \title{plotdistanceOverlay}
 \usage{
-plotdistanceOverlay2(..., distances, from = "bps", lim = 2.5, n,
+plotdistanceOverlay2(..., distances, from = "bps", lim = 5, n,
   position = "centre", histo = FALSE, binWidth)
 }
 \arguments{

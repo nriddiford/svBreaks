@@ -5,7 +5,7 @@
 \title{sizeDist
 Plot the size distribution for different types of structual variants}
 \usage{
-sizeDist(...)
+sizeDist(..., bp_data)
 }
 \description{
 sizeDist

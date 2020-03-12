@@ -5,7 +5,9 @@
 \title{bpRainfall
 Plot log10 distances between snvs as rainfall plot}
 \usage{
-bpRainfall(..., bp_data = NULL, write = FALSE)
+bpRainfall(..., bp_data = NULL, bed_file = NULL, write = FALSE,
+  chroms = c("2L", "2R", "3L", "3R", "X"), from = NULL, to = NULL,
+  tick_by = 10)
 }
 \description{
 bpRainfall

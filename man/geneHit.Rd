@@ -4,14 +4,15 @@
 \alias{geneHit}
 \title{Print barplot showing samples with SVs affecting specified gene}
 \usage{
-geneHit(..., all_samples, filter_gene = "N", plot = TRUE)
+geneHit(..., all_samples, drivers = c("N"), plot = TRUE,
+  show_sample = TRUE)
 }
 \arguments{
-\item{filter_gene}{The gene of interest [Default: N]}
-
 \item{plot}{Show barplot [Default: TRUE]}
 
 \item{infile}{File to process [Required]}
+
+\item{filter_gene}{The gene of interest [Default: N]}
 }
 \description{
 Print barplot showing samples with SVs affecting specified gene

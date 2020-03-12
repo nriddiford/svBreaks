@@ -5,7 +5,9 @@
 \title{notchHits
 Plot the breakpint density over Notch}
 \usage{
-notchHits(..., all_samples, filter_gene = "N", show_samples = FALSE)
+notchHits(..., all_samples, drivers = c("N", "kuz"),
+  show_samples = FALSE, bp_density = FALSE, from = 2.7, to = 3.4,
+  ticks = 50)
 }
 \description{
 notchHits

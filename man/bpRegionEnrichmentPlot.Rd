@@ -4,7 +4,8 @@
 \alias{bpRegionEnrichmentPlot}
 \title{Plot the enrichment of SVs in genomic features}
 \usage{
-bpRegionEnrichmentPlot(...)
+bpRegionEnrichmentPlot(..., feature_enrichment = NULL, bedDir = NULL,
+  bp_data = NULL)
 }
 \description{
 Plot the enrichment of SVs in genomic features

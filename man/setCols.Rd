@@ -4,7 +4,7 @@
 \alias{setCols}
 \title{Set colour scheme for manual colouring}
 \usage{
-setCols(df, col, fill = "Y", set = "Pastel2")
+setCols(df, col, fill = "Y", set = "Blues", customVals)
 }
 \value{
 colourscale object

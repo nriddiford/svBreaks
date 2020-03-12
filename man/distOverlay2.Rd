@@ -8,8 +8,8 @@ Overlay the same number of random simulated breakpoints}
 distOverlay2(..., df, breakpoints, feature_file,
   featureDir = system.file("extdata", "features", package = "svBreaks"),
   from = "bps", chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"),
-  lim = 2.5, n = 2, plot = TRUE, histo = FALSE,
-  position = "centre", threshold = 0.05, write = FALSE, out_dir)
+  lim = 10, n = 5, plot = TRUE, histo = FALSE, position = "edge",
+  threshold = 0.05, write = FALSE, out_dir)
 }
 \description{
 Calculate the distance from each breakpoint to closest motif

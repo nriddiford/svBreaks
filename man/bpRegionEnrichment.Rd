@@ -6,9 +6,10 @@
 \usage{
 bpRegionEnrichment(..., bp_data, bed_file,
   bedDir = "/Users/Nick_curie/Desktop/misc_bed/features",
-  chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"), slop = 0,
-  plot = TRUE, genome_length = 118274340, intersect = FALSE, outDir,
-  parseName = FALSE, minHits = 10)
+  chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"), restrict = TRUE,
+  slop = 0, plot = TRUE, genome_length = 118274340,
+  intersect = FALSE, outDir, parseName = FALSE, minHits = 10,
+  multiple = TRUE)
 }
 \description{
 Calculate the enrichment of SVs in genomic regions

@@ -5,8 +5,7 @@
 \title{generateData2
 Prepare data for dist2motif}
 \usage{
-generateData2(..., df, breakpoints, sim = FALSE, chroms = c("2L", "2R",
-  "3L", "3R", "4", "X", "Y"))
+generateData2(..., df, breakpoints, sim = FALSE, chroms)
 }
 \description{
 generateData2

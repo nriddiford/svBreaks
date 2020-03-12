@@ -1,3 +1,19 @@
+#' Run regioneR for to regions in bed format
+#' @param regionA RegionA [Required]
+#' @param regionB RegionB [Required]
+#' @param mappable_regions Bed file with mappable geneome [Required]
+#' @param chrom_lengths Lengths for for chromosomes
+#' @param slop Add this much slop to each region
+#' @param limit2chrom Restrict permutaions to one chromsome [Default: TRUE] 
+#' @param chrom Chromosome to run permutations on if limit2chrom=TRUE [Default: "X"] 
+#' @param from Restrict to region between from and to
+#' @param to Restrict to region between from and to
+#' @param n Number of permutations to run
+#' @param plot 
+#' @param region
+#' @param feature
+#' 
+#' @export
 bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/notch_10kb_merged_breakpoints.bed',
                        regionB = '~/GitHub/BardinLab/meme/out/notch_CFS/fimo_out/motif2_merged.bed',
                        mappable_regions = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_mappable.bed',
@@ -29,6 +45,7 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
   
   test <- read.delim(regionA, header =F)
   test <- test[,c(1,2,3)]
+  test$V1 <- stringr::str_remove(test$V1, 'chr')
   
   test <- test %>% 
     dplyr::mutate(length = V3 - V2) %>% 
@@ -47,6 +64,8 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
   
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
+  
+  feature$V1 <- stringr::str_remove(feature$V1, 'chr')
   
   # mappable_genome <- getGenomeAndMask("dm6", mask=exclude)$genome
   # mappable_genome <- getGenomeAndMask(genome=genome, mask=exclude)
@@ -77,7 +96,8 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
                 add = "mean", rug = TRUE,
                 color = "feature", fill = "feature",
                 palette = c("#00AFBB", "#E7B800"),
-                title = title_string)
+                title = title_string, 
+                ggtheme = theme_minimal())
     
   } else{
     return(res)

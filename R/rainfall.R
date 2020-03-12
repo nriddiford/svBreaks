@@ -13,7 +13,14 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
       dplyr::mutate(chrom = V1,
                     bp = V2) %>% 
       dplyr::select(chrom, bp)
+      
   }
+  
+  bp_data <- bp_data %>% 
+    dplyr::filter(...) %>% 
+    droplevels()
+  
+  # bp_data <- svBreaks::transform_types(bp_data)
   
   distances <- do.call(rbind, lapply(
     split(bp_data[order(bp_data$chrom, bp_data$bp), ], bp_data$chrom[order(bp_data$chrom, bp_data$bp)]),
@@ -35,9 +42,13 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
                     bp <= (to + 5000),
                     chrom %in% chroms)
   }
+  
+  colours = svBreaks::sv_colours()
+  
+  
   p <- ggplot(distances)
   if(missing(bed_file)) {
-    p <- p + geom_point(aes(bp / 1e6, logdist, colour = -cell_fraction))
+    p <- p + geom_point(aes(bp / 1e6, logdist, colour = type2), size=1, alpha=0.8)
   } else{
     p <- p + geom_point(aes(bp / 1e6, logdist))
   }
@@ -45,13 +56,15 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
     theme(
       legend.position = "none",
       axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      panel.grid.major.y = element_line(color = "grey80", size = 0.8, linetype = "dotted"),
       strip.text = element_text(size = 20)
     )
 
-  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = 5)
+  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = length(chroms))
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(distances$bp), by = tick_by))
   p <- p + scale_y_continuous("Genomic Distance")
+  # p <- p + scale_fill_manual("SV type\n", values = colours)
+  p <- p + scale_colour_manual(values = colours)
   
   if(write){
     rainfall_out <- paste("rainfall.pdf")

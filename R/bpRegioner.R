@@ -53,19 +53,21 @@ bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/
                   V1 %in% levels(genome$V1)) %>%
     dplyr::select(-length)
   
-  cat("looking for enrichment in", nrow(test), "regions\n")
+  cat("looking for enrichment of ", feature_name, "in ", nrow(test), "regions of ", region_name, "\n")
  
-  if(!missing(slop)){
-    cat("Expanding test regions by ", slop, "\n")
-    test <- test %>%
-      dplyr::mutate(V2 = V2 - slop,
-                    V3 = V3 + slop)
-  }
   
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
   
   feature$V1 <- stringr::str_remove(feature$V1, 'chr')
+  
+  if(!missing(slop)){
+    cat("Expanding ", feature_name, " regions by ", slop, "\n")
+    feature <- feature %>%
+      dplyr::mutate(V2 = V2 - slop,
+                    V3 = V3 + slop)
+  }
+  
   
   # mappable_genome <- getGenomeAndMask("dm6", mask=exclude)$genome
   # mappable_genome <- getGenomeAndMask(genome=genome, mask=exclude)

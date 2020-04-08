@@ -55,9 +55,12 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
   p <- p + cleanTheme() +
     theme(
       legend.position = "none",
-      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title = element_text(size=20),
       panel.grid.major.y = element_line(color = "grey80", size = 0.8, linetype = "dotted"),
-      strip.text = element_text(size = 20)
+      strip.text = element_text(size = 20),
+      panel.spacing = unit(.5, "lines")
     )
 
   p <- p + facet_wrap(~chrom, scales = "free_x", ncol = length(chroms))

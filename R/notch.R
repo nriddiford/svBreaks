@@ -3,45 +3,81 @@
 #' @param filter_gene The gene of interest [Default: N]
 #' @param plot Show barplot [Default: TRUE]
 #' @export
-geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
+geneHit <- function(..., all_samples, drivers = c("N"), plot = TRUE, show_sample = TRUE) {
   if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
-  all_data <- read.delim(all_samples, header = T)
- 
-    geneIn <- function(gene, gene_list) {
+  all_data <- read.delim(all_samples, header = T) %>% 
+    dplyr::mutate(allele_frequency = as.double(as.character(allele_frequency)))
+    
+  
+  geneIn <- function(gene, gene_list) {
     sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE)
   }
   
-  gene_hits <- all_data %>% 
-    dplyr::filter(...,
-                  type != "-",
-                  !status %in% c('F', 'aF'),
-                  !type %in% c('COMPLEX_TRA')
-                  ) %>% 
+  # gene_hits <- all_data %>%
+  #   dplyr::filter(
+  #                 type != "-",
+  #                 !status %in% c('F', 'aF'),
+  #                 allele_frequency >= 0.1, # hack to exclude large BND in R33
+  #                 !type %in% c('COMPLEX_TRA')
+  #                 ) %>%
+  #   dplyr::rename(length = length.Kb.,
+  #                 cn     = log2.cnv.) %>%
+  #   dplyr::group_by(sample, event) %>%
+  #   dplyr::filter(any(geneIn(drivers, affected_genes))) %>%
+  #   # dplyr::distinct(type, .keep_all = TRUE) %>%
+  #   # group_by(type) %>%
+  #   dplyr::mutate(start = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome1 == "X", min(bp1), bp1))) %>%
+  #   dplyr::mutate(end = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome2 == "X", max(bp2), bp2))) %>%
+  #   dplyr::mutate(length = ifelse(type %in% c('TRA', 'COMPLEX_TRA'), 2, (end-start)/1e3),
+  #                 event_length = sum(length)) %>% View()
+  #   dplyr::mutate(type2 = as.character(ifelse(stringr::str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
+  #   dplyr::mutate(event_count = n_distinct(event)) %>%
+  #   dplyr::ungroup() %>%
+  #   dplyr::group_by(sample) %>%
+  #   dplyr::mutate(n = n_distinct(event)) %>%
+  #   dplyr::distinct(event, .keep_all = TRUE) %>%
+  #   dplyr::ungroup() %>%
+  #   dplyr::arrange(sample, -allele_frequency) %>%
+  #   dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)),
+  #                                 TRUE ~ as.character(sample))) %>%
+  #   # dplyr::mutate(sample_mod = as.character(ifelse(event_count == 1, as.character(sample), paste(sample, event_count, sep = '.')))) %>%
+  #   dplyr::arrange(desc(length)) %>%
+  #   dplyr::select(sample, sample_mod, event, chromosome1, chromosome2, type, type2, bp1, start, bp2, end, length, event_length, allele_frequency, cn, affected_genes) %>%
+  #   droplevels()
+
+  ## This is working 15.1.20
+  gene_hits <- all_data %>%
+    dplyr::filter(
+      ...,
+      type != "-",
+      !status %in% c('F', 'aF'),
+      allele_frequency >= 0.1, # hack to exclude large BND in R33
+      !type %in% c('COMPLEX_TRA')
+    ) %>%
     dplyr::rename(length = length.Kb.,
-                  cn     = log2.cnv.) %>% 
-    dplyr::group_by(sample, event) %>% 
-    dplyr::filter(any(geneIn(filter_gene, affected_genes))) %>% 
-    # dplyr::distinct(type, .keep_all = TRUE) %>% 
-    # group_by(type) %>%  
-    dplyr::mutate(start = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome1 == "X", min(bp1), bp1))) %>% 
-    dplyr::mutate(end = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome2 == "X", max(bp2), bp2))) %>% 
+                  cn     = log2.cnv.) %>%
+    dplyr::group_by(sample, event) %>%
+    dplyr::filter(any(geneIn(drivers, affected_genes))) %>% 
+    dplyr::mutate(start = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome1 == "X", min(bp1), bp1))) %>%
+    dplyr::mutate(end = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome2 == "X", max(bp2), bp2))) %>%
     dplyr::mutate(length = ifelse(type %in% c('TRA', 'COMPLEX_TRA'), 2, (end-start)/1e3),
-                  event_length = sum(length)) %>% 
-    dplyr::mutate(type2 = as.character(ifelse(stringr::str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>% 
-    dplyr::mutate(event_count = n_distinct(event)) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::group_by(sample) %>% 
-    dplyr::mutate(n = n_distinct(event)) %>% 
+                  event_length = sum(length)) %>%
+    dplyr::mutate(type2 = as.character(ifelse(stringr::str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
+    dplyr::mutate(event_count = n_distinct(event)) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(sample) %>%
+    dplyr::mutate(n = n_distinct(event)) %>%
     dplyr::distinct(event, .keep_all = TRUE) %>%
-    dplyr::ungroup() %>% 
-    dplyr::arrange(sample, -allele_frequency) %>% 
-    dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)), 
-                                  TRUE ~ as.character(sample))) %>% 
-    # dplyr::mutate(sample_mod = as.character(ifelse(event_count == 1, as.character(sample), paste(sample, event_count, sep = '.')))) %>% 
-    dplyr::arrange(desc(length)) %>% 
-    dplyr::select(sample, sample_mod, event, chromosome1, chromosome2, type, type2, bp1, start, bp2, end, length, event_length, allele_frequency, cn, affected_genes) %>% 
+    dplyr::ungroup() %>%
+    dplyr::arrange(sample, -allele_frequency) %>%
+    dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)),
+                                         TRUE ~ as.character(sample))) %>%
+    dplyr::arrange(desc(length)) %>%
+    dplyr::select(sample, sample_mod, event, chromosome1, chromosome2, type, type2, bp1, start, bp2, end, length, event_length, allele_frequency, cn, affected_genes) %>%
     droplevels()
+  
+  print(gene_hits)
   
   sample_names <- all_data %>% 
     dplyr::filter(...) %>%
@@ -57,16 +93,14 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
       missing_samples[i] <- sample_names[i]
     }
   }
-   
+  
   missing_samples <- plyr::compact(missing_samples)
   dat <- data.frame(sample_mod = unlist(missing_samples), length = 0, type2 = "NA")
   all_samples <- plyr::join(gene_hits, dat, type='full')
   
   if(plot){
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
-
     colours = sv_colours()
-
     p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = type2, colour = type2, label = star))
     p <- p + geom_bar(alpha = 0.7, stat = "identity")
     p <- p + guides(colour = FALSE)
@@ -77,16 +111,13 @@ geneHit <- function(..., all_samples, filter_gene = "N", plot = TRUE) {
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
         axis.title.x = element_blank()
       )
-    p <- p + ggtitle(paste("Samples with SVs affecting", filter_gene))
+    p <- p + ggtitle("Structural Variants affecting Notch")
     p <- p + scale_fill_manual("SV type\n", values = colours)
     p <- p + scale_colour_manual(values = colours)
     
-    
     p <- p + geom_text(vjust=-5)
-    # p <- p + geom_text(data = dat, aes(x=sample_mod, y=50),  label = "X")
+    if(!show_sample) p <- p + theme(axis.text.x = element_blank(), axis.ticks.x=element_blank())
     
-    # p <- p + coord_flip()
-    # p <- p + scale_y_reverse()
     p
   } else return(gene_hits)
 }
@@ -141,10 +172,10 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4, ticks = 50) {
+notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4, ticks = 50) {
   if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
-  notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, filter_gene=filter_gene)
+  notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, drivers=drivers)
   notch_data <- notch_data %>% 
     dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-100),
                   bp2 = ifelse(chromosome2 == "X", bp2, bp1+100),
@@ -168,7 +199,7 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
   p <- p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type2 = FALSE)
 
   p <- p + scale_y_continuous("Sample", expand = c(0.01, 0.01), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
-  p <- p + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(from, to, by = ticks/1e3), limits = c(from, to))
+  p <- p + scale_x_continuous("", expand = c(0, 0), breaks = seq(from, to, by = ticks/1e3), limits = c(from, to))
   p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
   
   p <- p + slideTheme() +
@@ -196,11 +227,11 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
     long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
       dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
   
-    # blueBar <- '#3B8FC7'
+    blueBar <- '#3B8FC7'
     
     p3 <- ggplot(long_notch_hits)
-    p3 <- p3 + stat_density(aes(breakpoint, fill = type2, colour = type2), alpha = 0.6, adjust = 0.3)
-    p3 <- p3 + scale_x_continuous("Mbs", expand = c(0, 0), breaks = seq(2.7, 3.4, by = 0.05), limits = c(2.70, 3.4))
+    p3 <- p3 + stat_density(aes(breakpoint), alpha = 0.6, adjust = 0.3)
+    p3 <- p3 + scale_x_continuous("", expand = c(0, 0), breaks = seq(from, to, by = 0.05), limits = c(from, to))
     p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
     p3 <- p3 + guides(colour = FALSE)
     p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
@@ -209,13 +240,14 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
     p3 <- p3 + slideTheme() +
       theme(
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
+        axis.title.x = element_blank(),
         legend.position = "top",
         axis.title.y = element_blank(),
         axis.text.y = element_blank()
         )
   
-    p3 <- p3 + scale_fill_manual("SV type\n", values = colours)
-    p3 <- p3 + scale_colour_manual(values = colours)
+    # p3 <- p3 + scale_fill_manual("SV type\n", values = blueBar)
+    # p3 <- p3 + scale_colour_manual(values = blueBar)
     # 
     # p3 <- p3 + scale_fill_identity("SV type\n")
     # p3 <- p3 + scale_colour_identity()
@@ -224,11 +256,11 @@ notchHits <- function(..., all_samples, filter_gene = "N", show_samples=FALSE, b
     p, p3,
     labels = c("A", "B"),
     ncol = 1, nrow = 2,
-    heights = c(7,3.5),
+    heights = c(7,3),
     align = 'v'
     )
-    combined_plots
-  } else p
+    p3
+  } else print(p)
   
 }
 
@@ -328,12 +360,3 @@ notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {
 }
 
 
-#' SV colours
-sv_colours <- function(){
-  return(c("DEL" = '#0073C299',
-           "COMPLEX" = '#EFC00099',
-           "BND" = '#86868699',
-           "TRA" = '#CD534C99',
-           "NA" = "grey")
-         )
-}

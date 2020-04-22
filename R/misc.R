@@ -89,7 +89,7 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
     dplyr::filter(...,
                   bp_no != "bp2") %>% 
     dplyr::group_by(sample, type2) %>% 
-    dplyr::summarise(type_count = log10(n()+1)) %>%
+    dplyr::summarise(type_count = n()) %>%
     dplyr::mutate(sv_count = sum(type_count)) %>% 
     dplyr::arrange(-sv_count) %>% 
     droplevels() %>% 
@@ -115,8 +115,8 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
   p <- p + slideTheme() +
     theme(
       axis.title.y = element_blank(),
-      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      # panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      # panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
       legend.position = "top",
       axis.text.y = element_text(size=15),

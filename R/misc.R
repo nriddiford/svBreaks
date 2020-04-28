@@ -53,9 +53,9 @@ sv_colours <- function(){
 #' get sample names
 #' 
 #' @export
-getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/samples_names_conversion.txt'){
+getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
   all_samples_info <- read.delim(all_samples_info, header = F, stringsAsFactors = T)
-  colnames(all_samples_info) <- c("sample", "marius", "sex", "assay")
+  colnames(all_samples_info) <- c("sample", "marius", "paper", "sex", "assay")
   
   names <- all_samples_info %>% 
     dplyr::filter(...) %>% 

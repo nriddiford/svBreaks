@@ -4,7 +4,7 @@
 #'
 cleanTheme <- function(base_size = 12) {
   theme(
-    plot.title = element_text(hjust = 0.5, size = 20),
+    plot.title = element_text(hjust = 0.5, size = 15),
     panel.background = element_blank(),
     plot.background = element_rect(fill = "transparent", colour = NA),
     panel.grid.minor = element_blank(),
@@ -12,9 +12,9 @@ cleanTheme <- function(base_size = 12) {
     panel.spacing = unit(2, "lines"),
     axis.line.x = element_line(color = "black", size = 0.5),
     axis.line.y = element_line(color = "black", size = 0.5),
-    axis.text = element_text(size = 20),
-    axis.title = element_text(size = 30),
-    strip.text = element_text(size = 20),
+    axis.text = element_text(size = 12),
+    axis.title= element_text(size = 15),
+    strip.text = element_text(size = 15),
     plot.margin = unit(1:4, "line")
   )
 }

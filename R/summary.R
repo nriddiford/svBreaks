@@ -53,7 +53,12 @@ bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
   }
   
   cat("sample", "SVs", sep = "\t", "\n")
-  bp_data <- dplyr::filter(bp_data, genotype == 'somatic_tumour', bp_no == "bp1")
+  bp_data <- bp_data %>% 
+    dplyr::filter(...,
+                  genotype == 'somatic_tumour',
+                  bp_no == "bp1") %>% 
+    droplevels()
+  
   rank <- sort(table(bp_data$sample), decreasing = TRUE)
   rank <- as.array(rank)
 

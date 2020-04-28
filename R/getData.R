@@ -62,11 +62,11 @@ getData <- function(...,
   #     type == 'BND' & chrom != chrom2 ~ 'TRA',
   #     TRUE  ~ as.character(type))))
 
-  excluded_samples <- c()
-  if(exclude){
-    excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05",
-                          "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  }  
+  # excluded_samples <- c()
+  # if(exclude){
+  #   excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05",
+  #                         "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+  # }  
 
   bp_data <- bp_data %>%
     dplyr::mutate(af = as.double(as.character(af))) %>% 
@@ -78,7 +78,7 @@ getData <- function(...,
     dplyr::mutate(type2 = factor(type2)) %>% 
     dplyr::mutate(cell_fraction = ifelse(chrom %in% c('X', 'Y'), af,
                                          ifelse(af*2>1, 1, af*2))) %>%
-    # dplyr::filter(...) %>%
+    dplyr::filter(...) %>%
     droplevels()
   
   dir.create(file.path("plots"), showWarnings = FALSE)

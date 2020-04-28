@@ -104,14 +104,16 @@ geneHit <- function(..., all_samples, drivers = c("N"), plot = TRUE, show_sample
     p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = type2, colour = type2, label = star))
     p <- p + geom_bar(alpha = 0.7, stat = "identity")
     p <- p + guides(colour = FALSE)
-    p <- p + scale_y_continuous("Length (Kb)", expand = c(0, 0.5))
+    p <- p + scale_y_continuous("Length (kb)", expand = c(0, 0.5))
     p <- p + cleanTheme() +
       theme(
         panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
+        axis.text.y = element_text(size=15),
+        axis.title.y = element_text(size=18),
         axis.title.x = element_blank()
       )
-    p <- p + ggtitle("Structural Variants affecting Notch")
+    # p <- p + ggtitle("Structural Variants affecting Notch")
     p <- p + scale_fill_manual("SV type\n", values = colours)
     p <- p + scale_colour_manual(values = colours)
     
@@ -172,7 +174,7 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FALSE, bp_density=FALSE, from=2.7, to=3.4, ticks = 50) {
+notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FALSE, bp_density=FALSE, adjust=0.3, from=2.7, to=3.4, ticks = 50) {
   if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
   notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, drivers=drivers)
@@ -223,15 +225,18 @@ notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FA
   
   
   if(bp_density){
+    
+    p <- p + theme(axis.text.x = element_blank())
 
     long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
+      dplyr::filter(breakpoint > from, breakpoint < to) %>% 
       dplyr::select(sample:chromosome1, type2, sampleax, bp_n, breakpoint)
-  
+    
     blueBar <- '#3B8FC7'
     
     p3 <- ggplot(long_notch_hits)
-    p3 <- p3 + stat_density(aes(breakpoint), alpha = 0.6, adjust = 0.3)
-    p3 <- p3 + scale_x_continuous("", expand = c(0, 0), breaks = seq(from, to, by = 0.05), limits = c(from, to))
+    p3 <- p3 + stat_density(aes(breakpoint), alpha = 0.6, adjust = adjust)
+    p3 <- p3 + scale_x_continuous("", expand = c(0, 0), breaks = seq(from, to, by = ticks/1e3), limits = c(from, to))
     p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
     p3 <- p3 + guides(colour = FALSE)
     p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
@@ -239,10 +244,11 @@ notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FA
 
     p3 <- p3 + slideTheme() +
       theme(
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
         axis.title.x = element_blank(),
         legend.position = "top",
         axis.title.y = element_blank(),
+        
         axis.text.y = element_blank()
         )
   
@@ -254,12 +260,15 @@ notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FA
 
     combined_plots <- ggpubr::ggarrange(
     p, p3,
-    labels = c("A", "B"),
     ncol = 1, nrow = 2,
     heights = c(7,3),
     align = 'v'
     )
-    p3
+    p <- p + theme(plot.margin = unit(c(.5, .5, .5, .5), "cm"))
+    p3 <- p3 + theme(plot.margin = unit(c(.5, .5, .5, .5), "cm"))
+    
+    cowplot::plot_grid(p, p3, align = 'v', cols = 1, rel_heights = c(8,2))
+    # combined_plots
   } else print(p)
   
 }

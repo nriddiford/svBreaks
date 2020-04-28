@@ -4,20 +4,28 @@
 #' @import dplyr
 #' @import data.table
 #' @export
-bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), restrict=TRUE,
+bpRegionEnrichment <- function(..., bp_data, dataType='svBreaks', bed_file, bedDir='/Users/Nick_curie/Desktop/misc_bed/features', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), restrict=TRUE,
                                slop=0, plot=TRUE, genome_length=118274340, intersect=FALSE, outDir, parseName=FALSE, minHits=10, multiple=TRUE){
   
   if(missing(bp_data) && missing(bed_file)) stop("\n[!] Must provide either a df or bed file! Exiting.")
   
-  if(!missing(bp_data)){
+  if(!missing(bp_data) & dataType=='svBreaks'){
+    cat("Reading from dataframe\n")
     # breakpoints <- 'svs'
     bps <- bp_data %>% 
-      dplyr::filter(...) %>% 
+      dplyr::filter(..., 
+                    confidence == 'precise') %>% 
       dplyr::rename(start = bp) %>% 
-      dplyr::mutate(end = start+1) %>%
-      dplyr::select(chrom, start, end) %>% 
-      dplyr::mutate(end = as.integer(((end+start)/2)+1)) %>%
-      dplyr::mutate(start = as.integer(end-1)) %>%
+      dplyr::mutate(end = start+1) %>% 
+                    # end = as.integer(((end+start)/2)+1),
+                    # start = as.integer(end-1)) %>%
+      dplyr::select(chrom, start, end)
+  } else if(dataType=='mutationProfiles'){
+    cat("Reading SNVs from dataframe\n")
+    bps <- bp_data %>% 
+      # dplyr::filter(...) %>%
+      dplyr::mutate(start = pos,
+                    end = pos+1) %>%
       dplyr::select(chrom, start, end)
   } else if(!missing(bed_file)){
     cat("Reading breakpoints from: ", bed_file, "\n")
@@ -159,8 +167,8 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     regionWidth <- sum(regionSpace$chromSpace)
     
     mutCount <- nrow(bps)
-    
-    # cat("Mutcount:", mutCount, "\n")
+
+    cat("Mutcount:", mutCount, "\n")
     
     regionFraction <- regionWidth / genome_length
     
@@ -205,7 +213,6 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
       
       list(feature = factor, observed = inRegion, expected = expectedHits, Log2FC = Log2FC, test = test, sig = sig_val, p_val = stat$p.value, genotype=genotype, tissue=tissue, element=element, replicate=replicate, id=id, filename=filename)
     }
-    
     biNomialTest <- lapply(f, biTest)
     regionsTested <- do.call(rbind, biNomialTest)
     regionsTested <- as.data.frame(regionsTested)
@@ -249,12 +256,19 @@ bpRegionEnrichment <- function(..., bp_data, bed_file, bedDir='/Users/Nick_curie
     dplyr::mutate(count = observed + expected) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval/abs(Log2FC), p_val)) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval, p_val)) %>%
-    dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
+    # dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
+    dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg', n=sum(observed))) %>%
+    dplyr::mutate(sig = ifelse(padj <= 0.001, "***",
+                                   ifelse(padj <= 0.01, "**",
+                                          ifelse(padj <= 0.05, "*", "-")))) %>% 
+
     dplyr::mutate(eScore = round(abs(Log2FC) * -log10(padj),2)) %>% 
     dplyr::filter(count >= minHits) %>%
     dplyr::select(feature:p_val, padj, eScore, genotype, tissue, element, replicate, id, filename, -count) %>% 
     dplyr::arrange(-eScore, padj, -abs(Log2FC)) %>% 
     droplevels()
+  
+  
   
   if(nrow(final)==0){
     cat("Fewer than", minHits, "found in all files. Try adjusting 'minHits' to a lower number", sep=" ", "\n")
@@ -476,6 +490,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
       dplyr::mutate(info = paste(sample, type, feature, feature2, sep = "_")) %>%
       dplyr::rename(start = bp) %>% 
       dplyr::rename(end = bp2) %>% 
+      dplyr::mutate(end = ifelse(type %in% c("TRA", "COMPLEX_TRA"), start+1, end)) %>% 
       dplyr::select(chrom, start, end, info)
   } else{
     colnames(df[,c(1,2,3)]) <- c("chrom", "start", "end")
@@ -513,12 +528,10 @@ bpRegionEnrichmentPlot <- function(..., feature_enrichment=NULL, bedDir=NULL, bp
     outFile <- "regionEnrichment.png"
   }
   
-  
   feature_enrichment <- feature_enrichment %>% 
     dplyr::mutate(feature = as.character(feature)) %>% 
     dplyr::mutate(sig = ifelse(sig=='-', '',sig)) %>% 
     transform(feature = reorder(feature, -Log2FC))
-  
   
   maxLog2 <- max(abs(feature_enrichment$Log2FC))
   maxLog2 <- round_any(maxLog2, 1, ceiling)

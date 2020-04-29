@@ -85,6 +85,7 @@ bpRegionEnrichment <- function(..., bp_data, dataType='svBreaks', bed_file, bedD
       id <- 'NA'
     }
     
+    
     regions <- read.table(paste(bedDir, f, sep='/'), header = F)
     regions <- regions[,c(1,2,3)]
     colnames(regions) <- c("chrom", "start", "end")
@@ -251,19 +252,19 @@ bpRegionEnrichment <- function(..., bp_data, dataType='svBreaks', bed_file, bedD
   # final$p_val <- ifelse(final$p_val==0, minPval/abs(final$Log2FC), final$p_val)
   # 
   # final$p_val <- ifelse(final$p_val==0, minPval, final$p_val)
-
+  
   final <- final %>%
     dplyr::mutate(count = observed + expected) %>% 
+    dplyr::filter(count >= minHits) %>%
     dplyr::mutate(p_val = ifelse(p_val==0, minPval/abs(Log2FC), p_val)) %>% 
     dplyr::mutate(p_val = ifelse(p_val==0, minPval, p_val)) %>%
     # dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg')) %>%
-    dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg', n=sum(observed))) %>%
+    dplyr::mutate(padj = p.adjust(p_val, method = 'hochberg', n=n())) %>%
     dplyr::mutate(sig = ifelse(padj <= 0.001, "***",
                                    ifelse(padj <= 0.01, "**",
                                           ifelse(padj <= 0.05, "*", "-")))) %>% 
 
     dplyr::mutate(eScore = round(abs(Log2FC) * -log10(padj),2)) %>% 
-    dplyr::filter(count >= minHits) %>%
     dplyr::select(feature:p_val, padj, eScore, genotype, tissue, element, replicate, id, filename, -count) %>% 
     dplyr::arrange(-eScore, padj, -abs(Log2FC)) %>% 
     droplevels()
@@ -348,46 +349,63 @@ Volcano <- function(d, byq=FALSE){
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import plyr dplyr ggplot2
+#' @import plyr dplyr ggplot2 ggrepel
 #' @import RColorBrewer
 #' @export
 
 ggVolcano <- function(..., df){
-  feature_enrichment <- df
   
-  arguments <- list(...)
+  red <- "#FC4E07"
+  blue <- "#00AFBB"
+  yellow <- "#E7B800"
+  grey <- "grey"
   
-  if(!is.null(arguments$slop)){
-    slop <- arguments$slop
-    title <- paste("Enrichment/depletion of genomic features\nfor breakpoints +/-", slop, 'bps')
-    outFile <- paste("regionEnrichment_", slop,'.png', sep='')
-  } else {
-    title <- "Enrichment/depletion of genomic features\nfor breakpoints"
-    outFile <- "regionEnrichment.png"
-  }
+  # feature_enrichment <- df
   
-  maxLog2 <- max(abs(feature_enrichment$Log2FC))
+  # arguments <- list(...)
+  # 
+  # if(!is.null(arguments$slop)){
+  #   slop <- arguments$slop
+  #   title <- paste("Enrichment/depletion of genomic features\nfor breakpoints +/-", slop, 'bps')
+  #   outFile <- paste("regionEnrichment_", slop,'.png', sep='')
+  # } else {
+  #   title <- "Enrichment/depletion of genomic features\nfor breakpoints"
+  #   outFile <- "regionEnrichment.png"
+  # }
+  
+  maxLog2 <- max(abs(df$Log2FC))
   maxLog2 <- round_any(maxLog2, 1, ceiling)
-
-  p <- ggplot(feature_enrichment)
-  p <- p + geom_point(aes(Log2FC, -log10(p_val), size = -log10(p_val), colour = sig))
-  # p <- p + scale_color_hue(l=60, c=50)
-  p <- p + scale_color_brewer(palette="Spectral")
-  # p <- p + scale_color_gradientn(colours = rainbow(100))
+  
+  df$colour <- ifelse(df$eScore >= 5, 'yes', 'no')
+  df$label <- ifelse(df$eScore >= 5, df$feature, '')
+  
+  df$colour = factor(df$colour, levels=c("yes","no"), labels=c("***","ns")) 
+  
+  cols = c(red, grey)
+  if(!nrow(df[df$eScore>5,])) cols = c(grey)
+  
+  p <- ggplot(df, aes(Log2FC, -log10(padj)))
+  p <- p + geom_point(aes(colour = colour), size=3, alpha=0.7)
+  p <- p + scale_fill_manual(values = cols)
+  p <- p + scale_colour_manual(values = cols)
+  p <- p + geom_text_repel(aes(label = label), inherit.aes = TRUE)
   p <- p + guides(size = FALSE, colour = FALSE) 
   p <- p + cleanTheme() +
     theme(
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      legend.text=element_text(size=rel(1.5))
-      # legend.key.size = unit(3,"line"),
-      # legend.title=element_text(size=rel(2))
+      axis.title =element_text(size=rel(1.2))
     )
-  p <- p + scale_x_continuous(limits=c(-maxLog2, maxLog2))
-  p <- p + ggtitle(title)
+  p <- p + scale_y_continuous("-Log10(padj)")
+  p <- p + scale_x_continuous("Log2(FC)", limits=c(-maxLog2, maxLog2), breaks=seq(-maxLog2, maxLog2, by=1))
   p
-  
 }
 
+# theme(
+#   panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+#   axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=12),
+#   axis.text.y = element_text(size=12),
+#   axis.title.x = element_blank(),
+#   axis.title.y =element_text(size=15)
 
 # plotMonteCarlo
 #'

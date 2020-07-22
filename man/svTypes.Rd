@@ -4,9 +4,15 @@
 \alias{svTypes}
 \title{svTypes}
 \usage{
-svTypes(..., bp_data = NULL,
-  title = expression("Structural variants per sample (" ~ italic("Notch")
-  ~ "excluded )"), object = "type", keep = FALSE, plot = T)
+svTypes(
+  ...,
+  bp_data = NULL,
+  title = expression("Structural variants per sample (" ~ italic("Notch") ~
+    "excluded )"),
+  object = "type",
+  keep = FALSE,
+  plot = T
+)
 }
 \description{
 Plot counts of different svTypes

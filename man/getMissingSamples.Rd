@@ -4,8 +4,12 @@
 \alias{getMissingSamples}
 \title{get sample names}
 \usage{
-getMissingSamples(..., df = NULL,
-  all_samples_info = "~/Desktop/samples_names_conversion.txt")
+getMissingSamples(
+  ...,
+  df = NULL,
+ 
+    all_samples_info = "~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt"
+)
 }
 \description{
 get sample names

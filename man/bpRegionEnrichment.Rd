@@ -4,12 +4,23 @@
 \alias{bpRegionEnrichment}
 \title{Calculate the enrichment of SVs in genomic regions}
 \usage{
-bpRegionEnrichment(..., bp_data, bed_file,
+bpRegionEnrichment(
+  ...,
+  bp_data,
+  dataType = "svBreaks",
+  bed_file,
   bedDir = "/Users/Nick_curie/Desktop/misc_bed/features",
-  chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"), restrict = TRUE,
-  slop = 0, plot = TRUE, genome_length = 118274340,
-  intersect = FALSE, outDir, parseName = FALSE, minHits = 10,
-  multiple = TRUE)
+  chroms = c("2L", "2R", "3L", "3R", "4", "X", "Y"),
+  restrict = TRUE,
+  slop = 0,
+  plot = TRUE,
+  genome_length = 118274340,
+  intersect = FALSE,
+  outDir,
+  parseName = FALSE,
+  minHits = 10,
+  multiple = TRUE
+)
 }
 \description{
 Calculate the enrichment of SVs in genomic regions

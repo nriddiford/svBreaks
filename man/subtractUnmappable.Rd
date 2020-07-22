@@ -4,9 +4,11 @@
 \alias{subtractUnmappable}
 \title{Implements bedtools subtract to remove unmappable regions in bedfiles}
 \usage{
-subtractUnmappable(f,
+subtractUnmappable(
+  f,
   u = "~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_unmappable_75.bed",
-  dataframe = FALSE)
+  dataframe = FALSE
+)
 }
 \description{
 Implements bedtools subtract to remove unmappable regions in bedfiles

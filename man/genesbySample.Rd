@@ -5,9 +5,11 @@
 \title{genesbySample
 Plot the number of structural breakpoints per sample}
 \usage{
-genesbySample(...,
+genesbySample(
+  ...,
   affected_genes = "inst/extdata/all_genes_filtered.txt",
-  genome_length = 118274340)
+  genome_length = 118274340
+)
 }
 \description{
 genesbySample

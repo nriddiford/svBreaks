@@ -4,7 +4,7 @@
 \alias{ggVolcano}
 \title{Plot the enrichment of SVs in genomic features}
 \usage{
-ggVolcano(..., df)
+ggVolcano(..., df, escore_threshold = 3)
 }
 \description{
 Plot the enrichment of SVs in genomic features

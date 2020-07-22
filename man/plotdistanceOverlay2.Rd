@@ -4,8 +4,16 @@
 \alias{plotdistanceOverlay2}
 \title{plotdistanceOverlay}
 \usage{
-plotdistanceOverlay2(..., distances, from = "bps", lim = 5, n,
-  position = "centre", histo = FALSE, binWidth)
+plotdistanceOverlay2(
+  ...,
+  distances,
+  from = "bps",
+  lim = 5,
+  n,
+  position = "centre",
+  histo = FALSE,
+  binWidth
+)
 }
 \arguments{
 \item{d}{Dataframe containing combined real + sim data (d <- distOverlay())}

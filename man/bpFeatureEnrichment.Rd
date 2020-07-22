@@ -4,9 +4,13 @@
 \alias{bpFeatureEnrichment}
 \title{Calculate the enrichment of SVs in genomic features}
 \usage{
-bpFeatureEnrichment(..., bp_data = NULL,
-  features = system.file("extdata", "genomic_features.txt", package =
-  "svBreaks"), genome_length = 118274340, print = NA)
+bpFeatureEnrichment(
+  ...,
+  bp_data = NULL,
+  features = system.file("extdata", "genomic_features.txt", package = "svBreaks"),
+  genome_length = 118274340,
+  print = NA
+)
 }
 \description{
 Calculate the enrichment of SVs in genomic features

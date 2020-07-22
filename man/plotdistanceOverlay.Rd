@@ -4,9 +4,18 @@
 \alias{plotdistanceOverlay}
 \title{plotdistanceOverlay}
 \usage{
-plotdistanceOverlay(..., d, from = "bps", feature = "tss", lim = 10,
-  byChrom = NA, n = 10, write = TRUE, facetPlot = TRUE,
-  plotly = FALSE)
+plotdistanceOverlay(
+  ...,
+  d,
+  from = "bps",
+  feature = "tss",
+  lim = 10,
+  byChrom = NA,
+  n = 10,
+  write = TRUE,
+  facetPlot = TRUE,
+  plotly = FALSE
+)
 }
 \arguments{
 \item{d}{Dataframe containing combined real + sim data (d <- distOverlay())}

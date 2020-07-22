@@ -4,8 +4,12 @@
 \alias{bootStrap}
 \title{bootStrap}
 \usage{
-bootStrap(..., feature_file = system.file("extdata", "tss_locations.txt",
-  package = "svBreaks"), feature = "tss", n = 10)
+bootStrap(
+  ...,
+  feature_file = system.file("extdata", "tss_locations.txt", package = "svBreaks"),
+  feature = "tss",
+  n = 10
+)
 }
 \description{
 Plot reav vs sim data bootstrapped n times

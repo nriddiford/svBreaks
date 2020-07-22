@@ -4,8 +4,15 @@
 \alias{geneHit}
 \title{Print barplot showing samples with SVs affecting specified gene}
 \usage{
-geneHit(..., all_samples, drivers = c("N"), plot = TRUE,
-  show_sample = TRUE)
+geneHit(
+  ...,
+  all_samples,
+  drivers = c("N"),
+  all_samples_df = NULL,
+  plot = TRUE,
+  combined_plot = FALSE,
+  show_sample = TRUE
+)
 }
 \arguments{
 \item{plot}{Show barplot [Default: TRUE]}

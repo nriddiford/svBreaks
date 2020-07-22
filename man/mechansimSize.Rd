@@ -5,9 +5,12 @@
 \title{Plot mechanims vs length
 mechansimSize}
 \usage{
-mechansimSize(..., bp_data = NULL,
+mechansimSize(
+  ...,
+  bp_data = NULL,
   infile = "~/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt",
-  plot = TRUE)
+  plot = TRUE
+)
 }
 \arguments{
 \item{infile}{File to process [Required]}

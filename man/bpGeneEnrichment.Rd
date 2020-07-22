@@ -4,9 +4,14 @@
 \alias{bpGeneEnrichment}
 \title{Calculate the enrichment of SVs in genes}
 \usage{
-bpGeneEnrichment(..., bp_data, gene_lengths = system.file("extdata",
-  "gene_lengths.txt", package = "svBreaks"), n = 3,
-  genome_length = 118274340, print = NA)
+bpGeneEnrichment(
+  ...,
+  bp_data,
+  gene_lengths = system.file("extdata", "gene_lengths.txt", package = "svBreaks"),
+  n = 3,
+  genome_length = 118274340,
+  print = NA
+)
 }
 \description{
 Calculate the enrichment of SVs in genes

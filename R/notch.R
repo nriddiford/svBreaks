@@ -3,49 +3,21 @@
 #' @param filter_gene The gene of interest [Default: N]
 #' @param plot Show barplot [Default: TRUE]
 #' @export
-geneHit <- function(..., all_samples, drivers = c("N"), plot = TRUE, show_sample = TRUE) {
-  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
+geneHit <- function(..., all_samples, drivers=c("N"), all_samples_df=NULL, plot=TRUE, combined_plot=FALSE, show_sample=TRUE) {
+  if(missing(all_samples) && missing(all_samples_df)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
-  all_data <- read.delim(all_samples, header = T) %>% 
+  if(!missing(all_samples_df)) {
+    all_data <- all_samples_df
+  } else {
+    all_data <- read.delim(all_samples, header = T) 
+  }
+  all_data <- all_data %>% 
     dplyr::mutate(allele_frequency = as.double(as.character(allele_frequency)))
-    
   
   geneIn <- function(gene, gene_list) {
     sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE)
   }
   
-  # gene_hits <- all_data %>%
-  #   dplyr::filter(
-  #                 type != "-",
-  #                 !status %in% c('F', 'aF'),
-  #                 allele_frequency >= 0.1, # hack to exclude large BND in R33
-  #                 !type %in% c('COMPLEX_TRA')
-  #                 ) %>%
-  #   dplyr::rename(length = length.Kb.,
-  #                 cn     = log2.cnv.) %>%
-  #   dplyr::group_by(sample, event) %>%
-  #   dplyr::filter(any(geneIn(drivers, affected_genes))) %>%
-  #   # dplyr::distinct(type, .keep_all = TRUE) %>%
-  #   # group_by(type) %>%
-  #   dplyr::mutate(start = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome1 == "X", min(bp1), bp1))) %>%
-  #   dplyr::mutate(end = as.integer(ifelse(stringr::str_detect(type, 'COMPLEX') && chromosome2 == "X", max(bp2), bp2))) %>%
-  #   dplyr::mutate(length = ifelse(type %in% c('TRA', 'COMPLEX_TRA'), 2, (end-start)/1e3),
-  #                 event_length = sum(length)) %>% View()
-  #   dplyr::mutate(type2 = as.character(ifelse(stringr::str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
-  #   dplyr::mutate(event_count = n_distinct(event)) %>%
-  #   dplyr::ungroup() %>%
-  #   dplyr::group_by(sample) %>%
-  #   dplyr::mutate(n = n_distinct(event)) %>%
-  #   dplyr::distinct(event, .keep_all = TRUE) %>%
-  #   dplyr::ungroup() %>%
-  #   dplyr::arrange(sample, -allele_frequency) %>%
-  #   dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)),
-  #                                 TRUE ~ as.character(sample))) %>%
-  #   # dplyr::mutate(sample_mod = as.character(ifelse(event_count == 1, as.character(sample), paste(sample, event_count, sep = '.')))) %>%
-  #   dplyr::arrange(desc(length)) %>%
-  #   dplyr::select(sample, sample_mod, event, chromosome1, chromosome2, type, type2, bp1, start, bp2, end, length, event_length, allele_frequency, cn, affected_genes) %>%
-  #   droplevels()
-
   ## This is working 15.1.20
   gene_hits <- all_data %>%
     dplyr::filter(
@@ -71,8 +43,10 @@ geneHit <- function(..., all_samples, drivers = c("N"), plot = TRUE, show_sample
     dplyr::distinct(event, .keep_all = TRUE) %>%
     dplyr::ungroup() %>%
     dplyr::arrange(sample, -allele_frequency) %>%
-    dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)),
-                                         TRUE ~ as.character(sample))) %>%
+    dplyr::mutate(sample_mod = sample) %>%
+    
+    # dplyr::mutate(sample_mod = case_when(n >1 ~ make.unique(as.character(sample)),
+    #                                      TRUE ~ as.character(sample))) %>%
     dplyr::arrange(desc(length)) %>%
     dplyr::select(sample, sample_mod, event, chromosome1, chromosome2, type, type2, bp1, start, bp2, end, length, event_length, allele_frequency, cn, affected_genes) %>%
     droplevels()
@@ -86,22 +60,30 @@ geneHit <- function(..., all_samples, drivers = c("N"), plot = TRUE, show_sample
     droplevels()
   
   sample_names <- levels(sample_names$sample)
-  missing_samples = list()
-   
-  for(i in 1:length(sample_names)){
-    if(!(sample_names[i] %in% levels(gene_hits$sample))){
-      missing_samples[i] <- sample_names[i]
-    }
-  }
   
-  missing_samples <- plyr::compact(missing_samples)
-  dat <- data.frame(sample_mod = unlist(missing_samples), length = 0, type2 = "NA")
-  all_samples <- plyr::join(gene_hits, dat, type='full')
+  missing_samples = list()
+  if(!combined_plot){ 
+    for(i in 1:length(sample_names)){
+      if(!(sample_names[i] %in% levels(gene_hits$sample))){
+        missing_samples[i] <- sample_names[i]
+      }
+    }
+    
+    missing_samples <- plyr::compact(missing_samples)
+    dat <- data.frame(sample_mod = unlist(missing_samples), length = 0, type2 = "NA")
+    all_samples <- plyr::join(gene_hits, dat, type='full')
+  } else{
+    all_samples <- gene_hits
+  }
   
   if(plot){
     all_samples$star <- ifelse(all_samples$length==0, "X", '')
     colours = sv_colours()
-    p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = type2, colour = type2, label = star))
+    if(combined_plot){
+      p <- ggplot(all_samples, aes(fct_reorder(sample_mod, length), length, fill = type2, colour = type2, label = star))
+    } else {
+      p <- ggplot(all_samples, aes(fct_reorder(sample_mod, -length), length, fill = type2, colour = type2, label = star))
+    }
     p <- p + geom_bar(alpha = 0.7, stat = "identity")
     p <- p + guides(colour = FALSE)
     p <- p + scale_y_continuous("Length (kb)", expand = c(0, 0.5))
@@ -174,49 +156,66 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' @keywords Notch
 #' @import tidyverse
 #' @export
-notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FALSE, bp_density=FALSE, adjust=0.3, from=2.7, to=3.4, ticks = 50) {
-  if(missing(all_samples)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
+notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), show_samples=FALSE, barchart=FALSE, bp_density=FALSE, adjust=0.3, from=2.7, to=3.5, ticks = 50) {
+  if(missing(all_samples) && missing(all_samples_df)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
   
-  notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, drivers=drivers)
+
+  if(!missing(all_samples_df)) {
+    notch_data <- svBreaks::geneHit(..., plot=F, all_samples_df=all_samples_df, drivers=drivers)
+  } else {
+    notch_data <- svBreaks::geneHit(..., plot=F, all_samples=all_samples, drivers=drivers)
+  }
+
+  # if(barchart) p1 <- svBreaks::geneHit(..., all_samples_df=all_samples_df, show_sample = T, combined_plot=barchart, drivers=drivers, plot=T)
+
   notch_data <- notch_data %>% 
-    dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-100),
-                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+100),
+    rowwise() %>% 
+    dplyr::mutate(length_adj = as.double(length + runif(1, 0, .1))) %>% 
+    dplyr::mutate(bp1 = start / 1e6,
+                  bp2 = end / 1e6) %>% 
+    ungroup()
+  
+  # browser()
+  
+  notch_data <- notch_data %>% 
+    dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-(1/1e4)),
+                  bp2 = ifelse(chromosome2 == "X", bp2, bp1+(1/1e4)),
                   type2 = factor(type2)) %>% 
     dplyr::mutate(sampleax = as.numeric(sample),
-                  bp1 = bp1 / 1e6,
-                  bp2 = bp2 / 1e6) %>% 
+                  rank = dense_rank(length_adj)) %>% 
     dplyr::mutate(bp1 = ifelse(bp1 <= from, from, bp1),
                   bp2 = ifelse(bp2 >= to, to, bp2)
                   ) %>% 
     dplyr::arrange(-length)
   
-  
   colours = sv_colours()
   
+  # notch_data$sampleax <- fct_reorder(as.factor(notch_data$sampleax), notch_data$length)
   p <- ggplot(notch_data)
-  p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(as.numeric(sampleax-0.5)),ymax=(as.numeric(sampleax+0.5)),fill=type2, color=type2), alpha=0.6)
+  p <- p + geom_rect(aes(xmin=bp1, xmax=bp2, ymin=(rank-0.5),ymax=(rank+0.5),fill=type2, color=type2), alpha=0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp1, xmax = bp1 + 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
   # p <- p + geom_rect(data = notch_data, aes(xmin = bp2, xmax = bp2 - 0.001, ymin = (as.numeric(sampleax - 0.5)), ymax = (as.numeric(sampleax + 0.5)), fill = "royalblue4"), color = "black", alpha = 0.6)
 
   p <- p + guides(color = FALSE, size = FALSE, sampleax = FALSE, type2 = FALSE)
 
-  p <- p + scale_y_continuous("Sample", expand = c(0.01, 0.01), breaks = seq(levels(as.factor(notch_data$sampleax))), labels = levels(notch_data$sample))
+  p <- p + scale_y_continuous( expand = c(0.01, 0.01), breaks = seq(notch_data$rank), labels = levels(fct_reorder(notch_data$sample_mod, notch_data$rank)))
   p <- p + scale_x_continuous("", expand = c(0, 0), breaks = seq(from, to, by = ticks/1e3), limits = c(from, to))
-  p <- p + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
+  p <- p + geom_vline(xintercept = 3.135669, linetype = "solid", size = .3)
+  p <- p + geom_hline(yintercept = notch_data$rank, linetype = "dotted", size = 0.2)
   
-  p <- p + slideTheme() +
+  
+  p <- p + cleanTheme() +
     theme(
       axis.title.y = element_blank(),
-      # panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      
+      # panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      # panel.grid.major = element_line(color = "grey80", size = 0.2, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=20),
       legend.position = "top",
       axis.text.y = element_blank(),
       axis.title.x=element_blank()
     )
   if(show_samples){
-    p <- p + theme(axis.text.y = element_text(size=20))
+    p <- p + theme(axis.text.y = element_text(size=10))
   }
   
   p <- p + scale_fill_manual("SV type\n", values = colours)
@@ -240,15 +239,15 @@ notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FA
     p3 <- p3 + scale_y_continuous("Density", expand = c(0, 0))
     p3 <- p3 + guides(colour = FALSE)
     p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
-    p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "dotted", size = 1)
+    p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "solid", size = .3)
+    
 
-    p3 <- p3 + slideTheme() +
+    p3 <- p3 + cleanTheme() +
       theme(
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
         axis.title.x = element_blank(),
         legend.position = "top",
         axis.title.y = element_blank(),
-        
         axis.text.y = element_blank()
         )
   
@@ -258,82 +257,22 @@ notchHits <- function(..., all_samples, drivers = c("N", "kuz"), show_samples=FA
     # p3 <- p3 + scale_fill_identity("SV type\n")
     # p3 <- p3 + scale_colour_identity()
 
-    combined_plots <- ggpubr::ggarrange(
-    p, p3,
-    ncol = 1, nrow = 2,
-    heights = c(7,3),
-    align = 'v'
-    )
-    p <- p + theme(plot.margin = unit(c(.5, .5, .5, .5), "cm"))
-    p3 <- p3 + theme(plot.margin = unit(c(.5, .5, .5, .5), "cm"))
+    # combined_plots <- ggpubr::ggarrange(
+    # p, p3,
+    # ncol = 1, nrow = 2,
+    # heights = c(7,3),
+    # align = 'v'
+    # )
+    regions <- p + theme(plot.margin = unit(c(.5, .5, .1, .5), "cm"))
+    den <- p3 + theme(plot.margin = unit(c(.1, .5, .5, .5), "cm"))
+    # bar <- p1 + coord_flip()
+
+    cowplot::plot_grid(regions, den, align = 'v', ncol = 1, rel_heights = c(8,2))
+    # cowplot::plot_grid(bar, regions, align = 'h', axis = "bt", ncol = 2, rel_widths = c(2,8))
     
-    cowplot::plot_grid(p, p3, align = 'v', cols = 1, rel_heights = c(8,2))
     # combined_plots
   } else print(p)
   
-}
-
-
-#' notchDels
-#' Plot the size of deletions affecting Notch
-#' @keywords Notch
-#' @import dplyr ggplot2 ggsci forcats
-#' @export
-notchDels <- function(infile = "inst/extdata/Notch_hits.txt") {
-  d <- read.delim(infile, header = T)
-  excluded_samples <- c("A373R7", "A512R17", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
-  
-  notch_data <- d %>% 
-    dplyr::rename(length = length.Kb.) %>%
-    dplyr::filter(!sample %in% excluded_samples,
-                  is.na(status)) %>% 
-    dplyr::mutate(length = ifelse(type == 'TRA', 2, length)) %>% 
-    dplyr::select(sample, event, source, type, chromosome1, bp1, chromosome2, bp2, length, affected_genes) %>% 
-    dplyr::mutate(sampleax = as.numeric(sample)) %>% 
-    droplevels()
-  
-  # notch_data <- notchFilt(keep=1)
-  bp_data <- getData()
-  sample_names <- levels(bp_data$sample)
-  
-  # Problem with events not being clustered properly for CNV-Seq
-  notch_data <- notch_data %>%
-    dplyr::group_by(sample) %>%
-    # dplyr::filter(!duplicated(event)) %>%
-    dplyr::mutate(allLength = sum(length)) %>% 
-    dplyr::ungroup()
-
-
-  missing_samples = list()
-  
-  for(i in 1:length(sample_names)){
-    if(!(sample_names[i] %in% levels(notch_data$sample))){
-      missing_samples[i] <- sample_names[i]
-    }
-  }
-  
-  missing_samples <- plyr::compact(missing_samples)
-  dat <- data.frame(sample = c(levels(notch_data$sample), paste(missing_samples)),
-                    length = c(notch_data$length, rep(0, length(missing_samples)))
-                    ) 
-  
-
-  p <- ggplot(notch_data)
-  p <- p + geom_bar(aes(fct_reorder(sample, -allLength), length, fill = type), alpha = 0.7, stat = "identity")
-  p <- p + scale_y_continuous("Length (Kb)")
-  p <- p + slideTheme() +
-    theme(
-      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
-      axis.title.x = element_blank()
-    )
-  p <- p + scale_fill_jco()
-  p
-  dels_out <- paste("NotchDels.png")
-  cat("Writing file", dels_out, "\n")
-  ggsave(paste("plots/", dels_out, sep = ""), width = 30, height = 15)
-
-  p
 }
 
 

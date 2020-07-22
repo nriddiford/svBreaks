@@ -15,7 +15,7 @@ bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata
   }
   
   bp_data <- bp_data %>% 
-    dplyr::filter(...)
+    dplyr::filter(..., confidence == 'precise')
 
   mutCount <- nrow(bp_data)
 

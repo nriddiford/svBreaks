@@ -12,9 +12,12 @@ cleanTheme <- function(base_size = 12) {
     panel.spacing = unit(2, "lines"),
     axis.line.x = element_line(color = "black", size = 0.5),
     axis.line.y = element_line(color = "black", size = 0.5),
-    axis.text = element_text(size = 12),
-    axis.title= element_text(size = 15),
-    strip.text = element_text(size = 15),
+    axis.text = element_text(size=rel(1.1)),
+    axis.title = element_text(size=rel(1.4)),
+    strip.text = element_text(size = 12),
+    strip.background = element_rect(
+      color="black", fill="#F2F2F2", size=1, linetype="solid"
+    ),
     plot.margin = unit(1:4, "line")
   )
 }

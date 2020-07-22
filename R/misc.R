@@ -22,32 +22,42 @@ transform_types <- function(x){
 #' @export
 sv_colours <- function(){
   return(
-    # c("DEL" = '#0073C299',
-    #        "COMPLEX" = '#EFC00099',
-    #        "DUP" = '#232323',
-    #        "BND" = '#868686',
-    #        "TRA" = '#CD534C99',
-    #        "NA" = "grey")
          # c("DEL" = "#269FBF",
          #   "COMPLEX" = '#85C27C',
-         #   "DUP" = '#E4E57E',
+         #   "DUP" = '#A68BD1',
          #   "BND" = '#E68B4C',
          #   "TRA" = '#BC5D8F',
-         #   "TANDUP" = '#A68BD1',
+         #   "TANDUP" = '#E4E57E',
          #   "NA" = "grey"
          # )
-         # 
-         c("DEL" = "#269FBF",
-           "COMPLEX" = '#85C27C',
-           "DUP" = '#A68BD1',
-           "BND" = '#E68B4C',
-           "TRA" = '#BC5D8F',
-           "TANDUP" = '#E4E57E',
-           "NA" = "grey"
+         c("DEL" = "#67C2EA",
+           "COMPLEX" = '#85C385',
+           "DUP" = '#3A7FEF',
+           "BND" = '#F2E859',
+           "TRA" = '#EE715A',
+           "TANDUP" = '#E078EF',
+           "NA" = "#333333"
          )
+         
+         
          
   )
 }
+
+#' SNV colours
+#' 
+#' @export
+snv_colours <- function(){
+  return(
+    c("delfrshift" = "#EB5767",
+      "insfrshift" = '#F08573',
+      "Missense" = '#F1AD32',
+      "Nonsense" = '#F4C839',
+      "Synonymous" = '#B2AF9D'
+    )
+  )
+}
+
 
 
 #' get sample names
@@ -76,6 +86,23 @@ getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/script_t
 }
 
 
+
+#' Swap sample names
+#' 
+#' @export
+swapSampleNames <- function(df, attach_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
+  name_conversion <- read.delim(attach_info, header=F)
+  colnames(name_conversion) <- c("sample", "short", "sample_paper", "sex", "assay")
+  name_conversion <- name_conversion %>% dplyr::select(-c("short", "sex", "assay"))
+  new_df <- plyr::join(df, name_conversion, "sample", type = 'left') %>% 
+    dplyr::rename(sample_old = sample,
+                  sample = sample_paper) %>%
+    dplyr::select(sample, everything()) %>% 
+    droplevels()
+  return(new_df)
+}
+
+
 #' svTypes
 #'
 #' Plot counts of different svTypes
@@ -97,7 +124,7 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
   
   # cols <- setCols(df=dat, col=object, set='Pastel1')
   
-  missing_samples <- getMissingSamples(..., df = non_notch)
+  missing_samples <- getMissingSamples(..., df = bp_data)
   
   
   missing_samples <- plyr::compact(missing_samples)

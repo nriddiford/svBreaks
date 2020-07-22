@@ -78,15 +78,10 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
   bp_data <- generateData(..., breakpoints=breakpoints, sim=sim, keep=keep)
   
   feature <- paste(toupper(substr(feature, 1, 1)), substr(feature, 2, nchar(feature)), sep = "")
-
-  if (feature == "Promoter") {
-    feature_locations <- getPromoter()
-    cat("Getting gene promoter locations...\n")
-  } else {
-    feature_locations <- read.table(feature_file, header = F)
-    cat("Reading in file:", feature_file, sep = " ", "\n")
-  }
   
+  feature_locations <- read.table(feature_file, header = F)
+  cat("Reading in file:", feature_file, sep = " ", "\n")
+
   if(is.null(feature_locations$V3)){
     feature_locations$V3 <- feature_locations$V2 + 1
     feature_locations$V2 <- feature_locations$V2 - 1

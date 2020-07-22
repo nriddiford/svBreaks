@@ -43,12 +43,12 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
                     chrom %in% chroms)
   }
   
-  colours = svBreaks::sv_colours()
-  
+  # colours = svBreaks::sv_colours()
+  grey <- "#333333"
   
   p <- ggplot(distances)
   if(missing(bed_file)) {
-    p <- p + geom_point(aes(bp / 1e6, logdist, colour = type2), size=1, alpha=0.8)
+    p <- p + geom_point(aes(bp / 1e6, logdist, colour = grey), size=1, alpha=0.8)
   } else{
     p <- p + geom_point(aes(bp / 1e6, logdist))
   }
@@ -67,7 +67,7 @@ bpRainfall <- function(..., bp_data = NULL, bed_file=NULL, write = FALSE, chroms
   p <- p + scale_x_continuous("Mbs", breaks = seq(0, max(distances$bp), by = tick_by))
   p <- p + scale_y_continuous("Genomic Distance")
   # p <- p + scale_fill_manual("SV type\n", values = colours)
-  p <- p + scale_colour_manual(values = colours)
+  p <- p + scale_colour_manual(values = grey)
   
   if(write){
     rainfall_out <- paste("rainfall.pdf")

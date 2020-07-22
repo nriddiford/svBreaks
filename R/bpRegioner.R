@@ -9,16 +9,15 @@
 #' @param from Restrict to region between from and to
 #' @param to Restrict to region between from and to
 #' @param n Number of permutations to run
-#' @param plot 
-#' @param region
-#' @param feature
-#' 
+#' @param plot Return plot or not? [Default: TRUE] 
+#' @param region Limit to region (chr:start-stop) [Default: NULL] 
+#' @import regioneR
 #' @export
 bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/notch_10kb_merged_breakpoints.bed',
                        regionB = '~/GitHub/BardinLab/meme/out/notch_CFS/fimo_out/motif2_merged.bed',
                        mappable_regions = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_mappable.bed',
                        chrom_lengths = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/chrom.sizes.txt',
-                       slop, limit2chrom=TRUE, chrom='X', from, to, n = 100, plot = TRUE,  bins='auto', region=NULL, feature=NULL){
+                       slop, limit2chrom=TRUE, chrom='X', from, to, n = 100, plot = TRUE,  bins='auto', region=NULL){
 
   if(missing(feature) && missing(region)){
     region_name <- tools::file_path_sans_ext(basename(regionA))

@@ -2,6 +2,7 @@
 #' @param infile File to process [Required]
 #' @param filter_gene The gene of interest [Default: N]
 #' @param plot Show barplot [Default: TRUE]
+#' @importFrom plyr compact join
 #' @export
 geneHit <- function(..., all_samples, drivers=c("N"), all_samples_df=NULL, plot=TRUE, combined_plot=FALSE, show_sample=TRUE) {
   if(missing(all_samples) && missing(all_samples_df)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
@@ -155,6 +156,7 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' Plot the breakpint density over Notch
 #' @keywords Notch
 #' @import tidyverse
+#' @importFrom cowplot plot_grid
 #' @export
 notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), show_samples=FALSE, barchart=FALSE, bp_density=FALSE, adjust=0.3, from=2.7, to=3.5, ticks = 50) {
   if(missing(all_samples) && missing(all_samples_df)) stop("\n[!] Must a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")

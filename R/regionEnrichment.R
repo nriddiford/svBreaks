@@ -287,7 +287,7 @@ bpRegionEnrichment <- function(..., bp_data, dataType='svBreaks', bed_file, bedD
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
 #' @import dplyr
-#' @import plotly
+#' @importFrom plotly plot_ly
 #' @export
 Volcano <- function(d, byq=FALSE){
   feature_enrichment <- d
@@ -299,25 +299,13 @@ Volcano <- function(d, byq=FALSE){
     printVar <- 'Adj-p'
   }
   
-  # minPval <- min(feature_enrichment$p_val[feature_enrichment$p_val>0])
-  # 
-  # feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval/abs(feature_enrichment$Log2FC), feature_enrichment$p_val)
-  # 
-  # feature_enrichment$p_val <- ifelse(feature_enrichment$p_val==0, minPval, feature_enrichment$p_val)
-  
-  
   maxLog2 <- max(abs(feature_enrichment$Log2FC[is.finite(feature_enrichment$Log2FC)]))
   maxLog2 <- as.numeric(round_any(maxLog2, 1, ceiling))
   
-  ax <- list(
-    size = 25
-  )
+  ax <- list(size = 25)
+  ti <- list(size = 25)
   
-  ti <- list(
-    size = 25
-  )
-  
-  p <- plot_ly(data = feature_enrichment,
+  p <- plotly::plot_ly(data = feature_enrichment,
           x = ~Log2FC,
           y = ~-log10(var),
           type = 'scatter',
@@ -334,12 +322,9 @@ Volcano <- function(d, byq=FALSE){
                         "eScore: ", eScore, "\n"),
           color = ~log10(var),
           colors = "Spectral",
-          size = ~-log10(var)
-          ) %>% 
-    layout(
-           xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
-           yaxis = list(title=paste("-Log10(", printVar, ")", sep=''), titlefont = ax)
-           )
+          size = ~-log10(var)) %>% 
+    layout(xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
+           yaxis = list(title=paste("-Log10(", printVar, ")", sep=''), titlefont = ax))
   p
 }
 
@@ -347,10 +332,9 @@ Volcano <- function(d, byq=FALSE){
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import plyr dplyr ggplot2 ggrepel
+#' @import dplyr ggplot2 ggrepel
 #' @import RColorBrewer
 #' @export
-
 ggVolcano <- function(..., df, escore_threshold = 3){
   if(!nrow(df)) return(ggplot())
   red <- "#FC4E07"
@@ -410,14 +394,14 @@ ggVolcano <- function(..., df, escore_threshold = 3){
 #' Plot the result of a monte carlo simulation (n shuffles of feature y)
 #' Expects dataframe returned from bpRegionEnrichment()
 #' @keywords expected frequency
-#' @import plyr dplyr ggplot2
+#' @import dplyr ggplot2
 #' @import RColorBrewer
 #' @export
 
 plotMonteCarlo <- function(x, bindWith = 10){
   
   x <- x %>% 
-    mutate(fillCol = ifelse(grepl("shuff", feature), "grey37", "#C72424FE"))
+    dplyr::mutate(fillCol = ifelse(grepl("shuff", feature), "grey37", "#C72424FE"))
 
   ggplot(x, aes(observed, fill = fillCol)) +
   geom_histogram(binwidth = bindWith) +
@@ -430,7 +414,6 @@ plotMonteCarlo <- function(x, bindWith = 10){
       ) + 
   scale_y_continuous("Frequency", expand = c(0,0)) +
   scale_x_continuous("Number of intersections", expand = c(0,0)) +
-  
   scale_fill_identity()
 
 }
@@ -527,7 +510,7 @@ writeBed <- function(df, outDir=getwd(), name='regions.bed', svBreaks=FALSE){
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import plyr
+#' @importFrom plyr round_any
 #' @import dplyr ggplot2
 #' @export
 
@@ -550,7 +533,7 @@ bpRegionEnrichmentPlot <- function(..., feature_enrichment=NULL, bedDir=NULL, bp
     transform(feature = reorder(feature, -Log2FC))
   
   maxLog2 <- max(abs(feature_enrichment$Log2FC))
-  maxLog2 <- round_any(maxLog2, 1, ceiling)
+  maxLog2 <- plyr::round_any(maxLog2, 1, ceiling)
   
   adjVal <- (maxLog2*1.5)
   

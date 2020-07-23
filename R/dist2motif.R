@@ -240,7 +240,6 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @import dplyr
 #' @import ggplot2
 #' @import RColorBrewer colorspace
-#' @import plotly
 #' @keywords distance
 #' @export
 plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE, plotly=FALSE){
@@ -357,8 +356,6 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
   
   if (facetPlot){
     p
-  } else if (plotly){ 
-    ggplotly(p)
   } else {
     p
   }
@@ -371,25 +368,21 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
 #' Calculate the median distance between breakpoints (per-chrom) and feature
 #' and perform test
 #' @param real_data Dataframe containing real data (as produced by generateData())
-#' @import dplyr
-#' @import ggplot2
-#' @import RColorBrewer
-#' @import broom
-#' @import car
-#' @import PerformanceAnalytics
+#' @import dplyr ggplot2 RColorBrewer broom PerformanceAnalytics
+#' @importFrom car leveneTest
 #' @keywords sim
 #' @export
 simSig <- function(r, s, test=NA, max_dist=5000){
   
   arrange_data <- function(x){
     x <- x %>% 
-      group_by(chrom, iteration) %>%
+      dplyr::group_by(chrom, iteration) %>%
       dplyr::mutate( count = n(),
                      median = median(min_dist),
                      mean = mean(min_dist),
                      sd = sd(min_dist),
                      Source = factor(Source)) %>%
-      filter(abs(min_dist) <= max_dist ) %>%
+      dplyr::filter(abs(min_dist) <= max_dist ) %>%
       ungroup()
     return(x)
   }
@@ -402,14 +395,14 @@ simSig <- function(r, s, test=NA, max_dist=5000){
   combined$iteration <- as.factor(combined$iteration)
   pVals = list()
   for(i in levels(combined$iteration)){
-    df <- filter(combined, iteration==i)
-    rl <- filter(df, Source == "Real")
-    sm <- filter(df, Source == "Sim")
+    df <- dplyr::filter(combined, iteration==i)
+    rl <- dplyr::filter(df, Source == "Real")
+    sm <- dplyr::filter(df, Source == "Sim")
     result1 <- suppressWarnings(ks.test(rl$min_dist, sm$min_dist))
     ksPval <- round(result1$p.value, 4)
     
 
-    result2 <- leveneTest(df$min_dist, df$Source, center='median')
+    result2 <- car::leveneTest(df$min_dist, df$Source, center='median')
     result3 <- bartlett.test(df$min_dist, df$Source)
     bPval <- round(result3$p.value, 4)
     lPval <- round(result2$`Pr(>F)`[1], 4)

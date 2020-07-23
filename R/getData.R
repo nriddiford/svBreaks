@@ -3,7 +3,8 @@
 #' Function to clean cnv files
 #' @param infile File to process [Required]
 #' @keywords parse breakpoints data
-#' @import plyr dplyr
+#' @import dplyr
+#' @importFrom plyr join
 #' @export
 #' @return Dataframe
 

@@ -6,7 +6,7 @@
 #' @keywords stats
 #' @import dplyr
 #' @import ggplot2
-#' @import forcats
+#' @importFrom forcats fct_reorder
 #' @export
 #' @param colSample Set to <samplename> to colour that sample red in the plot
 
@@ -31,7 +31,7 @@ bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
   }
 
   p <- ggplot(sampleSvs)
-  p <- p + geom_bar(aes(fct_reorder(sample, -som_count), n, fill = colour), stat = "identity")
+  p <- p + geom_bar(aes(forcats::fct_reorder(sample, -som_count), n, fill = colour), stat = "identity")
   # p <- p + scale_y_continuous("Number of variants", limits = c(0, 20), expand = c(0.01, 0.01), breaks=seq(0,20,by=2))
   p <- p + scale_y_continuous("Number of variants", expand = c(0.01, 0.01))
 
@@ -103,10 +103,9 @@ bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
 #' bpFeatures
 #' Get some basic stats for breakpoints
 #' @keywords stats
-#' @import dplyr ggplot2 forcats
+#' @import dplyr ggplot2
 #' @export
 #' @param notch - Set to 1 to exclude Notch events
-
 bpFeatures <- function(..., notch=0) {
   if (notch) {
     bp_data <- notchFilt()
@@ -154,6 +153,7 @@ bpFeatures <- function(..., notch=0) {
 #' Plot the number of structural breakpoints per sample
 #' @keywords samples
 #' @import tidyverse
+#' @importFrom forcats fct_reorder
 #' @export
 svsbySample <- function(..., bp_data=NULL, colSample=NA) {
   # excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
@@ -191,7 +191,7 @@ svsbySample <- function(..., bp_data=NULL, colSample=NA) {
   
   
   p <- ggplot(dat)
-  p <- p + geom_bar(aes(fct_reorder(sample, -count), count, fill = colour), stat = "identity")
+  p <- p + geom_bar(aes(forcats::fct_reorder(sample, -count), count, fill = colour), stat = "identity")
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
   p <- p + scale_y_continuous("Number of SVs", expand = c(0.01, 0.01), limits = c(0, max(dat$count)), breaks = seq(0,max(dat$count),by=5))
   p <- p + slideTheme() +
@@ -217,7 +217,8 @@ svsbySample <- function(..., bp_data=NULL, colSample=NA) {
 #' genesbySample
 #' Plot the number of structural breakpoints per sample
 #' @keywords genes
-#' @import plyr dplyr forcats
+#' @import dplyr 
+#' @importFrom forcats fct_reorder
 #' @export
 genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered.txt", genome_length=118274340) {
   
@@ -231,12 +232,12 @@ genesbySample <- function(..., affected_genes = "inst/extdata/all_genes_filtered
                   genotype=='somatic_tumour') %>%
     dplyr::mutate(cell_fraction = ifelse(chrom %in% c('X', 'Y'), af,
                                          ifelse(af*2>1, 1, af*2))) %>% 
-    group_by(sample) %>% 
+    dplyr::group_by(sample) %>% 
     dplyr::summarise(affected_genes = n()) %>% 
     dplyr::arrange(-affected_genes) %>% 
     droplevels()
   
-  p <- ggplot(allGenes, aes(fct_reorder(sample, -affected_genes), affected_genes))
+  p <- ggplot(allGenes, aes(forcats::fct_reorder(sample, -affected_genes), affected_genes))
   p <- p + geom_bar(stat='identity')
   p <- p + scale_y_continuous("Number of genes", expand = c(0.01, 0.01))
   p <- p + slideTheme() +
@@ -265,11 +266,11 @@ complexEvents <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTe
                   is.na(status)) %>% 
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>% 
-    group_by(sample, event) %>% 
+    dplyr::group_by(sample, event) %>% 
     dplyr::mutate(newCol = as.character(ifelse(any(geneIn('N', affected_genes)),'Notch', 'Other'))) %>% 
     dplyr::mutate(cell_fraction = ifelse(chromosome1 == "X", allele_frequency,
                                    ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>% 
-    group_by(sample, event) %>% 
+    dplyr::group_by(sample, event) %>% 
     dplyr::mutate(complex_count = ifelse(any(type %in% c("COMPLEX_DEL", "COMPLEX_BND", "COMPLEX_DUP")), count(type), 0)) %>% 
     dplyr::filter(complex_count >= 2) %>% 
     dplyr::tally() %>% 
@@ -280,7 +281,7 @@ complexEvents <- function(..., all_samples = '/Users/Nick_curie/Desktop/parserTe
     
     
    p <- ggplot(complex_count)
-   p <- p + geom_bar(aes(fct_reorder(sample, -n), complex_count), alpha = 0.7, stat = "identity")
+   p <- p + geom_bar(aes(forcats::fct_reorder(sample, -n), complex_count), alpha = 0.7, stat = "identity")
    p
     
 }
@@ -306,7 +307,7 @@ length_by_sample <- function(..., bp_data=NULL){
     # dplyr::filter(n()>=2) %>% 
     dplyr::mutate(av_length = sum(length)/n())
 
-  p <- ggplot(df, aes(fct_reorder(sex, -av_length), length+1))
+  p <- ggplot(df, aes(forcats::fct_reorder(sex, -av_length), length+1))
   p <- p + geom_violin(aes(fill=sex), alpha=.8)
   p <- p + geom_jitter(position=position_jitter(0.2), size = .8)
   p <- p + scale_y_log10("SV length (Kb)")

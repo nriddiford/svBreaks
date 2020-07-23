@@ -77,6 +77,7 @@ generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms){
 #' Calculate the distance from each breakpoint to closest motif in a directory of files
 #' @keywords motif
 #' @import ggplot2 dplyr tidyr RColorBrewer
+#' @importFrom plyr round_any
 #' @export
 dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"), chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), sim=FALSE, position = 'centre') {
   if(missing(df) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
@@ -252,6 +253,7 @@ inRange <- function(r, s, w, p){
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
 #' @import dplyr ggplot2 ggpubr RColorBrewer
+#' @importFrom plyr round_any
 #' @export
 distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"),
                          from='bps', chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'),
@@ -395,7 +397,8 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr ggplot2 RColorBrewer scales colorspace cowplot
+#' @import dplyr ggplot2 RColorBrewer scales colorspace
+#' @importFrom cowplot plot_grid
 #' @keywords distance
 #' @export
 plotdistanceOverlay2 <- function(..., distances, from='bps', lim=5, n, position='centre', histo=FALSE, binWidth){

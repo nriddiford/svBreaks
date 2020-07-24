@@ -13,8 +13,7 @@ plotdistanceOverlay(
   byChrom = NA,
   n = 10,
   write = TRUE,
-  facetPlot = TRUE,
-  plotly = FALSE
+  facetPlot = TRUE
 )
 }
 \arguments{

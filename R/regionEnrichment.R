@@ -332,8 +332,8 @@ Volcano <- function(d, byq=FALSE){
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import dplyr ggplot2 ggrepel
-#' @import RColorBrewer
+#' @import dplyr ggplot2 
+#' @importFrom ggrepel geom_text_repel
 #' @export
 ggVolcano <- function(..., df, escore_threshold = 3){
   if(!nrow(df)) return(ggplot())
@@ -341,19 +341,6 @@ ggVolcano <- function(..., df, escore_threshold = 3){
   blue <- "#00AFBB"
   yellow <- "#E7B800"
   grey <- "grey"
-  
-  # feature_enrichment <- df
-  
-  # arguments <- list(...)
-  # 
-  # if(!is.null(arguments$slop)){
-  #   slop <- arguments$slop
-  #   title <- paste("Enrichment/depletion of genomic features\nfor breakpoints +/-", slop, 'bps')
-  #   outFile <- paste("regionEnrichment_", slop,'.png', sep='')
-  # } else {
-  #   title <- "Enrichment/depletion of genomic features\nfor breakpoints"
-  #   outFile <- "regionEnrichment.png"
-  # }
   
   maxLog2 <- max(abs(df$Log2FC))
   maxLog2 <- round_any(maxLog2, 1, ceiling)
@@ -370,7 +357,7 @@ ggVolcano <- function(..., df, escore_threshold = 3){
   p <- p + geom_point(aes(colour = colour), size=3, alpha=0.7)
   p <- p + scale_fill_manual(values = cols)
   p <- p + scale_colour_manual(values = cols)
-  p <- p + geom_text_repel(aes(label = label), inherit.aes = TRUE)
+  p <- p + ggrepel::geom_text_repel(aes(label = label), inherit.aes = TRUE)
   p <- p + guides(size = FALSE, colour = FALSE) 
   p <- p + cleanTheme() +
     theme(
@@ -382,12 +369,6 @@ ggVolcano <- function(..., df, escore_threshold = 3){
   p
 }
 
-# theme(
-#   panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-#   axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=12),
-#   axis.text.y = element_text(size=12),
-#   axis.title.x = element_blank(),
-#   axis.title.y =element_text(size=15)
 
 # plotMonteCarlo
 #'
@@ -397,7 +378,6 @@ ggVolcano <- function(..., df, escore_threshold = 3){
 #' @import dplyr ggplot2
 #' @import RColorBrewer
 #' @export
-
 plotMonteCarlo <- function(x, bindWith = 10){
   
   x <- x %>% 

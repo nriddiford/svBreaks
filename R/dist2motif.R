@@ -7,7 +7,6 @@
 #' @import ggplot2
 #' @import dplyr
 #' @import colorspace
-#' @import RColorBrewer
 #' @export
 generateData <- function(..., breakpoints=NULL, sim=NA, keep=NULL){
   if(missing(breakpoints)){
@@ -70,7 +69,7 @@ generateData <- function(..., breakpoints=NULL, sim=NA, keep=NULL){
 #' dist2Motif
 #' Calculate the distance from each breakpoint to closest motif
 #' @keywords motif
-#' @import ggplot2 dplyr tidyr RColorBrewer
+#' @import ggplot2 dplyr tidyr
 #' @export
 dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata", "tss_locations.txt", package="svBreaks"), sim=NA,
                        print=0, send=0, feature="tss", keep=NULL, position = 'centre') {
@@ -192,10 +191,7 @@ dist2Motif <- function(..., breakpoints=NA, feature_file = system.file("extdata"
 #' Calculate the distance from each breakpoint to closest motif
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
-#' @import dplyr
-#' @import ggplot2
-#' @import ggpubr
-#' @import RColorBrewer
+#' @import dplyr ggplot2 ggpubr
 #' @export
 distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
                         feature="tss", from='bps', lim=10, byChrom=NA, n=5, plot = TRUE, keep=NULL, position = 'centre') {
@@ -237,9 +233,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr
-#' @import ggplot2
-#' @import RColorBrewer colorspace
+#' @import dplyr ggplot2 colorspace
 #' @keywords distance
 #' @export
 plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE, plotly=FALSE){
@@ -368,7 +362,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
 #' Calculate the median distance between breakpoints (per-chrom) and feature
 #' and perform test
 #' @param real_data Dataframe containing real data (as produced by generateData())
-#' @import dplyr ggplot2 RColorBrewer broom PerformanceAnalytics
+#' @import dplyr ggplot2 broom PerformanceAnalytics
 #' @importFrom car leveneTest
 #' @keywords sim
 #' @export
@@ -451,7 +445,7 @@ simSig <- function(r, s, test=NA, max_dist=5000){
 
   ## Boxplot per chrom
 
-  colours <- c("#E7B800", "#00AFBB")
+  # colours <- c("#E7B800", "#00AFBB")
   cat("Plotting qq plot of min distances\n")
   qqnorm(combined$min_dist)
   qqline(combined$min_dist, col = 2)

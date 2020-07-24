@@ -3,10 +3,7 @@
 #' @keywords size
 #' @import dplyr ggplot2
 #' @importFrom forcats fct_reorder fct_recode
-#' @import RColorBrewer
-#' @import ggsci
 #' @export
-
 sizeDist <- function(..., bp_data) {
   if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
   

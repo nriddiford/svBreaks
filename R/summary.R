@@ -102,10 +102,10 @@ bpStats <- function(..., bp_data=NULL, colSample=NA, write=FALSE) {
 
 #' bpFeatures
 #' Get some basic stats for breakpoints
+#' @param notch - Set to 1 to exclude Notch events
 #' @keywords stats
 #' @import dplyr ggplot2
 #' @export
-#' @param notch - Set to 1 to exclude Notch events
 bpFeatures <- function(..., notch=0) {
   if (notch) {
     bp_data <- notchFilt()
@@ -137,9 +137,6 @@ bpFeatures <- function(..., notch=0) {
     )
   p <- p + scale_x_discrete(expand = c(0.01, 0.01))
   p <- p + scale_y_continuous(expand = c(0.01, 0.01))
-  # p <- p + scale_fill_brewer(palette = "Paired")
-  # p <- p + facet_wrap(~genotype)
-  
 
   features_outfile <- paste("Breakpoints_features_count", ext, sep = "")
   cat("Writing file", features_outfile, "\n")

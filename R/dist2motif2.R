@@ -7,7 +7,6 @@
 #' @import ggplot2
 #' @import dplyr
 #' @import colorspace
-#' @import RColorBrewer
 #' @export
 generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms){
   if(missing(df) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
@@ -76,7 +75,7 @@ generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms){
 #' dist2Motif2
 #' Calculate the distance from each breakpoint to closest motif in a directory of files
 #' @keywords motif
-#' @import ggplot2 dplyr tidyr RColorBrewer
+#' @import ggplot2 dplyr tidyr
 #' @importFrom plyr round_any
 #' @export
 dist2motif2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"), chroms=c('2L', '2R', '3L', '3R', '4', 'X', 'Y'), sim=FALSE, position = 'centre') {
@@ -252,7 +251,7 @@ inRange <- function(r, s, w, p){
 #' Calculate the distance from each breakpoint to closest motif
 #' Overlay the same number of random simulated breakpoints
 #' @keywords motif
-#' @import dplyr ggplot2 ggpubr RColorBrewer
+#' @import dplyr ggplot2 ggpubr
 #' @importFrom plyr round_any
 #' @export
 distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system.file("extdata", "features", package="svBreaks"),
@@ -397,7 +396,7 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr ggplot2 RColorBrewer scales colorspace
+#' @import dplyr ggplot2 scales colorspace
 #' @importFrom cowplot plot_grid
 #' @keywords distance
 #' @export
@@ -443,11 +442,6 @@ plotdistanceOverlay2 <- function(..., distances, from='bps', lim=5, n, position=
       p <- ggplot(distances)
       p <- p + stat_density(data=distances[distances$Source=="Sim",], aes(x=min_dist, y=..count.., group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=0.5, position="identity", geom="line")
       p <- p + stat_density(data=distances[distances$Source=="Real",], aes(x=min_dist, y=..count.., group = interaction(iteration, Source), colour = iteration), size=2, position="identity", geom="line")
-      
-      
-      # p <- p + geom_line(data=distances[distances$Source=="Real",], aes(min_dist, colour = iteration), size=2, stat='density')
-      # # p <- p + geom_density(data=d[d$Source=="Real",], aes(min_dist, y=..scaled..), fill = real_fill, alpha=0.2, adjust=3)
-      # p <- p + geom_line(aes(min_dist, group = interaction(iteration, Source), colour = iteration), alpha = 0.7, size=1, stat='density')
       
       sim_rep1 <- distances %>% 
         dplyr::filter(Source == "Sim",

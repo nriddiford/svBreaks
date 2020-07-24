@@ -18,4 +18,6 @@ Imports:
     PerformanceAnalytics,
     broom,
     ggpubr
-Suggests: testthat
+Suggests: 
+    testthat,
+    plotly

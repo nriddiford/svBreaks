@@ -290,6 +290,12 @@ bpRegionEnrichment <- function(..., bp_data, dataType='svBreaks', bed_file, bedD
 #' @importFrom plotly plot_ly
 #' @export
 Volcano <- function(d, byq=FALSE){
+  
+  if (!requireNamespace("plotly", quietly = TRUE)) {
+    stop("Package \"plotly\" needed for this function to work. Please install it.",
+         call. = FALSE)
+  }
+  
   feature_enrichment <- d
   
   var <- feature_enrichment$p_val
@@ -323,8 +329,10 @@ Volcano <- function(d, byq=FALSE){
           color = ~log10(var),
           colors = "Spectral",
           size = ~-log10(var)) %>% 
-    layout(xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)),
-           yaxis = list(title=paste("-Log10(", printVar, ")", sep=''), titlefont = ax))
+    plotly::layout(
+      xaxis = list(title="Log2(FC)", titlefont = ax, range = c(-maxLog2, maxLog2)), 
+      yaxis = list(title=paste("-Log10(", printVar, ")", sep=''), titlefont = ax)
+      )
   p
 }
 

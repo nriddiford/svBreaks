@@ -236,7 +236,7 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #' @import dplyr ggplot2 colorspace
 #' @keywords distance
 #' @export
-plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE, plotly=FALSE){
+plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE){
   scaleFactor <- lim*1000
   combined <- d
   

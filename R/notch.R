@@ -111,6 +111,7 @@ geneHit <- function(..., all_samples, drivers=c("N"), all_samples_df=NULL, plot=
 #' Tally type of sv events in specified gene
 #' @param infile File to process [Required]
 #' @param filter_gene The gene of interest [Default: N]
+#' @importFrom ggsci scale_fill_jco
 #' @export
 tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE, freq=FALSE) {
   if(missing(all_samples)) stop("\n[!] Must specify a file containing data for all samples (e.g. 'all_samples.txt'! Exiting.")
@@ -136,7 +137,8 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
       p <- p + geom_bar(aes(fct_reorder(class, -frequency), frequency, fill = fct_reorder(class, -frequency)), alpha = 0.7, stat='identity')
     else
       p <- p + geom_bar(aes(fct_reorder(class, -count), count, fill = fct_reorder(class, -count)), alpha = 0.7, stat='identity')
-    p <- p + scale_fill_jco()
+    p <- p + ggsci::scale_fill_jco()
+    p <- p + s
     p <- p + cleanTheme() +
       theme(
         panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),

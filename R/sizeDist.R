@@ -3,6 +3,7 @@
 #' @keywords size
 #' @import dplyr ggplot2
 #' @importFrom forcats fct_reorder fct_recode
+#' @importFrom ggsci scale_fill_jco
 #' @export
 sizeDist <- function(..., bp_data) {
   if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
@@ -26,7 +27,7 @@ sizeDist <- function(..., bp_data) {
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted")
     )
   p <- p + facet_wrap(~type, nrow = 3)
-  p <- p + scale_fill_jco()
+  p <- p + ggsci::scale_fill_jco()
   
   sizedistOut <- paste("sizeDist.png")
   cat("Writing file", sizedistOut, "\n")
@@ -39,8 +40,9 @@ sizeDist <- function(..., bp_data) {
 #' genotypeTypeCount
 #' Plot the contribution of sv tpyes to toal load per genotype
 #' @keywords genotype
-#' @import dplyr ggplot2 ggsci
+#' @import dplyr ggplot2
 #' @importFrom forcats fct_reorder fct_recode
+#' @importFrom ggsci scale_fill_jco
 #' @export
 genotypeTypeCount <- function(...) {
   bp_data <- getData(!sample %in% c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9"))
@@ -64,7 +66,7 @@ genotypeTypeCount <- function(...) {
       axis.title.x = element_blank(),
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted")
     )
-  p <- p + scale_fill_jco()
+  p <- p + ggsci::scale_fill_jco()
   
   genotypeTypeCount <- paste("genotypeTypeCount.png")
   cat("Writing file", genotypeTypeCount, "\n")

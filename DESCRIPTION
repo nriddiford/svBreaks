@@ -20,7 +20,8 @@ Imports:
     broom,
     ggsci,
     cowplot,
-    colorspace
+    colorspace,
+    car
 Suggests: 
     testthat,
     plotly

@@ -149,8 +149,9 @@ bpFeatures <- function(..., notch=0) {
 #' svsbySample
 #' Plot the number of structural breakpoints per sample
 #' @keywords samples
-#' @import tidyverse
+#' @import dplyr
 #' @importFrom forcats fct_reorder
+#' @importFrom plyr compact
 #' @export
 svsbySample <- function(..., bp_data=NULL, colSample=NA) {
   # excludedSamples <- c("A373R1", "A373R7", "A512R17", "A373R11", "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
@@ -175,17 +176,15 @@ svsbySample <- function(..., bp_data=NULL, colSample=NA) {
     }
   }
   
-  missing_samples <- compact(missing_samples)
+  missing_samples <- plyr::compact(missing_samples)
   
   dat <- data.frame(sample = c(levels(sampleSvs$sample), paste(missing_samples)), count = (c(sampleSvs$n, rep(0, length(missing_samples)) ))) 
-                    
-                    
+                  
   if(!is.na(colSample)) {
     dat$colour <- ifelse(dat$sample == colSample, "#C72424FE", "#636161FE")
   } else {
     dat$colour <- "grey37"
   }
-  
   
   p <- ggplot(dat)
   p <- p + geom_bar(aes(forcats::fct_reorder(sample, -count), count, fill = colour), stat = "identity")

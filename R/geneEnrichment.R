@@ -4,7 +4,8 @@
 # bpGeneEnrichment
 #' Calculate the enrichment of SVs in genes
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr
+#' @importFrom ggpubr ggtexttable
 #' @export
 bpGeneEnrichment <- function(..., bp_data, gene_lengths = system.file("extdata", "gene_lengths.txt", package="svBreaks"), n=3, genome_length=118274340, print=NA) {
   cat("Showing genes hit at least", n, "times", "\n")
@@ -56,7 +57,7 @@ bpGeneEnrichment <- function(..., bp_data, gene_lengths = system.file("extdata",
     first.step <- lapply(genesFC, unlist)
     second.step <- as.data.frame(first.step, stringsAsFactors = F)
 
-    ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
+    ggpubr::ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
 
     gene_enrichment_table <- paste("gene_enrichment_table.tiff")
     ggsave(paste("plots/", gene_enrichment_table, sep = ""), width = 5, height = (nrow(genesFC) / 3), dpi = 300)
@@ -70,7 +71,7 @@ bpGeneEnrichment <- function(..., bp_data, gene_lengths = system.file("extdata",
 # bpGeneEnrichmentPlot
 #' Plot the enrichment of SVs in genes
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr
 #' @export
 #'
 bpGeneEnrichmentPlot <- function(n=2) {
@@ -125,7 +126,8 @@ getPromoter <- function(gene_lengths_in="data/gene_lengths.txt") {
 # bpAllGenes
 #' Calculate the enrichment of genes affected by SVs (as opposed to breakpoint hits)
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr
+#' @importFrom tidyr unnest
 #' @export
 bpAllGenes <- function(..., gene_lengths_in = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                        affected_genes = system.file("extdata", "all_genes_filtered.txt", package="svBreaks"),
@@ -184,13 +186,13 @@ bpAllGenes <- function(..., gene_lengths_in = system.file("extdata", "gene_lengt
                    -log2FC) %>% 
     droplevels()
 
-  geneEnrich <- unnest(genesFC)
+  geneEnrich <- tidyr::unnest(genesFC)
   geneEnrich <- geneEnrich %>% 
     dplyr::select(gene, length, chromosome, observed, expected, fc, log2FC)
   
   if(!missing(outfile)){
     write.table(geneEnrich, outfile, sep="\t", row.names=FALSE)
   }
-
+  
   return(geneEnrich)
 }

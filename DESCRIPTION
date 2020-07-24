@@ -14,5 +14,7 @@ Imports:
     ggplot2,
     plyr,
     bedr,
-    data.table
+    data.table,
+    PerformanceAnalytics,
+    broom
 Suggests: testthat

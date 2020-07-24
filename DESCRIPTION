@@ -19,7 +19,8 @@ Imports:
     forcats,
     broom,
     ggsci,
-    cowplot
+    cowplot,
+    colorspace
 Suggests: 
     testthat,
     plotly

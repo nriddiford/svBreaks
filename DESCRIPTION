@@ -16,6 +16,5 @@ Imports:
     bedr,
     data.table,
     PerformanceAnalytics,
-    broom,
-    car
+    broom
 Suggests: testthat

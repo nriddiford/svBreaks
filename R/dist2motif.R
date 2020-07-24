@@ -233,7 +233,8 @@ distOverlay <- function(..., breakpoints = NA, feature_file=system.file("extdata
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr ggplot2 colorspace
+#' @import dplyr ggplot2
+#' @importFrom colorspace rainbow_hcl
 #' @keywords distance
 #' @export
 plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChrom=NA, n=10, write=TRUE, facetPlot=TRUE){
@@ -261,7 +262,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
       mutate(iteration = as.factor(ifelse(Source=='Real', 0, iteration)))
     
     real_fill <- '#668BCCFE'
-    iterFill <- rainbow_hcl(n)
+    iterFill <- colorspace::rainbow_hcl(n)
     
     colours <- c(real_fill, iterFill)
     
@@ -270,9 +271,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
     
     p <- p + geom_density(aes(min_dist, fill = iteration), alpha = 0.2, adjust=0.6)
     p <- p + geom_density(data=new[new$Source=="Real",], aes(min_dist, fill = iteration), alpha = 0.7, adjust=0.6)
-    
     p <- p + scale_fill_manual(values=colours)
-    
     p <- p + geom_rug(data=new[new$Source=="Real",], aes(min_dist, colour = iteration), sides = "b")
     p <- p + scale_colour_manual(values=colours)
     p <- p + scale_x_continuous(
@@ -339,8 +338,6 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
       # p <- p + facet_wrap(~iteration, ncol = 5)
     }
   }
-  
- 
   
   if(write){
     overlay <- paste(from, '_to_', feature, "_dist_overlay_", lim, "kb.png", sep = "")

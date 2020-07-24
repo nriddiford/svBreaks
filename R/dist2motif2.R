@@ -396,8 +396,9 @@ distOverlay2 <- function(..., df, breakpoints, feature_file, featureDir = system
 #'
 #' Plot the distance overlay 
 #' @param d Dataframe containing combined real + sim data (d <- distOverlay())
-#' @import dplyr ggplot2 scales colorspace
+#' @import dplyr ggplot2 scales
 #' @importFrom cowplot plot_grid
+#' @importFrom colorspace rainbow_hcl
 #' @keywords distance
 #' @export
 plotdistanceOverlay2 <- function(..., distances, from='bps', lim=5, n, position='centre', histo=FALSE, binWidth){

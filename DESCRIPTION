@@ -17,7 +17,8 @@ Imports:
     data.table,
     PerformanceAnalytics,
     forcats,
-    broom
+    broom,
+    ggsci
 Suggests: 
     testthat,
     plotly

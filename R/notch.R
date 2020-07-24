@@ -155,7 +155,7 @@ tally_hits <- function(..., all_samples, bp_data, filter_gene = "N", plot=FALSE,
 #' notchHits
 #' Plot the breakpint density over Notch
 #' @keywords Notch
-#' @import tidyverse
+#' @import dplyr tidyr
 #' @importFrom cowplot plot_grid
 #' @export
 notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), show_samples=FALSE, barchart=FALSE, bp_density=FALSE, adjust=0.3, from=2.7, to=3.5, ticks = 50) {
@@ -171,13 +171,11 @@ notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), s
   # if(barchart) p1 <- svBreaks::geneHit(..., all_samples_df=all_samples_df, show_sample = T, combined_plot=barchart, drivers=drivers, plot=T)
 
   notch_data <- notch_data %>% 
-    rowwise() %>% 
+    dplyr::rowwise() %>% 
     dplyr::mutate(length_adj = as.double(length + runif(1, 0, .1))) %>% 
     dplyr::mutate(bp1 = start / 1e6,
                   bp2 = end / 1e6) %>% 
     ungroup()
-  
-  # browser()
   
   notch_data <- notch_data %>% 
     dplyr::mutate(bp1 = ifelse(chromosome1 == "X", bp1, bp2-(1/1e4)),
@@ -216,17 +214,13 @@ notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), s
       axis.text.y = element_blank(),
       axis.title.x=element_blank()
     )
-  if(show_samples){
-    p <- p + theme(axis.text.y = element_text(size=10))
-  }
+  
+  if(show_samples) p <- p + theme(axis.text.y = element_text(size=10))
   
   p <- p + scale_fill_manual("SV type\n", values = colours)
   p <- p + scale_colour_manual(values = colours)
   
-  
-  
   if(bp_density){
-    
     p <- p + theme(axis.text.x = element_blank())
 
     long_notch_hits <- tidyr::gather(notch_data, bp_n, breakpoint, bp1, bp2, factor_key=TRUE) %>% 
@@ -242,8 +236,6 @@ notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), s
     p3 <- p3 + guides(colour = FALSE)
     p3 <- p3 + geom_rug(data = long_notch_hits, aes(breakpoint))
     p3 <- p3 + geom_vline(xintercept = 3.135669, linetype = "solid", size = .3)
-    
-
     p3 <- p3 + cleanTheme() +
       theme(
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
@@ -252,28 +244,14 @@ notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), s
         axis.title.y = element_blank(),
         axis.text.y = element_blank()
         )
-  
-    # p3 <- p3 + scale_fill_manual("SV type\n", values = blueBar)
-    # p3 <- p3 + scale_colour_manual(values = blueBar)
-    # 
-    # p3 <- p3 + scale_fill_identity("SV type\n")
-    # p3 <- p3 + scale_colour_identity()
 
-    # combined_plots <- ggpubr::ggarrange(
-    # p, p3,
-    # ncol = 1, nrow = 2,
-    # heights = c(7,3),
-    # align = 'v'
-    # )
     regions <- p + theme(plot.margin = unit(c(.5, .5, .1, .5), "cm"))
     den <- p3 + theme(plot.margin = unit(c(.1, .5, .5, .5), "cm"))
-    # bar <- p1 + coord_flip()
-
     cowplot::plot_grid(regions, den, align = 'v', ncol = 1, rel_heights = c(8,2))
-    # cowplot::plot_grid(bar, regions, align = 'h', axis = "bt", ncol = 2, rel_widths = c(2,8))
     
-    # combined_plots
-  } else print(p)
+  } else {
+    print(p)
+  }
   
 }
 
@@ -284,7 +262,7 @@ notchHits <- function(..., all_samples, all_samples_df=NULL, drivers = c("N"), s
 #' Function to filter in/out events affecting a locus (in this case the Drosophila Notch locus)
 #' @param infile File to process [Required]
 #' @keywords parse
-#' @import tidyverse
+#' @import dplyr
 #' @export
 #' @return Dataframe
 notchFilt <- function(..., keep=NULL, start=2700000, stop=3400000) {

@@ -5,7 +5,8 @@
 #'
 #' Calculate the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr
+#' @importFrom ggpubr ggtexttable
 #' @export
 
 bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata", "genomic_features.txt", package="svBreaks"), genome_length=118274340, print=NA) {
@@ -72,13 +73,8 @@ bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata
     cat("printing")
     first.step <- lapply(featuresFC, unlist)
     second.step <- as.data.frame(first.step, stringsAsFactors = F)
-
-    ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
-
+    ggpubr::ggtexttable(second.step, rows = NULL, theme = ttheme("mBlue"))
     feat_enrichment_table <- paste("feature_enrichment_table.tiff")
-    # ggexport(filename = paste("plots/", "ex_", feat_enrichment_table, sep=""),
-    #          width = 480, height = 480, pointsize = 12, res = 250,
-    #          verbose = TRUE)
     ggsave(paste("plots/", feat_enrichment_table, sep = ""), width = 5.2, height = (nrow(featuresFC) / 3), dpi = 300)
   }
 
@@ -91,7 +87,7 @@ bpFeatureEnrichment <- function(..., bp_data=NULL, features=system.file("extdata
 #'
 #' Plot the enrichment of SVs in genomic features
 #' @keywords enrichment
-#' @import tidyverse
+#' @import dplyr ggplot2
 #' @export
 #'
 bpFeatureEnrichmentPlot <- function(..., feature_enrichment=NULL, expected_hits=5) {
@@ -113,7 +109,6 @@ bpFeatureEnrichmentPlot <- function(..., feature_enrichment=NULL, expected_hits=
       panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 45, hjust = 1)
     )
-  # p <- p + facet_wrap(~genotype)
 
   feat_plot <- paste("feat_plot.pdf")
   cat("Writing file", feat_plot, "\n")

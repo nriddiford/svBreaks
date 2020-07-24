@@ -22,27 +22,16 @@ transform_types <- function(x){
 #' @export
 sv_colours <- function(){
   return(
-         # c("DEL" = "#269FBF",
-         #   "COMPLEX" = '#85C27C',
-         #   "DUP" = '#A68BD1',
-         #   "BND" = '#E68B4C',
-         #   "TRA" = '#BC5D8F',
-         #   "TANDUP" = '#E4E57E',
-         #   "NA" = "grey"
-         # )
-         c("DEL" = "#67C2EA",
-           "COMPLEX" = '#85C385',
-           "DUP" = '#3A7FEF',
-           "BND" = '#F2E859',
-           "TRA" = '#EE715A',
-           "TANDUP" = '#E078EF',
-           "NA" = "#333333"
-         )
-         
-         
-         
-  )
+    c("DEL" = "#67C2EA",
+      "COMPLEX" = '#85C385',
+      "DUP" = '#3A7FEF',
+      "BND" = '#F2E859',
+      "TRA" = '#EE715A',
+      "TANDUP" = '#E078EF',
+      "NA" = "#333333")
+    )
 }
+
 
 #' SNV colours
 #' 
@@ -53,15 +42,13 @@ snv_colours <- function(){
       "insfrshift" = '#F08573',
       "Missense" = '#F1AD32',
       "Nonsense" = '#F4C839',
-      "Synonymous" = '#B2AF9D'
+      "Synonymous" = '#B2AF9D')
     )
-  )
 }
 
 
-
 #' get sample names
-#' 
+#' @import dplyr
 #' @export
 getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
   all_samples_info <- read.delim(all_samples_info, header = F, stringsAsFactors = T)
@@ -88,7 +75,8 @@ getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/script_t
 
 
 #' Swap sample names
-#' 
+#' @import dplyr
+#' @importFrom plyr join
 #' @export
 swapSampleNames <- function(df, attach_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
   name_conversion <- read.delim(attach_info, header=F)
@@ -106,7 +94,8 @@ swapSampleNames <- function(df, attach_info='~/Desktop/script_test/mutationProfi
 #' svTypes
 #'
 #' Plot counts of different svTypes
-#' @import tidyverse ggsci
+#' @import dplyr
+#' @importFrom plyr compact join
 #' @export
 svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per sample (" ~italic("Notch")~ "excluded )"), object='type', keep=FALSE, plot=T) {
   if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
@@ -125,7 +114,6 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
   # cols <- setCols(df=dat, col=object, set='Pastel1')
   
   missing_samples <- getMissingSamples(..., df = bp_data)
-  
   
   missing_samples <- plyr::compact(missing_samples)
   dat <- data.frame(sample = unlist(missing_samples), sv_count = 0, type_count =0, type2 = "NA")
@@ -254,125 +242,13 @@ featureDensity <- function(feature_file1 = system.file("extdata", "g4_positions.
   p
 }
 
-#' typeLen
-#'
-#' Plot the length of different sv types
-#' @import tidyverse
-#' @export
-
-typeLen <- function(size_threshold = 1, notch=0) {
-  if (notch) {
-    bp_data <- notchFilt()
-    ext <- "_excl.N.pdf"
-  } else {
-    bp_data <- getData()
-    ext <- ".pdf"
-  }
-
-  cols <- setCols(bp_data, "type")
-
-  # Only take bp1 for each event
-  bp_data <- dplyr::filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
-
-  bp_data$length <- (bp_data$length / 1000)
-
-  if (is.na(size_threshold)) {
-    size_threshold <- max(bp_data$length)
-  }
-
-  if (size_threshold <= 1) {
-    breaks <- 0.1
-  } else {
-    breaks <- 1
-  }
-
-  p <- ggplot(bp_data, aes(length))
-  p <- p + geom_density(aes(fill = type), alpha = 0.4)
-  p <- p + cleanTheme() +
-    theme(panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"))
-  p <- p + scale_x_continuous("Size in Mb", expand = c(0, 0), breaks = seq(0, size_threshold, by = breaks), limits = c(0, (size_threshold + 0.1)))
-  p <- p + scale_y_continuous(expand = c(0, 0))
-  p <- p + cols
-
-  sv_classes_len_outfile <- paste("Classes_lengths", ext, sep = "")
-  cat("Writing file", sv_classes_len_outfile, "\n")
-  ggsave(paste("plots/", sv_classes_len_outfile, sep = ""), width = 20, height = 10)
-
-  p
-}
-
-#' typeLenCount
-#'
-#' Plot the length of different sv types as counts
-#' @import tidyverse
-#' @export
-
-typeLenCount <- function(..., bp_data=NULL, size_threshold = 1, notch=0) {
-  
-  if(missing(bp_data)){
-    if (notch) {
-      bp_data <- notchFilt()
-      ext <- "_excl.N.pdf"
-    }
-    else {
-      bp_data <- getData(...)
-      ext <- ".pdf"
-    }
-  }
-  
-  
-
-  cols <- setCols(bp_data, "type")
-
-  # Only take bp1 for each event
-  bp_data <- dplyr::filter(bp_data, type != "TRA", type != "BND", bp_no != "bp2")
-
-  bp_data$length <- (bp_data$length / 1000)
-
-  if (is.na(size_threshold)) {
-    size_threshold <- max(bp_data$length)
-  }
-
-  if (size_threshold <= 1) {
-    breaks <- 0.1
-  }
-  else {
-    breaks <- 1
-  }
-
-  p <- ggplot(bp_data, aes(length))
-  p <- p + geom_histogram(aes(length, ..count.., fill = type), colour = "black", binwidth = 0.05, position = "dodge")
-  p <- p + cleanTheme() +
-    theme(panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"))
-  p <- p + scale_x_continuous("Size in Mb", expand = c(0, 0), breaks = seq(0, size_threshold, by = breaks), limits = c(0, (size_threshold + 0.1)))
-  p <- p + scale_y_continuous(expand = c(0, 0))
-  p <- p + geom_density(aes(fill = type), alpha = 0.4, colour = NA)
-  p <- p + cols
-
-  sv_classes_len_outfile <- paste("Classes_lengths", ext, sep = "")
-  cat("Writing file", sv_classes_len_outfile, "\n")
-  ggsave(paste("plots/", sv_classes_len_outfile, sep = ""), width = 20, height = 10)
-
-  p
-}
-
 
 #' genomeHits
 #'
 #' Plot distribution of brekpoints across the genome
-#' @import tidyverse
+#' @import ggplot2
 #' @export
-
-genomeHits <- function(notch=0) {
-  if (notch) {
-    bp_data <- notchFilt()
-    ext <- "_excl.N.pdf"
-  }
-  else {
-    bp_data <- getData()
-    ext <- ".pdf"
-  }
-
+genomeHits <- function(bp_data) {
   p <- ggplot(bp_data)
   p <- p + geom_point(aes(bp / 1000000, sample, colour = sample, shape = type, size = 0.5), alpha = 0.7)
   p <- p + guides(color = FALSE, size = FALSE)
@@ -394,183 +270,3 @@ genomeHits <- function(notch=0) {
 
   p
 }
-
-
-
-#' bpGenAll
-#'
-#' Plot distribution of brekpoints across the genome
-#' @import tidyverse
-#' @export
-
-bpGenAll <- function(object=NA, notch=0) {
-  bp_data <- getData()
-  ext <- ".pdf"
-  if (is.na(object)) {
-    object <- "type"
-    cols <- setCols(bp_data, "type")
-  }
-
-  if (notch) {
-    bp_data <- notchFilt()
-    ext <- "_excl.N.pdf"
-  }
-
-  cat("Plotting SVs by", object, "\n")
-
-  p <- ggplot(bp_data)
-  p <- p + geom_histogram(aes(bp / 1000000, fill = get(object)), binwidth = 0.1, alpha = 0.8)
-  p <- p + facet_wrap(~chrom, scales = "free_x", ncol = 2)
-  p <- p + scale_x_continuous("Mbs", breaks = seq(0, 33, by = 1), limits = c(0, 33), expand = c(0.01, 0.01))
-  p <- p + scale_y_continuous("Number of Breakpoints", expand = c(0.01, 0.01))
-  p <- p + cleanTheme() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      axis.text = element_text(size = 12),
-      axis.title = element_text(size = 20),
-      strip.text.x = element_text(size = 15)
-    )
-
-  if (object == "type") {
-    p <- p + cols
-  }
-
-  chrom_outfile <- paste("Breakpoints_chroms_by_", object, ext, sep = "")
-  cat("Writing file", chrom_outfile, "\n")
-  ggsave(paste("plots/", chrom_outfile, sep = ""), width = 20, height = 10)
-
-  p
-}
-
-#' bpChromDist
-#'
-#' Plot distribution of brekpoints across the genome by chromosome
-#' @import tidyverse
-#' @export
-bpChromDist <- function(object=NA, notch=0) {
-  bp_data <- getData()
-  ext <- ".pdf"
-
-  if (is.na(object)) {
-    object <- "type"
-    cols <- setCols(bp_data, "type")
-  }
-
-  if (notch) {
-    bp_data <- notchFilt()
-    ext <- "_excl.N.pdf"
-  }
-
-  chromosomes <- c("2L", "2R", "3L", "3R", "X", "Y", "4")
-  lengths <- c(23513712, 25286936, 28110227, 32079331, 23542271, 3667352, 1348131)
-
-  karyotype <- setNames(as.list(lengths), chromosomes)
-
-  for (c in chromosomes) {
-    len <- karyotype[[c]]
-    len <- len / 1000000
-
-    cat("Chrom", c, "length:", len, sep = " ", "\n")
-
-    per_chrom <- dplyr::filter(bp_data, chrom == c)
-
-    p <- ggplot(per_chrom)
-    p <- p + geom_histogram(aes(bp / 1000000, fill = get(object)), binwidth = 0.1, alpha = 0.8)
-    p <- p + scale_x_continuous("Mbs", breaks = seq(0, len, by = 1), limits = c(0, len + 0.1), expand = c(0.01, 0.01))
-    p <- p + scale_y_continuous("Number of Breakpoints", limits = c(0, 35), expand = c(0.01, 0.01))
-    p <- p + cleanTheme() +
-      theme(
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.title = element_text(size = 20)
-      )
-    p <- p + ggtitle(paste("Chromosome: ", c))
-
-    if (object == "type") {
-      p <- p + cols
-    }
-
-    per_chrom <- paste("Breakpoints_on_", c, "_by_", object, ext, sep = "")
-    cat("Writing file", per_chrom, "\n")
-    ggsave(paste("plots/", per_chrom, sep = ""), width = 20, height = 10)
-  }
-}
-
-
-
-#' bootStrap
-#'
-#' Plot reav vs sim data bootstrapped n times
-#' @import ggplot2
-#' @import dplyr
-#' @export
-
-bootStrap <- function(..., feature_file=system.file("extdata", "tss_locations.txt", package="svBreaks"),
-                      feature="tss", n=10) {
-  
-  
-  nsim <- function(n, m = 0, s = 1) {
-    z <- rnorm(n)
-    m + s * ((z - mean(z)) / sd(z))
-  }
-  
-  
-  nboot <- function(x, R) {
-    n <- length(x)
-    m <- mean(x)
-    s <- sd(x)
-    do.call(rbind,
-            lapply(1 : R,
-                   function(i) {
-                     xx <- sort(nsim(n, m, s))
-                     p <- seq_along(x) / n - 0.5 / n
-                     data.frame(x = xx, p = p, sim = i)
-                   }))
-  }
-  
-  
-  
-  real_data <- dist2Motif(..., feature_file = feature_file, send = 1, feature = feature)
-  sim_data <- dist2Motif(..., feature_file = feature_file, feature = feature, sim = 1, send = 1)
-  
-  
-  real_data <- real_data %>% 
-    filter(abs(min_dist) <= 30000 )
-    
-  
-  real <- nboot(real_data$min_dist, n)
-  sim <- nboot(sim_data$min_dist, n)
-  
-  real$source <- 'real'
-  sim$source <- 'sim'
-  
-  p <- ggplot()
-  p <- p + geom_density(data=real, aes(x, fill = source), alpha = 0.4, adjust=1)
-  p <- p + geom_density(data=sim, aes(x, fill = source), alpha = 0.4, adjust=1)
-  
-  # p <- p + geom_freqpoly(data = real,
-  #               mapping = aes(x, y = ..count../sum(..count..), colour = source))
-  # p <- p + geom_freqpoly(data = sim,
-  #                        mapping = aes(x, y = ..count../sum(..count..), colour = source))
-  
-  
-  p <- p + scale_x_continuous(
-    paste("Distance to", feature, "(Kb)", sep = " "),
-    limits = c(-20000, 20000),
-    breaks = c(-20000, -2000, 2000, 20000),
-    expand = c(.0005, .0005),
-    labels = c("-20", "-2", "2", "20")
-  )
-  
-  p <- p + geom_rug(data = real, aes(x, colour = source), sides = "b")
-  p <- p + geom_rug(data = sim, aes(x, colour = source), sides = "t")
-  
-  p <- p + facet_wrap(~sim)
-  p
- 
-   # ggplot() +
-   #   geom_line(aes(x = qnorm(p), y = x, group = sim),
-   #             color = "gray", data = real)
-   # 
-  
-}
-

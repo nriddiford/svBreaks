@@ -4,7 +4,7 @@
 \alias{genomeHits}
 \title{genomeHits}
 \usage{
-genomeHits(notch = 0)
+genomeHits(bp_data)
 }
 \description{
 Plot distribution of brekpoints across the genome

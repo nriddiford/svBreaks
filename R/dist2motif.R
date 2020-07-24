@@ -361,6 +361,7 @@ plotdistanceOverlay <- function(..., d, from='bps', feature="tss", lim=10, byChr
 #' @param real_data Dataframe containing real data (as produced by generateData())
 #' @import dplyr ggplot2 broom PerformanceAnalytics
 #' @importFrom car leveneTest
+#' @importFrom PerformanceAnalytics kurtosis
 #' @keywords sim
 #' @export
 simSig <- function(r, s, test=NA, max_dist=5000){
@@ -401,10 +402,10 @@ simSig <- function(r, s, test=NA, max_dist=5000){
     smed <- round(median(sm$min_dist)/1000, 2)
     rsd <- round(sd(rl$min_dist)/1000, 2)
     ssd <- round(sd(sm$min_dist)/1000, 2)
-    rKurtosis <- round(kurtosis(rl$min_dist), 2)
-    sKurtosis <- round(kurtosis(sm$min_dist), 2)
-    rSkew <- round(skewness(rl$min_dist), 2)
-    sSkew <- round(skewness(sm$min_dist), 2)
+    rKurtosis <- round(PerformanceAnalytics::kurtosis(rl$min_dist), 2)
+    sKurtosis <- round(PerformanceAnalytics::kurtosis(sm$min_dist), 2)
+    rSkew <- round(PerformanceAnalytics::skewness(rl$min_dist), 2)
+    sSkew <- round(PerformanceAnalytics::skewness(sm$min_dist), 2)
     fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
     fRatio <- round(fStat$statistic, 2)
     fStat <- round(fStat$p.value, 4)

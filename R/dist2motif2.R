@@ -4,9 +4,7 @@
 #' generateData2
 #' Prepare data for dist2motif
 #' @keywords simulate
-#' @import ggplot2
 #' @import dplyr
-#' @import colorspace
 #' @export
 generateData2 <- function(..., df, breakpoints, sim=FALSE, chroms){
   if(missing(df) && missing(breakpoints)) stop("\n[!] Must provide either a df or bed file! Exiting.")
@@ -479,7 +477,14 @@ plotdistanceOverlay2 <- function(..., distances, from='bps', lim=5, n, position=
   cowplot::plot_grid(plotlist=plts)
 }
 
-
+# simSig2
+#'
+#' Calculate stats for simulated data
+#' @keywords simsig
+#' @import dplyr ggplot2 ggpubr
+#' @importFrom plyr round_any
+#' @importFrom PerformanceAnalytics kurtosis
+#' @export
 simSig2 <- function(r, s, test=NA, max_dist=5000){
   cat("Calculating descriptive statistics\n")
   arrange_data <- function(x){
@@ -545,10 +550,10 @@ simSig2 <- function(r, s, test=NA, max_dist=5000){
       # strim <- round(median(sm$min_dist, trim=0.25)/1000, 2)
       rsd <- round(sd(rl$min_dist)/1e3, 2)
       ssd <- round(sd(sm$min_dist)/1e3, 2)
-      rKurtosis <- round(kurtosis(rl$min_dist), 2)
-      sKurtosis <- round(kurtosis(sm$min_dist), 2)
-      rSkew <- round(skewness(rl$min_dist), 2)
-      sSkew <- round(skewness(sm$min_dist), 2)
+      rKurtosis <- round(PerformanceAnalytics::kurtosis(rl$min_dist), 2)
+      sKurtosis <- round(PerformanceAnalytics::kurtosis(sm$min_dist), 2)
+      rSkew <- round(PerformanceAnalytics::skewness(rl$min_dist), 2)
+      sSkew <- round(PerformanceAnalytics::skewness(sm$min_dist), 2)
       # fStat <- var.test(min_dist ~ Source , df, alternative = "two.sided")
       # fRatio <- round(fStat$statistic, 2)
       # fStat <- round(fStat$p.value, 4)

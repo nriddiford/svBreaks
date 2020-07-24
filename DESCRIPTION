@@ -18,7 +18,8 @@ Imports:
     PerformanceAnalytics,
     forcats,
     broom,
-    ggsci
+    ggsci,
+    cowplot
 Suggests: 
     testthat,
     plotly

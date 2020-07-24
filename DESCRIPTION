@@ -16,8 +16,8 @@ Imports:
     bedr,
     data.table,
     PerformanceAnalytics,
-    broom,
-    forcats
+    forcats,
+    broom
 Suggests: 
     testthat,
     plotly

@@ -14,7 +14,7 @@ getData <- function(...,
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.txt", package="svBreaks"),
                     expression_source = 'flygut') {
   
-  bp_data <- read.delim(infile) 
+  bp_data <- read.delim(infile, header = F) 
 
   cat("Filters applied:\n")
   input_list <- as.list(substitute(list(...)))
@@ -28,8 +28,8 @@ getData <- function(...,
   
   if(file.exists(attach_info)){
     name_conversion <- read.delim(attach_info, header=F)
-    cat("Attaching assay information to data")
-    colnames(name_conversion) <- c("sample", "sample_short", "sex", "assay")
+    cat("Attaching assay information to data\n")
+    colnames(name_conversion) <- c("sample", "sample_short", "sample_paper", "sex", "assay")
     bp_data <- plyr::join(bp_data, name_conversion, "sample", type = 'left')
   }
   

@@ -5,6 +5,7 @@
 #' @keywords parse breakpoints data
 #' @import dplyr
 #' @importFrom plyr join
+#' @importFrom magrittr %>%
 #' @export
 #' @return Dataframe
 

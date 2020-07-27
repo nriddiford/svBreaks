@@ -55,7 +55,6 @@ bpRegioneR <- function(...,
   
   cat(paste0("looking for enrichment of ", feature_name, " in ", nrow(test), " regions of ", region_name), "\n")
  
-  
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
   
@@ -67,7 +66,6 @@ bpRegioneR <- function(...,
       dplyr::mutate(V2 = V2 - slop,
                     V3 = V3 + slop)
   }
-  
   
   # mappable_genome <- getGenomeAndMask("dm6", mask=exclude)$genome
   # mappable_genome <- getGenomeAndMask(genome=genome, mask=exclude)

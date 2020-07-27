@@ -7,9 +7,8 @@
 #' @importFrom plyr join
 #' @export
 #' @return Dataframe
-
 getData <- function(...,
-                    infile = '/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt',
+                    infile = system.file("extdata", "all_bps_merged.txt", package="svBreaks"),
                     attach_info = system.file("extdata", "samples_names_conversion.txt", package="svBreaks"),
                     gene_lengths_file = system.file("extdata", "gene_lengths.txt", package="svBreaks"),
                     expression_data = system.file("extdata", "isc_genes_rnaSeq.txt", package="svBreaks"),

@@ -21,7 +21,8 @@ Imports:
     ggsci,
     cowplot,
     colorspace,
-    car
+    car,
+    magrittr
 Suggests: 
     testthat,
     plotly

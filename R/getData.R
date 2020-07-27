@@ -39,7 +39,7 @@ getData <- function(...,
   bp_data <- plyr::join(bp_data, gene_lengths, "gene", type = "left")
   
   if(expression_source == 'flygut'){
-    cat("Reading expression data from source: 'flygut [Buchon]'")
+    cat("Reading expression data from source: 'flygut [Buchon]'\n")
     expression_data = system.file("extdata", "Buchon_summary_ISCs.txt", package="svBreaks")
     expression_data <- read.delim(expression_data, header=F)
     colnames(expression_data) <- c('id', 'symbol', 'name', 'isc', 'eb', 'ec', 'ee', 'vm')

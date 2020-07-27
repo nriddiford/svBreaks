@@ -13,13 +13,14 @@
 #' @param region Limit to region (chr:start-stop) [Default: NULL] 
 #' @import regioneR
 #' @export
-bpRegioneR <- function(..., regionA = '~/Desktop/misc_bed/breakpoints/Notch_CFS/notch_10kb_merged_breakpoints.bed',
-                       regionB = '~/GitHub/BardinLab/meme/out/notch_CFS/fimo_out/motif2_merged.bed',
-                       mappable_regions = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/Mappability/dmel6_mappable.bed',
-                       chrom_lengths = '~/Documents/Curie/Data/Genomes/Dmel_v6.12/chrom.sizes.txt',
+bpRegioneR <- function(..., 
+                       regionA = system.file("extdata", "notch_breakpoint_regions_500_mappable.bed", package="svBreaks"),
+                       regionB = system.file("extdata", "motif_1.mappable.bed", package="svBreaks"),
+                       mappable_regions = system.file("extdata", "dmel6_mappable.bed", package="svBreaks"),
+                       chrom_lengths = system.file("extdata", "chrom.sizes.txt", package="svBreaks"),
                        slop, limit2chrom=TRUE, chrom='X', from, to, n = 100, plot = TRUE,  bins='auto', region=NULL){
 
-  if(missing(feature) && missing(region)){
+  if(missing(region)){
     region_name <- tools::file_path_sans_ext(basename(regionA))
     feature_name <- tools::file_path_sans_ext(basename(regionB))
   }

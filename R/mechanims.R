@@ -6,12 +6,9 @@
 #' @keywords parse
 #' @import dplyr
 #' @export
-mechansimSize <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt', plot=TRUE) {
-  
-  if(missing(bp_data)){
-    bp_data <- svBreaks::getData(infile=infile)
-  }
-  
+mechansimSize <- function(..., bp_data=NULL, plot=TRUE) {
+  if(missing(bp_data)) stop("\n[!] Must provide a df of breakpoints! Exiting.")
+
   mechanism_count <- bp_data %>%
     dplyr::filter(mechanism != '-',
                   !stringr::str_detect(type, 'TRA'),
@@ -49,7 +46,9 @@ mechansimSize <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filter
 #' @keywords parse
 #' @import dplyr
 #' @export
-micromologyPlot <- function(..., bp_data=NULL, infile='~/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt'){
+micromologyPlot <- function(..., bp_data=NULL){
+  if(missing(bp_data)) stop("\n[!] Must provide a df of breakpoints! Exiting.")
+  
   mech_data <- svBreaks::mechansimSize(..., bp_data=bp_data, infile=infile, plot=F)
   
   mh_sizes <- mech_data %>% 

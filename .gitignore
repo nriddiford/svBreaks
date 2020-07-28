@@ -12,7 +12,6 @@ inst/extdata/*
 !inst/extdata/gene_lengths.txt
 .Rbuildignore
 packrat/lib*/
-packrat/src/
 svs_by_sample.png
 *.pdf
 *.png

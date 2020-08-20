@@ -99,6 +99,8 @@ bpRegioneR <- function(...,
   
 }
 
+#' Plot overlaps from  bpRegioner
+#' @export
 plot_bpRegioner <- function(df, title=NULL, bins=30, rug=FALSE){
   
   if(missing(title)) title <- ''

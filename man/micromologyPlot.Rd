@@ -5,11 +5,7 @@
 \title{Plot micromology vs type
 micromology}
 \usage{
-micromologyPlot(
-  ...,
-  bp_data = NULL,
-  infile = "~/Desktop/parserTest/filtered_231018/summary/merged/all_bps_mech.txt"
-)
+micromologyPlot(..., bp_data = NULL)
 }
 \arguments{
 \item{infile}{File to process [Required]}

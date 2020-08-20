@@ -93,7 +93,8 @@ bpRegioneR <- function(...,
     if(bins == 'auto') bins <- max(d$overlaps)
     print(plot_bpRegioner(d, title = title_string, bins = bins))
   } else{
-    cat(title_string)
+    print(title_string)
+    print(format.pval(res$`regioneR::numOverlaps`$pval))
     return(d)
   }
   

@@ -1,6 +1,6 @@
 #' getData
 #'
-#' Function to clean cnv files
+#' Function to parse breakpoint files from svParser 
 #' @param infile File to process [Required]
 #' @keywords parse breakpoints data
 #' @import dplyr

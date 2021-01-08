@@ -42,7 +42,8 @@ snv_colours <- function(){
       "insfrshift" = '#F08573',
       "Missense" = '#F1AD32',
       "Nonsense" = '#F4C839',
-      "Synonymous" = '#B2AF9D')
+      "Synonymous" = '#B2AF9D',
+      "Essential_Splice" = '#F4C123')
     )
 }
 
@@ -50,8 +51,8 @@ snv_colours <- function(){
 #' get sample names
 #' @import dplyr
 #' @export
-getMissingSamples <- function(..., df=NULL, all_samples_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
-  all_samples_info <- read.delim(all_samples_info, header = F, stringsAsFactors = T)
+getMissingSamples <- function(..., df=NULL, attach_info='~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
+  all_samples_info <- read.delim(attach_info, header = F, stringsAsFactors = T)
   colnames(all_samples_info) <- c("sample", "marius", "paper", "sex", "assay")
   
   names <- all_samples_info %>% 
@@ -97,7 +98,7 @@ swapSampleNames <- function(df, attach_info='~/Desktop/script_test/mutationProfi
 #' @import dplyr
 #' @importFrom plyr compact join
 #' @export
-svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per sample (" ~italic("Notch")~ "excluded )"), object='type', keep=FALSE, plot=T) {
+svTypes <- function(..., bp_data=NULL, keep=FALSE, plot=TRUE, add_missing=TRUE, attach_info = '~/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt'){
   if(missing(bp_data)) bp_data <- getData(..., genotype=='somatic_tumour')
   ext <- ".png"
   
@@ -111,13 +112,13 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
     droplevels() %>% 
     as.data.frame()
   
-  # cols <- setCols(df=dat, col=object, set='Pastel1')
-  
-  missing_samples <- getMissingSamples(..., df = bp_data)
-  
-  missing_samples <- plyr::compact(missing_samples)
-  dat <- data.frame(sample = unlist(missing_samples), sv_count = 0, type_count =0, type2 = "NA")
-  bp_data <- plyr::join(bp_data, dat, type='full')
+  if(add_missing){
+    missing_samples <- getMissingSamples(..., df = bp_data, attach_info = attach_info)
+    
+    missing_samples <- plyr::compact(missing_samples)
+    dat <- data.frame(sample = unlist(missing_samples), sv_count = 0, type_count =0, type2 = "NA")
+    bp_data <- plyr::join(bp_data, dat, type='full')
+  }
   
   order <- levels(fct_reorder(bp_data$sample, bp_data$sv_count))
   colours <- sv_colours()
@@ -131,7 +132,7 @@ svTypes <- function(..., bp_data=NULL, title=expression("Structural variants per
     theme(
       axis.title.y = element_blank(),
       # panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
+      panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size=15),
       legend.position = "top",
       axis.text.y = element_text(size=15),

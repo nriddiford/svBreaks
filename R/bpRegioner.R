@@ -40,7 +40,7 @@ bpRegioneR <- function(...,
       droplevels()
     # genome$V2 = from
     # genome$V3 = to
-    cat(paste0("Genome: ", chrom, ":", from, ":", to), "\n")
+    cat(paste0("o Genome: ", chrom, ":", from, ":", to), "\n")
   }
   
   test <- read.table(regionA, header=F, stringsAsFactors = TRUE)
@@ -53,8 +53,8 @@ bpRegioneR <- function(...,
                   V1 %in% levels(genome$V1)) %>%
     dplyr::select(-length)
   
-  cat(paste0("looking for enrichment of ", feature_name, " in ", nrow(test), " regions of ", region_name), "\n")
-  cat("Shuffling feature", feature_name, " ", n, "times\n")
+  cat(paste0("o Looking for enrichment of ", feature_name, " in ", nrow(test), " regions of ", region_name), "\n")
+  cat("o Shuffling feature", feature_name, " ", n, "times\n")
   
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
@@ -62,7 +62,7 @@ bpRegioneR <- function(...,
   feature$V1 <- stringr::str_remove(feature$V1, 'chr')
   
   if(!missing(slop)){
-    cat("Expanding ", feature_name, " regions by ", slop, "\n")
+    cat("o Expanding ", feature_name, " regions by ", slop, "\n")
     feature <- feature %>%
       dplyr::mutate(V2 = V2 - slop,
                     V3 = V3 + slop)

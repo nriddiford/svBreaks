@@ -54,7 +54,8 @@ bpRegioneR <- function(...,
     dplyr::select(-length)
   
   cat(paste0("looking for enrichment of ", feature_name, " in ", nrow(test), " regions of ", region_name), "\n")
- 
+  cat("Shuffling feature", feature_name, " ", n, "times")
+  
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
   
@@ -117,7 +118,7 @@ plot_bpRegioner <- function(df, title=NULL, bins=30, rug=FALSE){
     dplyr::summarise(med = median(overlaps))
   
   
-  ggplot(df, aes(overlaps, fill = feature, colour = feature)) +
+  p <- ggplot(df, aes(overlaps, fill = feature, colour = feature)) +
     geom_histogram(alpha=0.6, bins = bins, position = "identity") +
     geom_vline(data = compare_mean, aes(xintercept = med, colour = feature),
                linetype = "dashed", size = .7) +
@@ -127,16 +128,8 @@ plot_bpRegioner <- function(df, title=NULL, bins=30, rug=FALSE){
     scale_y_continuous("Count", expand = c(0, 0)) +
     scale_fill_manual(values = cols) +
     scale_colour_manual(values = cols) +
-    ggtitle(title_string)
+    ggtitle(title)
   
-  # print(p)
-  
-  # gghistogram(df, x = "overlaps",
-  #             add = "mean", rug = rug,
-  #             color = "feature", fill = "feature",
-  #             palette = c(green, grey),
-  #             bins = bins,
-  #             title = title, 
-  #             ggtheme = theme_minimal())
+  print(p)
   
 }

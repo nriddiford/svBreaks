@@ -24,8 +24,8 @@ bpRegioneR <- function(...,
     region_name <- tools::file_path_sans_ext(basename(regionA))
     feature_name <- tools::file_path_sans_ext(basename(regionB))
   }
-  genome = read.delim(chrom_lengths, header=F)
-  mappable = read.delim(mappable_regions, header=F)
+  genome = read.delim(chrom_lengths, header=F, stringsAsFactors = TRUE)
+  mappable = read.delim(mappable_regions, header=F, stringsAsFactors = TRUE)
   
   mappable <- mappable %>%
     dplyr::filter(V1 %in% levels(genome$V1)) %>% 
@@ -43,7 +43,7 @@ bpRegioneR <- function(...,
     cat(paste0("Genome: ", chrom, ":", from, ":", to), "\n")
   }
   
-  test <- read.delim(regionA, header =F)
+  test <- read.delim(regionA, header=F, stringsAsFactors = TRUE)
   test <- test[,c(1,2,3)]
   test$V1 <- stringr::str_remove(test$V1, 'chr')
   

@@ -24,8 +24,8 @@ bpRegioneR <- function(...,
     region_name <- tools::file_path_sans_ext(basename(regionA))
     feature_name <- tools::file_path_sans_ext(basename(regionB))
   }
-  genome = read.delim(chrom_lengths, header=F, stringsAsFactors = TRUE)
-  mappable = read.delim(mappable_regions, header=F, stringsAsFactors = TRUE)
+  genome = read.table(chrom_lengths, header=F, stringsAsFactors = TRUE)
+  mappable = read.table(mappable_regions, header=F, stringsAsFactors = TRUE)
   
   mappable <- mappable %>%
     dplyr::filter(V1 %in% levels(genome$V1)) %>% 
@@ -43,7 +43,7 @@ bpRegioneR <- function(...,
     cat(paste0("Genome: ", chrom, ":", from, ":", to), "\n")
   }
   
-  test <- read.delim(regionA, header=F, stringsAsFactors = TRUE)
+  test <- read.table(regionA, header=F, stringsAsFactors = TRUE)
   test <- test[,c(1,2,3)]
   test$V1 <- stringr::str_remove(test$V1, 'chr')
   
@@ -117,18 +117,19 @@ plot_bpRegioner <- function(df, title=NULL, bins=30, rug=FALSE){
     dplyr::summarise(med = median(overlaps))
   
   
-  p <- ggplot(df, aes(overlaps, fill = feature, colour = feature))
-  p <- p + geom_histogram(alpha=0.6, bins = bins, position = "identity")
-  p <- p + geom_vline(data = compare_mean, aes(xintercept = med, colour = feature),
-             linetype = "dashed", size = .7)
-  p <- p + cleanTheme() +
-    theme(panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted"))
-  p <- p + scale_x_continuous("Overlaps", expand = c(0, 0.1))
-  p <- p + scale_y_continuous("Count", expand = c(0, 0))
-  p <- p + scale_fill_manual(values = cols)
-  p <- p + scale_colour_manual(values = cols)
+  ggplot(df, aes(overlaps, fill = feature, colour = feature)) +
+    geom_histogram(alpha=0.6, bins = bins, position = "identity") +
+    geom_vline(data = compare_mean, aes(xintercept = med, colour = feature),
+               linetype = "dashed", size = .7) +
+    cleanTheme() +
+    theme(panel.grid.major.y = element_line(color = "grey80", size = 0.5, linetype = "dotted")) +
+    scale_x_continuous("Overlaps", expand = c(0, 0.1)) +
+    scale_y_continuous("Count", expand = c(0, 0)) +
+    scale_fill_manual(values = cols) +
+    scale_colour_manual(values = cols) +
+    ggtitle(title_string)
   
-  print(p)
+  # print(p)
   
   # gghistogram(df, x = "overlaps",
   #             add = "mean", rug = rug,

@@ -54,7 +54,7 @@ bpRegioneR <- function(...,
     dplyr::select(-length)
   
   cat(paste0("looking for enrichment of ", feature_name, " in ", nrow(test), " regions of ", region_name), "\n")
-  cat("Shuffling feature", feature_name, " ", n, "times")
+  cat("Shuffling feature", feature_name, " ", n, "times\n")
   
   feature <- read.delim(regionB, header = F)
   feature <- feature[,c(1,2,3)]
